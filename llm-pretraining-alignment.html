@@ -1,0 +1,2748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>大模型是怎么造出来的 · 从数据、算力到对齐的工程约束</title>
+<meta name="description" content="沿一张模型规格卡反推大模型生产线：数据五道闸、tokenizer、next-token 预训练与 6ND 算力账、SFT、RLHF/DPO 偏好对齐、RLVR 推理强化，以及对齐税、评测污染与蒸馏血统。三台仪器现场计算，最后落到医学影像团队的三条含义。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="大模型是怎么造出来的 · 从数据、算力到对齐的工程约束">
+<meta property="og:description" content="沿一张模型规格卡反推大模型生产线：数据五道闸、tokenizer、next-token 预训练与 6ND 算力账、SFT、RLHF/DPO 偏好对齐、RLVR 推理强化，以及对齐税、评测污染与蒸馏血统。三台仪器现场计算，最后落到医学影像团队的三条含义。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/llm-pretraining-alignment.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/llm-pretraining-alignment.html">
+<meta name="twitter:card" content="summary">
+<style>
+/* ============================================================
+   设计系统 · 模型档案（Model Dossier）
+   浅色 = 晨雾瓷白 + 铜绿主强调；深色 = 夜蓝石板 + 亮铜绿。
+   语义：铜绿 = 规格/结论，豆沙红 = 失效/代价，雾蓝 = 中性数据。
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg: #e9edf0;
+  --bg-2: #e1e6ea;
+  --panel: #f7f9f9;
+  --panel-2: #fcfdfd;
+  --well: #dfe4e7;
+  --ink: #2d3237;
+  --ink-2: #545c63;
+  --ink-3: #687179;
+  --rule: #d5dadd;
+  --rule-2: #bfc6ca;
+  --jade: #2f7064;
+  --jade-deep: #22564c;
+  --jade-bright: #3f8b7c;
+  --warn: #a5666e;
+  --warn-deep: #874a53;
+  --data: #4e7297;
+  --data-deep: #37587a;
+  --hi-sh: rgba(255, 255, 255, .98);
+  --sh: rgba(104, 116, 128, .34);
+  --edge: rgba(255, 255, 255, .70);
+  --edge-dark: rgba(108, 118, 128, .16);
+  --tint: .10;
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --max: 1180px;
+  --measure: 852px;
+  --widew: 1132px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 9px;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #14171c;
+  --bg-2: #101318;
+  --panel: #1c2128;
+  --panel-2: #242b34;
+  --well: #101319;
+  --ink: #e8eaed;
+  --ink-2: #b3b9c2;
+  --ink-3: #8d95a1;
+  --rule: #2a313b;
+  --rule-2: #39424e;
+  --jade: #7cc9b8;
+  --jade-deep: #a6ded1;
+  --jade-bright: #5fb6a3;
+  --warn: #d89a9a;
+  --warn-deep: #e9b5b5;
+  --data: #8cb2db;
+  --data-deep: #adc9e7;
+  --hi-sh: rgba(185, 205, 235, .06);
+  --sh: rgba(0, 0, 0, .60);
+  --edge: rgba(190, 210, 240, .10);
+  --edge-dark: rgba(0, 0, 0, .45);
+  --tint: .22;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg: #14171c;
+    --bg-2: #101318;
+    --panel: #1c2128;
+    --panel-2: #242b34;
+    --well: #101319;
+    --ink: #e8eaed;
+    --ink-2: #b3b9c2;
+    --ink-3: #8d95a1;
+    --rule: #2a313b;
+    --rule-2: #39424e;
+    --jade: #7cc9b8;
+    --jade-deep: #a6ded1;
+    --jade-bright: #5fb6a3;
+    --warn: #d89a9a;
+    --warn-deep: #e9b5b5;
+    --data: #8cb2db;
+    --data-deep: #adc9e7;
+    --hi-sh: rgba(185, 205, 235, .06);
+    --sh: rgba(0, 0, 0, .60);
+    --edge: rgba(190, 210, 240, .10);
+    --edge-dark: rgba(0, 0, 0, .45);
+    --tint: .22;
+    color-scheme: dark;
+  }
+}
+
+html { scroll-behavior: smooth; scrollbar-color: var(--rule-2) var(--bg); }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 700px at 85% -8%, color-mix(in srgb, var(--jade) 5%, transparent), transparent 60%),
+    radial-gradient(1000px 640px at -10% 30%, color-mix(in srgb, var(--data) 4%, transparent), transparent 62%),
+    radial-gradient(900px 700px at 55% 112%, color-mix(in srgb, var(--warn) 3%, transparent), transparent 64%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.82;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  body { background: var(--bg); }
+}
+
+::selection { background: color-mix(in srgb, var(--jade) 30%, transparent); color: var(--ink); }
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  ::selection { background: var(--jade); color: #fff; }
+}
+
+:focus-visible { outline: 2px solid var(--jade); outline-offset: 2px; border-radius: 4px; }
+
+.grain {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: .05; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .grain { opacity: .07; mix-blend-mode: screen; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .grain { opacity: .07; mix-blend-mode: screen; }
+}
+
+/* ============================================================
+   基元
+   ============================================================ */
+
+.press {
+  appearance: none;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 7px 15px;
+  font: 500 13px/1.4 var(--sans);
+  cursor: pointer;
+  box-shadow: 4px 4px 10px var(--sh), -3px -3px 8px var(--hi-sh), inset 1px 1px 1px var(--edge);
+  transition: transform .12s ease, box-shadow .12s ease, color .12s ease;
+  user-select: none;
+}
+.press:hover { color: var(--jade); }
+.press:active {
+  transform: translateY(1px);
+  box-shadow: inset 3px 3px 7px var(--sh), inset -2px -2px 5px var(--hi-sh);
+}
+.press.on {
+  color: var(--jade-deep);
+  box-shadow: inset 3px 3px 7px var(--sh), inset -2px -2px 5px var(--hi-sh);
+  font-weight: 700;
+}
+
+/* ============================================================
+   顶栏
+   ============================================================ */
+
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  border-bottom: 1px solid var(--rule);
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .topbar { background: var(--bg); }
+}
+
+.topbar-in {
+  max-width: 1180px; margin: 0 auto;
+  padding: 0 24px; height: 56px;
+  display: flex; align-items: center; gap: 18px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 9px;
+  text-decoration: none;
+}
+.brand:hover { color: var(--ink-2); }
+.brand-mark { width: 20px; height: 20px; flex: 0 0 auto; display: block; opacity: .95; }
+.brand-mark .bm-frame { fill: none; stroke: var(--jade); stroke-width: 1.6; stroke-linejoin: round; }
+.brand-mark .bm-slice { stroke: var(--jade-bright); stroke-width: 1.35; stroke-linecap: round; opacity: .85; }
+.brand-mark .bm-dot { fill: var(--warn); }
+
+.nav {
+  display: flex; gap: 4px;
+  overflow-x: auto; scrollbar-width: none;
+  flex: 1 1 auto; min-width: 0;
+}
+.nav::-webkit-scrollbar { display: none; }
+.nav a {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .04em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: color .15s ease, background .15s ease;
+}
+.nav a:hover { color: var(--ink); }
+.nav a.on {
+  color: var(--jade-deep);
+  background: var(--well);
+  box-shadow: inset 2px 2px 5px var(--sh), inset -1px -1px 3px var(--hi-sh);
+}
+
+.theme-btn { flex: 0 0 auto; font-family: var(--mono); font-size: 11.5px; }
+
+.progress {
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, var(--jade), var(--data));
+  border-radius: 1px;
+  transition: width .18s ease;
+}
+
+/* ============================================================
+   版心与英雄区
+   ============================================================ */
+
+.wrap {
+  position: relative; z-index: 1;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px 30px;
+}
+
+.hero {
+  position: relative;
+  padding: 76px 0 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr);
+  gap: 36px;
+  align-items: center;
+}
+
+.hero-txt { min-width: 0; }
+.hero-art { position: relative; min-width: 0; }
+
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; padding-top: 60px; gap: 26px; }
+  .hero-art { max-width: 480px; }
+}
+
+.kicker {
+  margin: 0 0 15px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--jade);
+}
+.kicker::before {
+  content: "";
+  display: inline-block;
+  width: 26px; height: 2px;
+  margin: 0 10px 4px 0;
+  background: linear-gradient(90deg, var(--jade), transparent);
+  border-radius: 1px;
+  vertical-align: middle;
+}
+
+.hero h1 {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: clamp(34px, 5vw, 54px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--jade-deep);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.hero .sub {
+  margin: 0 0 16px;
+  font-family: var(--serif);
+  font-size: 18.5px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.series-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--jade) 34%, transparent);
+  background: color-mix(in srgb, var(--jade) 8%, transparent);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .08em;
+  color: var(--jade-deep);
+}
+.series-pill i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--jade);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jade) 16%, transparent);
+}
+
+.hero .lede {
+  margin: 0 0 22px;
+  max-width: 560px;
+  color: var(--ink-2);
+  font-size: 16px;
+}
+
+.byline { display: flex; flex-wrap: wrap; gap: 9px; }
+.byline span {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  box-shadow: 3px 3px 8px var(--sh), -2px -2px 6px var(--hi-sh);
+}
+
+/* ---- 英雄区规格卡 ---- */
+
+.spec-card {
+  position: relative;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--rule-2);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 92%, transparent), var(--panel));
+  box-shadow: 10px 10px 24px var(--sh), -8px -8px 18px var(--hi-sh);
+  overflow: hidden;
+}
+.spec-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: .16;
+  pointer-events: none;
+}
+.spec-head {
+  position: relative;
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1.5px solid var(--ink-3);
+}
+.spec-head b {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.spec-head span {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+}
+.spec-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) 62px;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6.5px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--rule) 78%, transparent);
+  font-size: 12.5px;
+}
+.spec-row:last-of-type { border-bottom: 0; }
+.spec-row .k {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+.spec-row .v {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.spec-row .src {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--jade);
+  text-align: right;
+  white-space: nowrap;
+}
+.spec-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+}
+.stamp {
+  position: absolute;
+  right: 14px; bottom: 34px;
+  width: 74px; height: 74px;
+  border: 2px solid var(--jade);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  transform: rotate(-12deg);
+  color: var(--jade);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  line-height: 1.35;
+  letter-spacing: .06em;
+  opacity: .92;
+  pointer-events: none;
+}
+.stamp::after {
+  content: "";
+  position: absolute; inset: 5px;
+  border: 1px dashed color-mix(in srgb, var(--jade) 62%, transparent);
+  border-radius: 50%;
+}
+.spec-card.stamping .stamp { animation: stampIn .62s cubic-bezier(.2, 1.5, .4, 1) both; }
+@keyframes stampIn {
+  from { opacity: 0; transform: rotate(-12deg) scale(1.28); }
+  to { opacity: .92; transform: rotate(-12deg) scale(1); }
+}
+
+/* ============================================================
+   章节骨架
+   ============================================================ */
+
+section { margin: 26px 0; }
+
+.sec-head {
+  display: flex; align-items: baseline; gap: 15px;
+  margin: 62px 4px 16px;
+  padding-left: 18px;
+  border-left: 3px solid var(--jade);
+}
+.sec-num {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--jade);
+  letter-spacing: .06em;
+}
+.sec-head h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.br-narrow { display: none; }
+
+.paper {
+  position: relative;
+  max-width: var(--widew);
+}
+
+.paper > :not(.wide):not(.mrow):not(.refs) { max-width: var(--measure); }
+.paper > .wide { max-width: var(--widew); }
+.paper > .mrow { max-width: var(--widew); }
+
+.paper p { margin: 18px 0; }
+
+.paper p.dek {
+  margin: 0 0 18px;
+  padding: 12px 18px;
+  border-left: 3px solid var(--jade);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: color-mix(in srgb, var(--jade) 6%, transparent);
+  color: var(--ink-2);
+  font-size: 15.5px;
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .paper p.dek { background: transparent; }
+}
+
+.paper h3 {
+  margin: 38px 0 10px;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: .01em;
+  color: var(--ink);
+}
+
+.paper h4 {
+  margin: 28px 0 8px;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.paper b { color: var(--ink); }
+.mono { font-family: var(--mono); font-size: .92em; }
+
+a.inline {
+  color: var(--jade-deep);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--jade);
+}
+a.inline:hover { border-bottom-style: solid; }
+
+sup.cite { margin-left: 2px; }
+sup.cite a {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--jade);
+  text-decoration: none;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--jade) 10%, transparent);
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  sup.cite a { background: var(--well); }
+}
+sup.cite a:hover { background: var(--jade); color: #fff; }
+
+.paper ul, .paper ol { margin: 14px 0; padding-left: 24px; }
+.paper li { margin: 9px 0; line-height: 1.78; text-align: justify; text-justify: inter-ideograph; }
+.paper li::marker { color: var(--jade); }
+
+.paper ol.quick { padding-left: 0; list-style: none; counter-reset: qk; }
+.paper ol.quick > li {
+  position: relative;
+  counter-increment: qk;
+  padding: 12px 16px 12px 52px;
+  margin: 10px 0;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--well) 55%, transparent);
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .paper ol.quick > li { background: var(--panel-2); }
+}
+.paper ol.quick > li::before {
+  content: counter(qk, decimal-leading-zero);
+  position: absolute; left: 14px; top: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--jade);
+}
+.paper ol.quick b { color: var(--ink); }
+
+/* ============================================================
+   Callout / 边注
+   ============================================================ */
+
+.callout {
+  margin: 18px 0;
+  padding: 16px 20px 15px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--jade) 7%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--jade) 26%, transparent);
+  box-shadow: 4px 4px 10px var(--sh), -3px -3px 8px var(--hi-sh);
+}
+.callout.warn {
+  background: color-mix(in srgb, var(--warn) 7%, var(--panel));
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .callout, .callout.warn { background: var(--panel-2); border-color: var(--rule-2); }
+}
+.callout .tag {
+  display: inline-block;
+  margin-bottom: 7px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: #fff;
+  background: var(--jade);
+  box-shadow: 2px 2px 5px var(--sh);
+}
+.callout.warn .tag { background: var(--warn); }
+.callout p { margin: 4px 0; }
+.callout b { color: var(--ink); }
+
+.mnote {
+  font-size: 12.5px;
+  line-height: 1.68;
+  color: var(--ink-3);
+  text-align: left;
+}
+.mnote .tag {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--jade);
+}
+.mnote b { color: var(--ink-2); }
+
+/* ============================================================
+   图
+   ============================================================ */
+
+figure { margin: 22px 0; }
+figure.wide { max-width: none; }
+.fig-frame {
+  padding: 16px 14px 10px;
+  border-radius: var(--r-md);
+  background: var(--well);
+  border: 1px solid var(--edge-dark);
+  box-shadow:
+    inset 4px 4px 10px color-mix(in srgb, var(--sh) 60%, transparent),
+    inset -3px -3px 8px var(--hi-sh);
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .fig-frame { box-shadow: inset 4px 4px 10px var(--sh), inset -3px -3px 8px var(--hi-sh); }
+}
+.fig-frame svg { display: block; width: 100%; height: auto; }
+figure > figcaption {
+  margin: 12px 4px 0;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+figure > figcaption b {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: var(--jade);
+  margin-right: 8px;
+}
+
+.fig-frame svg text { font-family: var(--sans); }
+.fig-frame svg .f-mono { font-family: var(--mono); }
+.fig-frame svg .ax { stroke: var(--ink-3); stroke-width: 1.2; fill: none; }
+.fig-frame svg .grid { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 4; fill: none; }
+
+/* ============================================================
+   表格
+   ============================================================ */
+
+.tbl-wrap { overflow-x: auto; margin: 20px 0; border-radius: var(--r-md); }
+table.tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: 5px 5px 12px var(--sh), -4px -4px 9px var(--hi-sh);
+}
+table.tbl th {
+  text-align: left;
+  padding: 10px 13px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: var(--well);
+  border-bottom: 1px solid var(--rule-2);
+}
+table.tbl td {
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+table.tbl tr:last-child td { border-bottom: 0; }
+table.tbl tr td:first-child { white-space: nowrap; font-weight: 600; }
+table.tbl tr:nth-child(even) td { background: color-mix(in srgb, var(--well) 35%, transparent); }
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  table.tbl tr:nth-child(even) td { background: var(--panel-2); }
+}
+table.tbl td .yes { color: var(--jade-deep); font-weight: 700; }
+table.tbl td .no { color: var(--warn-deep); font-weight: 700; }
+table.tbl td .mid { color: var(--data-deep); font-weight: 700; }
+table.tbl code { font-family: var(--mono); font-size: 12.5px; }
+
+/* ============================================================
+   仪器
+   ============================================================ */
+
+.rig {
+  margin: 26px 0;
+  padding: 20px 22px 22px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  box-shadow: 8px 8px 18px var(--sh), -6px -6px 14px var(--hi-sh);
+}
+.rig-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.rig-head .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--jade);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--jade) 16%, transparent);
+  flex: 0 0 auto;
+}
+.rig-head h4 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.rig-head .live {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  color: var(--jade-deep);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--well);
+  border: 1px solid var(--rule-2);
+  white-space: nowrap;
+}
+.rig-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 306px) minmax(0, 1fr);
+  gap: 20px;
+}
+.rig-grid.bpe { grid-template-columns: minmax(0, 336px) minmax(0, 1fr); }
+@media (max-width: 900px) {
+  .rig-grid, .rig-grid.bpe { grid-template-columns: 1fr; }
+}
+.rig-ctrl { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.klabel {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.field label { font-size: 13px; color: var(--ink-2); }
+.field select, .field select.inp { padding: 6px 8px; font-size: 11.5px; }
+@media (max-width: 560px) {
+  .field { grid-template-columns: 84px minmax(0, 1fr); }
+}
+
+.knob {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 84px;
+  gap: 10px;
+  align-items: center;
+}
+.knob label { font-size: 13px; color: var(--ink-2); }
+.knob .val {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .knob { grid-template-columns: 84px minmax(0, 1fr) 70px; }
+  .knob label { font-size: 12px; }
+}
+
+input[type="range"].sled {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"].sled::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--well);
+  box-shadow: inset 2px 2px 4px var(--sh), inset -1px -1px 2px var(--hi-sh);
+}
+input[type="range"].sled::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--jade);
+  border: 2px solid var(--panel);
+  box-shadow: 2px 2px 5px var(--sh);
+}
+input[type="range"].sled::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--well);
+}
+input[type="range"].sled::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--jade);
+  border: 2px solid var(--panel);
+  box-shadow: 2px 2px 5px var(--sh);
+}
+
+input.inp, textarea.inp, select.inp {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  box-shadow: inset 2px 2px 5px var(--sh);
+  resize: vertical;
+}
+input.inp:focus, textarea.inp:focus, select.inp:focus {
+  outline: 2px solid var(--jade);
+  outline-offset: 1px;
+}
+textarea.inp { min-height: 76px; }
+
+.seg { display: flex; flex-wrap: wrap; gap: 7px; }
+.seg .press { padding: 6px 11px; font-size: 12px; }
+
+.screen {
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--well);
+  border: 1px solid var(--edge-dark);
+  box-shadow:
+    inset 4px 4px 10px color-mix(in srgb, var(--sh) 62%, transparent),
+    inset -3px -3px 8px var(--hi-sh);
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .screen { box-shadow: inset 4px 4px 10px var(--sh), inset -3px -3px 8px var(--hi-sh); }
+}
+.screen .rowline {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--rule);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.screen .rowline:last-child { border-bottom: 0; }
+.screen .rowline b {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  text-align: right;
+}
+.screen .rowline b.hot { color: var(--jade-deep); }
+.screen .rowline b.bad { color: var(--warn-deep); }
+.screen .rowline b.good { color: var(--jade-deep); }
+.screen .formula {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.rig-foot {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-3);
+}
+.rig-foot b { color: var(--ink-2); font-weight: 600; }
+
+/* 分词台 */
+.tokbox {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  min-height: 74px;
+  max-height: 170px;
+  overflow: auto;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--rule);
+}
+.tok {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--jade) 30%, transparent);
+  background: color-mix(in srgb, var(--jade) 9%, transparent);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre;
+}
+@supports not (background: color-mix(in srgb, red 1%, blue)) {
+  .tok { background: var(--panel); }
+}
+.tok.ws { color: var(--ink-3); border-style: dashed; background: transparent; }
+.tok.empty { color: var(--ink-3); border: 0; background: transparent; }
+
+.mergelog {
+  margin-top: 10px;
+  max-height: 132px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--ink-3);
+}
+.mergelog .mrowlog {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 12px minmax(0, 1fr) 38px;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.mergelog .mrowlog:last-child { border-bottom: 0; }
+.mergelog code { font-family: var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
+.mergelog .arrow { color: var(--jade); }
+.mergelog .cnt { text-align: right; color: var(--ink-3); }
+
+/* 算力账单 */
+.bars { display: grid; gap: 9px; margin: 12px 0 4px; }
+.bar {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 72px;
+  gap: 9px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+.bar .track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--panel-2);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+.bar .fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--jade);
+  transition: width .2s ease;
+}
+.bar .fill.alt { background: var(--data); }
+.bar .fill.warn { background: var(--warn); }
+.bar .num {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-align: right;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* DPO 曲线 */
+.chart-wrap {
+  margin: 8px 0 2px;
+  padding: 8px 8px 2px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--rule);
+}
+.chart-wrap svg { display: block; width: 100%; height: auto; }
+
+/* ============================================================
+   参考与页脚
+   ============================================================ */
+
+.paper > .refs { max-width: var(--widew); columns: 2; column-gap: 44px; }
+@media (max-width: 860px) {
+  .paper > .refs { max-width: var(--measure); columns: 1; }
+}
+.refs { margin: 8px 0; padding: 0; list-style: none; counter-reset: rf; }
+.refs li {
+  position: relative;
+  margin: 0 0 11px;
+  padding: 0 0 0 33px;
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--ink-2);
+  break-inside: avoid;
+}
+.refs li::before {
+  counter-increment: rf;
+  content: "[" counter(rf) "]";
+  position: absolute; left: 0; top: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--jade);
+}
+.refs li:target { background: color-mix(in srgb, var(--jade) 9%, transparent); border-radius: 5px; }
+.refs a.src {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--rule-2);
+}
+.refs a.src:hover { border-bottom-style: solid; color: var(--jade-deep); }
+.refs .id {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+footer.site {
+  max-width: var(--widew);
+  margin: 54px auto 10px;
+  padding: 22px 4px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ink-3);
+}
+footer.site p { margin: 6px 0; }
+footer.site a {
+  color: var(--jade-deep);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--jade);
+}
+footer.site a:hover { border-bottom-style: solid; }
+
+/* ============================================================
+   揭示动画
+   ============================================================ */
+
+html.js .reveal { opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
+html.js .reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal { opacity: 1; transform: none; transition: none; }
+  .spec-card.stamping .stamp { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+
+@media (max-width: 1179px) {
+  .wrap { padding: 0 22px 26px; }
+}
+
+@media (max-width: 980px) {
+  .hero .lede { max-width: 680px; }
+  .spec-card { max-width: 480px; }
+  .stamp { position: static; margin: 12px 2px 0 auto; }
+}
+
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .topbar-in { padding: 0 14px; gap: 10px; }
+  .brand { font-size: 10.5px; letter-spacing: .1em; }
+  .nav a { padding: 4px 8px; font-size: 10.5px; }
+  .theme-btn { padding: 6px 10px; font-size: 10.5px; }
+  .wrap { padding: 0 14px 22px; }
+  .hero { padding-top: 46px; }
+  .hero h1 { font-size: 34px; }
+  .hero .sub { font-size: 16.5px; }
+  .sec-head { margin-top: 46px; padding-left: 13px; }
+  .sec-head h2 { font-size: 22px; }
+  .paper h3 { font-size: 19.5px; }
+  .rig { padding: 15px 15px 17px; }
+  .rig-head { flex-wrap: wrap; }
+  .rig-head .live { margin-left: 0; }
+  .knob { grid-template-columns: 88px minmax(0, 1fr) 74px; }
+  .bar { grid-template-columns: 82px minmax(0, 1fr) 64px; }
+  table.tbl { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+@media (max-width: 430px) {
+  .hero h1 { font-size: 30px; }
+  .byline span { font-size: 10.5px; padding: 5px 10px; }
+  .spec-row { grid-template-columns: 76px minmax(0, 1fr) 54px; gap: 7px; }
+  .spec-row .v { font-size: 11.5px; }
+  .stamp { width: 62px; height: 62px; font-size: 7.5px; }
+  .br-narrow { display: inline; }
+  .paper ol.quick > li { padding-left: 44px; }
+  .paper ol.quick > li::before { left: 11px; }
+}
+</style>
+<style id="layout-contract">
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+  --mnote-rule: var(--line-2, var(--rule-2, var(--line, var(--rule, currentColor))));
+}
+
+.paper { grid-template-columns:minmax(0,1fr); max-width:1132px; }
+.paper > :not(.wide):not(.mrow):not(.overview-grid):not(.refs) { max-width:852px; }
+.paper > .wide { max-width:1132px; }
+.paper > .mnote { grid-column:1; max-width:852px; }
+
+/* ---- margin-note contract: target in .mrow-main, note pinned right/bottom ---- */
+.mrow { position:relative; display:flow-root; min-width:0; margin:22px 0; }
+.mrow > .mrow-main { max-width:852px; }
+.mrow > .mrow-main > :first-child { margin-top:0; }
+.mrow > .mrow-main > :last-child { margin-bottom:0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom:0; }
+.mrow > .mnote {
+  position:absolute; right:0; bottom:0; width:236px; margin:0;
+  padding:0 0 0 16px; border:0; border-left:1.6px dashed var(--mnote-rule);
+  border-radius:0; background:transparent; display:block;
+}
+.mrow--cardtext > .mnote { bottom:var(--card-lift, 14px); }
+@media (max-width:1179px) {
+  .mrow > .mnote {
+    position:static; width:auto; max-width:852px; margin:18px 0 0;
+    padding:11px 0 0; border-left:0; border-top:1.6px dashed var(--mnote-rule);
+  }
+}
+
+figure.wide > figcaption, .wide > figcaption,
+.wide figure > figcaption { max-width:852px; }
+
+.paper > .stats + p,
+.paper > .cards + p,
+.paper > .papers + p,
+.paper > .err-grid + p,
+.paper > .metric-dash + p,
+.paper > .factor-grid + p,
+.paper > .zones + p,
+.paper > .appliance-grid + p,
+.paper > .meter-grid + p { margin-top:32px; }
+
+.paper > .refs { max-width:1132px; columns:2; column-gap:44px; }
+@media (max-width:860px) { .paper > .refs { columns:1; max-width:852px; } }
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTNhN2UwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzLjgiIHk9IjMuMiIgd2lkdGg9IjEyLjQiIGhlaWdodD0iMTcuMiIgcng9IjIiLz48cGF0aCBkPSJNNi44IDcuNmg2LjRNNi44IDExaDYuNE02LjggMTQuNGgzLjYiLz48Y2lyY2xlIGN4PSIxNyIgY3k9IjE3LjIiIHI9IjMuOSIvPjxwYXRoIGQ9Im0xNS40IDE3LjMgMS4xIDEuMSAyLTIuMyIvPjwvZz48L3N2Zz4=">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="章节"></nav>
+    <button class="press theme-btn" id="themeBtn" type="button">主题：跟随系统</button>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+</header>
+
+<div class="wrap">
+
+  <!-- ================= 英雄区：文字 × 模型规格卡 ================= -->
+  <div class="hero">
+    <div class="hero-txt">
+      <p class="kicker">Model Dossier · 2026</p>
+      <h1>大模型是怎么造出来的</h1>
+      <p class="sub">从数据、算力到对齐的工程约束</p>
+      <p class="series-pill"><i aria-hidden="true"></i>模型层三部曲 / 01 · 造</p>
+      <p class="lede">
+        一张模型规格卡上的参数量、训练 token、数据截止与对齐方法，不是发布会现场决定的。它们分别由数据管线、预训练配方与后训练阶段写下。本篇沿这张卡反推生产线：数据怎么洗、算力怎么记账、SFT 与偏好对齐怎样改变行为，以及哪些能力在预训练结束时就已注定。三台仪器均为现场计算。
+      </p>
+      <div class="byline">
+        <span>阅读时间约 38 分钟</span>
+        <span>引用文献 21 篇 · 均可回查</span>
+        <span>数据截至 2026-11</span>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="spec-card" id="specCard">
+        <div class="spec-head">
+          <b>Model Specification</b>
+          <span>DOSSIER / 01</span>
+        </div>
+        <div class="spec-row"><span class="k">参数量</span><span class="v">70 B</span><span class="src">§02</span></div>
+        <div class="spec-row"><span class="k">训练 token</span><span class="v">1.4 T</span><span class="src">§01–02</span></div>
+        <div class="spec-row"><span class="k">数据截止</span><span class="v">2024-12</span><span class="src">§01</span></div>
+        <div class="spec-row"><span class="k">上下文</span><span class="v">128 K</span><span class="src">§03</span></div>
+        <div class="spec-row"><span class="k">词表</span><span class="v">128 K tokens</span><span class="src">§01</span></div>
+        <div class="spec-row"><span class="k">对齐</span><span class="v">SFT + DPO</span><span class="src">§04–05</span></div>
+        <div class="spec-row"><span class="k">评测</span><span class="v">公开集 + 自建集</span><span class="src">§07</span></div>
+        <div class="spec-foot">
+          <span>ISSUED BY · PRETRAIN → POST-TRAIN</span>
+          <span>1 / 3</span>
+        </div>
+        <div class="stamp" aria-hidden="true">已核验<br>SPECIMEN<br>01</div>
+      </div>
+    </div>
+  </div>
+<!-- ================= 00 规格卡 ================= -->
+  <section id="s0">
+    <div class="sec-head"><span class="sec-num">00</span><h2>规格卡上的七个数字</h2></div>
+    <div class="paper reveal">
+      <p class="dek">模型卡不是发布会的装饰，它是生产线的收据。七个数字分别由七段工序写下；读懂它们，就能判断哪些能力是买来的、哪些是训练阶段注定给不了的。</p>
+      <ol class="quick">
+        <li><b>数据决定上限。</b>去重、质量过滤与配比，比多抓一倍网页更值钱；数据截止日之后的世界，模型确实不知道（第 01 节）。</li>
+        <li><b>算力可以记账。</b>训练浮点运算量约 <span class="mono">6ND</span>：70B 参数、1.4T token 约 5.88×10²³ FLOPs，40% MFU 下约 83 万 GPU·小时（第 02 节）。</li>
+        <li><b>基座不是产品。</b>next-token 只优化“下一个词的概率”，不优化“这句话是否真实”；续写能力与指令遵循是两件事（第 03 节）。</li>
+        <li><b>SFT 教格式，不教知识。</b>指令微调把续写器变成对话体，偏好对齐再把多个可用答案排出先后；两者都改行为，不改参数里的世界知识（第 04–05 节）。</li>
+        <li><b>推理 RL 需要验证器。</b>数学、代码、格式可以自动判对错，开放式诊断不行；没有验证器的领域，RL 很容易变成奖励投机（第 06 节）。</li>
+        <li><b>对齐有税，评测有污染。</b>安全训练可能带来能力回退，公开榜单可能混进训练集；规格卡不写清楚，应用层就无法判断边界（第 07–08 节）。</li>
+      </ol>
+
+      <p>
+        先把七个数字与工序对齐。下表不是行业标准模板，而是一条可核对的因果链：字段写错，后面的评测与采购都会跟着错。
+      </p>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>规格卡字段</th><th>写它的工序</th><th>它约束什么</th></tr></thead>
+          <tbody>
+            <tr><td>参数量</td><td>预训练配置</td><td>容量、显存、单次推理成本；不是“越大越聪明”的线性保证</td></tr>
+            <tr><td>训练 token</td><td>数据配比与训练预算</td><td>知识密度、训练算力；与参数量共同决定 Chinchilla 口径</td></tr>
+            <tr><td>数据截止</td><td>数据管线</td><td>时效与知识盲区；截止后的指南、药名、政策只能靠检索补</td></tr>
+            <tr><td>上下文</td><td>位置编码与长上下文训练</td><td>单次可处理的证据量；不等于长期记忆</td></tr>
+            <tr><td>词表</td><td>tokenizer</td><td>token 成本、多语言与代码效率；换词表要重训嵌入</td></tr>
+            <tr><td>对齐方法</td><td>SFT / 偏好优化 / 推理 RL</td><td>格式、拒答、语气、推理策略；不改世界知识</td></tr>
+            <tr><td>评测分</td><td>评测集与评测协议</td><td>可比性与污染风险；没有协议说明的分数不可比</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="wide">
+        <figure>
+          <div class="fig-frame">
+            <svg viewBox="0 0 1000 500" role="img" aria-label="大模型生产线：数据、tokenizer、预训练、SFT、偏好对齐、推理强化、评测与部署七段；数据截止与词表在数据段定型，参数量与训练 token 在预训练段定型，格式由 SFT 定型，风格与拒答由偏好对齐定型，推理策略由推理强化定型，评测分与成本在最后一段。">
+              <defs>
+                <marker id="p1arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+                </marker>
+              </defs>
+              <!-- 阶段括号 -->
+              <path d="M30 58 H418" fill="none" stroke="var(--jade)" stroke-opacity=".55"/>
+              <text x="224" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="var(--jade-deep)">预训练阶段 · 决定知识上限</text>
+              <path d="M444 58 H832" fill="none" stroke="var(--data)" stroke-opacity=".55"/>
+              <text x="638" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="var(--data-deep)">后训练阶段 · 决定行为</text>
+              <!-- 七个阶段 -->
+              <g font-size="12.5" font-weight="700" fill="var(--ink)" text-anchor="middle">
+                <rect x="30" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="86" y="139">数据</text>
+                <text x="86" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">清洗 · 去重</text>
+                <text x="86" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">配比 · 截止</text>
+                <rect x="168" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="224" y="139">Tokenizer</text>
+                <text x="224" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">BPE 合并</text>
+                <text x="224" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">词表冻结</text>
+                <rect x="306" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="362" y="139">预训练</text>
+                <text x="362" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">next-token</text>
+                <text x="362" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">6ND 算力</text>
+                <rect x="444" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="500" y="139">SFT</text>
+                <text x="500" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">指令数据</text>
+                <text x="500" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">loss mask</text>
+                <rect x="582" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="638" y="139">偏好对齐</text>
+                <text x="638" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">RLHF / DPO</text>
+                <text x="638" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">排序行为</text>
+                <rect x="720" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="776" y="139">推理 RL</text>
+                <text x="776" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">RLVR · GRPO</text>
+                <text x="776" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">可验证奖励</text>
+                <rect x="858" y="110" width="112" height="84" rx="8" fill="var(--panel-2)" stroke="var(--warn)" stroke-opacity=".55"/>
+                <text x="914" y="139">评测 / 部署</text>
+                <text x="914" y="160" font-size="10" font-weight="400" fill="var(--ink-3)">分数 · 成本</text>
+                <text x="914" y="176" font-size="10" font-weight="400" fill="var(--ink-3)">版本 · SLO</text>
+              </g>
+              <!-- 阶段间箭头 -->
+              <g fill="none" stroke="var(--ink-3)" stroke-opacity=".5" marker-end="url(#p1arr)">
+                <path d="M142 152 H164"/><path d="M280 152 H302"/><path d="M418 152 H440"/>
+                <path d="M556 152 H578"/><path d="M694 152 H716"/><path d="M832 152 H854"/>
+              </g>
+              <!-- 规格卡字段映射 -->
+              <g font-size="10" fill="var(--ink-3)" text-anchor="middle">
+                <text x="86" y="222">数据截止 · 配比</text>
+                <text x="224" y="222">词表 32k–128k</text>
+                <text x="362" y="222">参数量 · 训练 token</text>
+                <text x="500" y="222">对话格式 · 指令遵循</text>
+                <text x="638" y="222">风格 · 拒答 · 偏好</text>
+                <text x="776" y="222">长思维链 · 推理策略</text>
+                <text x="914" y="222">评测分 · 单位成本</text>
+              </g>
+              <!-- 定型线 -->
+              <path d="M430 78 V250" fill="none" stroke="var(--warn)" stroke-opacity=".55" stroke-dasharray="5 5"/>
+              <text x="430" y="272" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--warn-deep)">知识在这里定型</text>
+              <path d="M706 78 V250" fill="none" stroke="var(--warn)" stroke-opacity=".55" stroke-dasharray="5 5"/>
+              <text x="706" y="272" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--warn-deep)">行为在这里定型</text>
+              <!-- 应用层 -->
+              <rect x="30" y="318" width="940" height="66" rx="10" fill="var(--well)" stroke="var(--rule-2)"/>
+              <text x="52" y="344" font-size="12" font-weight="700" fill="var(--ink)">应用层通常能动的部分</text>
+              <text x="52" y="366" font-size="11" fill="var(--ink-3)">提示词 · RAG 与知识库 · 工具与权限 · 模型版本选择 · 推理参数 · 输出校验</text>
+              <path d="M500 284 V314" fill="none" stroke="var(--ink-3)" stroke-opacity=".45" stroke-dasharray="4 4" marker-end="url(#p1arr)"/>
+              <text x="500" y="304" text-anchor="middle" font-size="10" fill="var(--ink-3)">应用层改不了左边的参数与左边的知识</text>
+              <!-- 底部注释 -->
+              <text x="500" y="430" text-anchor="middle" font-size="11" fill="var(--ink-3)">七个数字不是并列关系：数据与预训练决定上限，后训练决定表达，评测与部署决定可验证的边界。</text>
+              <text x="500" y="458" text-anchor="middle" font-size="10" class="f-mono" fill="var(--ink-3)">DATA → TOKENS → PARAMS → BEHAVIOR → EVAL</text>
+            </svg>
+          </div>
+          <figcaption><b>图 1 · 生产线与规格卡。</b>左边两段决定模型“知道什么”，中间三段决定模型“怎么回答”，最后一段决定“能验证什么”。应用层能做的提示词、检索、工具与版本选择，改不动预训练阶段写下的参数与数据截止；把这条边界记牢，后面所有“为什么微调没用”的问题都有了统一答案。</figcaption>
+        </figure>
+      </div>
+
+      <p>
+        下面按这条线走一遍。每一节只回答一个问题：这一段工序把哪个数字写进了规格卡，以及它给应用层留下了什么无法绕过的约束。
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 01 数据 ================= -->
+  <section id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>数据：网页到 token 的五道闸</h2></div>
+    <div class="paper reveal">
+      <p class="dek">预训练的第一步不是模型，是数据管线。清洗、过滤、去重、配比、tokenizer，每一道都改变模型最终知道什么；而 tokenizer 一旦定下，词表就冻结在模型之前。</p>
+
+      <h3>五道闸：从原始网页到可训练语料</h3>
+      <p>
+        公开网页语料的原始体量以 PB 计，但直接喂给模型的是噪声、模板、重复与违规内容。生产管线通常要过五道闸，每一道都有明确的失败症状：
+      </p>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>闸</th><th>做什么</th><th>跳过的后果</th></tr></thead>
+          <tbody>
+            <tr><td>抽取</td><td>正文抽取、语言识别、编码归一</td><td>导航栏、页脚、广告模板进入语料，模型学会“网页腔”</td></tr>
+            <tr><td>质量</td><td>启发式规则 + 质量分类器</td><td>低质文本拉低整体分布，指令遵循与推理能力同步受损</td></tr>
+            <tr><td>去重</td><td>精确哈希 + 近似去重（MinHash / SimHash）</td><td>重复段落被反复记忆，评测分数虚高，长尾知识被挤占<sup class="cite"><a href="#ref-8">8</a></sup></td></tr>
+            <tr><td>安全</td><td>PII、毒性、版权与合规过滤</td><td>隐私泄露、侵权与对齐阶段的额外负担</td></tr>
+            <tr><td>配比</td><td>代码、数学、多语言、领域数据的比例与课程</td><td>能力偏科；领域数据过量会挤掉通用能力，过少则学不会术语</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        质量与数量的取舍有公开证据：在精选的“教科书级”语料上训练的小模型，可以在部分推理任务上超过在原始网页上训练的大模型<sup class="cite"><a href="#ref-9">9</a></sup>。这条结论不能外推成“数据越少越好”，但它说明<b>过滤与配比是乘数，不是装饰</b>。企业自训时最常见的错误，是把内部文档一股脑倒进预训练，却不做去重、权限与时效治理——模型会把三份互相矛盾的旧制度同时背下来。
+      </p>
+
+      <h3>tokenizer：词表在模型之前就固定了</h3>
+      <p>
+        大模型不直接读字符，而是读 token。主流做法是字节对编码（BPE）：从字符或字节开始，反复把语料中最高频的相邻对合并成新符号，直到词表达到预设大小<sup class="cite"><a href="#ref-7">7</a></sup>。词表常见 32k–128k；英文大约 4 个字符一个 token，中文常见 1–2 个字符一个 token，代码与数字串往往更碎。
+      </p>
+      <p>
+        三个工程后果值得记住。其一，<b>token 数决定成本</b>：API 按 token 计费，上下文窗口按 token 计长，同一段中文在不同 tokenizer 下的账单可能差出一截。其二，<b>词表先于模型</b>：tokenizer 在预训练前训练好，换词表意味着重训嵌入矩阵与输出层，代价远高于换一个提示词。其三，<b>分词边界会影响能力</b>：数字、罕见术语、缩写如果被切得很碎，模型要花更多容量去拼回整体，这也是领域 tokenizer 存在的理由。
+      </p>
+
+      <p>
+        下面这台仪器把 BPE 的合并过程摊开。调合并次数，看同一段文本怎样从“一个字一个 token”被压成更长的片段：
+      </p>
+
+      <!-- ============ 仪器 A：BPE 分词台 ============ -->
+      <div class="rig wide" id="rig-bpe">
+        <div class="rig-head">
+          <span class="dot" aria-hidden="true"></span>
+          <h4>分词台 · 字符级 BPE 演示</h4>
+          <span class="live">现场计算 · LIVE</span>
+        </div>
+        <div class="rig-grid bpe">
+          <div class="rig-ctrl">
+            <div class="seg" role="group" aria-label="示例文本">
+              <button class="press on" type="button" data-bpe-preset="zh">中文</button>
+              <button class="press" type="button" data-bpe-preset="en">English</button>
+              <button class="press" type="button" data-bpe-preset="num">数字</button>
+            </div>
+            <label class="klabel" for="bpeText">输入文本</label>
+            <textarea class="inp" id="bpeText" rows="3" spellcheck="false">医学影像的三维重建需要体素级的传递函数</textarea>
+            <div class="knob">
+              <label for="bpeMerges">合并次数</label>
+              <input class="sled" type="range" id="bpeMerges" min="0" max="80" step="1" value="40">
+              <span class="val" id="bpeMergesV">40</span>
+            </div>
+            <p class="rig-foot"><b>口径</b>：为可读性按字符级 BPE 演示；真实 tokenizer 以 UTF-8 字节为初始符号，词表 32k–128k。合并规则在一份固定小语料上训练，输入文本只做应用、不参与训练。</p>
+          </div>
+          <div class="screen">
+            <div class="tokbox" id="bpeTokens" aria-live="polite"></div>
+            <div class="rowline"><span>字符数</span><b id="bpeChars">—</b></div>
+            <div class="rowline"><span>token 数</span><b id="bpeCount" class="hot">—</b></div>
+            <div class="rowline"><span>字符 / token</span><b id="bpeRatio">—</b></div>
+            <div class="rowline"><span>当前词表</span><b id="bpeVocab">—</b></div>
+            <div class="mergelog" id="bpeLog" aria-label="最近合并规则"></div>
+            <p class="formula" id="bpeFormula">—</p>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        两组对照值得亲手试。其一，把合并次数从 0 拉到 40：token 数快速下降，说明高频片段被合并；继续拉到 80，收益递减，因为剩下的都是低频组合。其二，切换中文与数字：同样的字符数，数字与标点往往留下更多碎片——这也是为什么上下文窗口里“看起来不长”的一段数值，实际 token 数可能超预期。
+      </p>
+
+      <div class="mrow">
+        <div class="mrow-main">
+          <h3>数据截止：模型不知道昨天</h3>
+          <p>
+            规格卡上的“数据截止”不是免责声明，而是能力边界。截止日之后发布的指南、药品说明书、政策文件，模型在参数里确实没有；它可能用旧知识流畅地回答，也可能编一个看起来合理的新版本。对时效敏感的任务，正确做法不是“再微调一下”，而是把新文档放进检索库，让答案带着出处进来。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · 医学数据</span>
+          医学语料还多两道闸：<b>去标识化</b>（DICOM 头、报告文本里的 PHI）与<b>多中心偏倚</b>（不同医院设备、协议、术语不一致）。如果 tokenizer 或数据管线跑在第三方 API 上，PHI 出域本身就是合规事件；能本地做的，不要外包。
+        </aside>
+      </div>
+
+      <p>
+        数据段结束时，规格卡上至少写下了三个数字：训练 token、数据截止、词表大小。它们共同决定模型“知道什么”和“每知道一件事要花多少 token”。下一段是这些 token 被用来做什么。
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 02 预训练 ================= -->
+  <section id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>预训练：next-token 与算力账</h2></div>
+    <div class="paper reveal">
+      <p class="dek">预训练只做一件事：在给定前文的条件下，最大化下一个 token 的概率。所有知识、推理与风格都从这一个目标里长出来；算力账单也从这个目标开始记。</p>
+
+      <h3>目标函数：只学“下一个词”</h3>
+      <p>
+        给定 token 序列 <span class="mono">x₁…x_T</span>，模型学习条件分布 <span class="mono">pθ(x_t | x_&lt;t)</span>，训练目标是最大化真实下一个 token 的对数似然，等价于最小化交叉熵：
+      </p>
+      <p class="mono" style="padding:12px 16px;border-radius:9px;background:var(--well);border:1px solid var(--rule);overflow-x:auto;">
+        L(θ) = − (1/T) Σ<sub>t=1..T</sub> log pθ(x_t | x_&lt;t)
+      </p>
+      <p>
+        这个目标没有“真值标签”，只有“语料里下一个词是什么”。因此模型学到的是<b>语料分布</b>，不是事实数据库：它可以把《内科学》的段落续写得像教科书，也可以在不知道答案时续写出一个语法完美、事实错误的句子。Transformer 的注意力结构让这一切可以并行训练<sup class="cite"><a href="#ref-1">1</a></sup>，但目标本身没有变。
+      </p>
+
+      <h3>scaling law：把算力换成 loss</h3>
+      <p>
+        规模定律给出了经验关系：在数据充足时，测试 loss 随参数量、数据量与算力呈幂律下降<sup class="cite"><a href="#ref-3">3</a></sup>。Chinchilla 进一步给出算力最优配比：在固定训练算力下，参数量与训练 token 应大致按 <b>20 token / 参数</b> 同步放大<sup class="cite"><a href="#ref-4">4</a></sup>。按这个口径，70B 模型应训练约 1.4T token。
+      </p>
+      <p>
+        但“训练算力最优”不等于“总成本最优”。如果模型要服务海量请求，推理成本会超过训练成本；此时故意把模型做小、把 token 训多（overtraining），反而能降低全生命周期成本。GPT-3 的 175B/300B 是另一个极端，token/参数比只有 1.7<sup class="cite"><a href="#ref-2">2</a></sup>；Llama 2 70B 训练了约 2T token<sup class="cite"><a href="#ref-5">5</a></sup>；Llama 3 的 8B 与 70B 则都在约 15T token 上训练，token/参数比远高于 Chinchilla 的 20，就是这一取舍的公开样本<sup class="cite"><a href="#ref-6">6</a></sup>。图 2 把几个公开模型放到同一张图上：横轴参数量，纵轴训练 token，斜线是 20× 参考线。
+      </p>
+
+      <div class="wide">
+        <figure>
+          <div class="fig-frame">
+            <svg viewBox="0 0 1000 470" role="img" aria-label="公开模型的参数量与训练 token 散点图，双对数坐标。GPT-3 为 1750 亿参数、3000 亿 token；Chinchilla 为 700 亿参数、1.4 万亿 token；Llama 2 70B 为 2 万亿 token；Llama 3 8B 与 70B 均为 15 万亿 token；PaLM 为 5400 亿参数、7800 亿 token。斜线为 20 token 每参数的 Chinchilla 参考线，越靠右上表示每参数训练越充分。">
+              <defs>
+                <marker id="p2arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+                </marker>
+              </defs>
+              <!-- 轴 -->
+              <line x1="90" y1="390" x2="950" y2="390" class="ax"/>
+              <line x1="90" y1="40" x2="90" y2="390" class="ax"/>
+              <text x="520" y="440" text-anchor="middle" font-size="12" fill="var(--ink-2)">参数量（十亿，对数轴）</text>
+              <text x="34" y="215" text-anchor="middle" font-size="12" fill="var(--ink-2)" transform="rotate(-90 34 215)">训练 token（对数轴）</text>
+              <!-- 网格与刻度 -->
+              <g class="grid">
+                <line x1="90" y1="323" x2="950" y2="323"/><line x1="90" y1="256" x2="950" y2="256"/>
+                <line x1="90" y1="189" x2="950" y2="189"/><line x1="90" y1="122" x2="950" y2="122"/>
+                <line x1="90" y1="55" x2="950" y2="55"/>
+                <line x1="377" y1="40" x2="377" y2="390"/><line x1="663" y1="40" x2="663" y2="390"/>
+                <line x1="950" y1="40" x2="950" y2="390"/>
+              </g>
+              <g font-size="10" class="f-mono" fill="var(--ink-3)" text-anchor="middle">
+                <text x="90" y="406">1B</text><text x="377" y="406">10B</text><text x="663" y="406">100B</text><text x="950" y="406">1000B</text>
+              </g>
+              <g font-size="10" class="f-mono" fill="var(--ink-3)" text-anchor="end">
+                <text x="82" y="394">100B</text><text x="82" y="327">1T</text><text x="82" y="260">10T</text><text x="82" y="193">100T</text>
+              </g>
+              <!-- 20x line: (5B,100B) -> (1000B,20T) -->
+              <line x1="290" y1="390" x2="950" y2="65" stroke="var(--jade)" stroke-width="1.8" stroke-dasharray="7 5"/>
+              <text x="760" y="120" font-size="11" font-weight="700" fill="var(--jade-deep)" transform="rotate(-19 760 120)">20 token / 参数（Chinchilla 参考线）</text>
+              <!-- 数据点 -->
+              <g>
+                <circle cx="733" cy="323" r="5" fill="var(--data)"/>
+                <text x="743" y="318" font-size="11" fill="var(--ink)">GPT-3 175B · 300B</text>
+                <text x="743" y="333" font-size="9.5" class="f-mono" fill="var(--ink-3)">1.7 tok/param</text>
+
+                <circle cx="619" cy="228" r="5" fill="var(--jade)"/>
+                <text x="629" y="223" font-size="11" fill="var(--ink)">Chinchilla 70B · 1.4T</text>
+                <text x="629" y="238" font-size="9.5" class="f-mono" fill="var(--ink-3)">20 tok/param</text>
+
+                <circle cx="619" cy="206" r="5" fill="var(--data)"/>
+                <text x="629" y="201" font-size="11" fill="var(--ink)">Llama 2 70B · 2T</text>
+
+                <circle cx="349" cy="83" r="5" fill="var(--warn)"/>
+                <text x="359" y="78" font-size="11" fill="var(--ink)">Llama 3 8B · 15T</text>
+                <text x="359" y="93" font-size="9.5" class="f-mono" fill="var(--ink-3)">1875 tok/param</text>
+
+                <circle cx="619" cy="83" r="5" fill="var(--warn)"/>
+                <text x="629" y="78" font-size="11" fill="var(--ink)">Llama 3 70B · 15T</text>
+
+                <circle cx="873" cy="264" r="5" fill="var(--data)"/>
+                <text x="883" y="259" font-size="11" fill="var(--ink)">PaLM 540B · 780B</text>
+              </g>
+              <!-- 注释 -->
+              <text x="112" y="70" font-size="11" fill="var(--ink-3)">越靠右上：每参数训练越充分</text>
+              <path d="M112 78 C 180 92 230 110 300 120" fill="none" stroke="var(--ink-3)" stroke-opacity=".4" marker-end="url(#p2arr)"/>
+              <text x="930" y="372" text-anchor="end" font-size="10.5" fill="var(--ink-3)">数据来源：各模型公开技术报告；坐标为报告口径，未做统一换算</text>
+            </svg>
+          </div>
+          <figcaption><b>图 2 · 参数量 × 训练 token。</b>斜线是 Chinchilla 的 20 token/参数。GPT-3 在线上方偏左，属于“参数大、token 少”；Llama 3 在线上方很远，属于“故意多训”。两种都不是错误：前者省训练算力，后者省推理算力。规格卡如果不写训练 token，只写参数量，读者无法判断它属于哪一种。</figcaption>
+        </figure>
+      </div>
+
+      <h3>算力账单：6ND 与 MFU</h3>
+      <p>
+        预训练的计算量有一个常用估算：前向与反向合计约 <span class="mono">6ND</span> FLOPs，其中 <span class="mono">N</span> 是参数量、<span class="mono">D</span> 是训练 token 数。这个式子忽略了注意力随序列长度的二次项与稀疏结构，但在千亿级稠密模型上量级够用。把 FLOPs 除以硬件的有效算力，就得到 GPU·小时；再乘单价，就是训练账单。
+      </p>
+      <p>
+        “有效算力”由 MFU（模型 FLOPs 利用率）描述：峰值算力乘 MFU 才是实际吞吐。大训练里 MFU 30–40% 是常见水平，50% 以上属于调得很好的工程；宣传口径如果只给峰值算力，账单会系统性地少算一半以上。
+      </p>
+
+      <!-- ============ 仪器 B：算力账单 ============ -->
+      <div class="rig wide" id="rig-compute">
+        <div class="rig-head">
+          <span class="dot" aria-hidden="true"></span>
+          <h4>算力账单 · 6ND × MFU × 单价</h4>
+          <span class="live">现场计算 · LIVE</span>
+        </div>
+        <div class="rig-grid">
+          <div class="rig-ctrl">
+            <div class="knob">
+              <label for="cParams">参数量</label>
+              <input class="sled" type="range" id="cParams" min="1" max="500" step="1" value="70">
+              <span class="val" id="cParamsV">70 B</span>
+            </div>
+            <div class="knob">
+              <label for="cTokens">训练 token</label>
+              <input class="sled" type="range" id="cTokens" min="0.1" max="20" step="0.1" value="1.4">
+              <span class="val" id="cTokensV">1.4 T</span>
+            </div>
+            <div class="knob">
+              <label for="cMfu">MFU</label>
+              <input class="sled" type="range" id="cMfu" min="10" max="70" step="1" value="40">
+              <span class="val" id="cMfuV">40%</span>
+            </div>
+            <div class="field">
+              <label for="cGpu">GPU 峰值</label>
+              <select class="inp" id="cGpu">
+                <option value="494.7" selected>H100 SXM · 494.7 TFLOPS</option>
+                <option value="312">A100 80GB · 312 TFLOPS</option>
+              </select>
+            </div>
+            <div class="knob">
+              <label for="cPrice">单价</label>
+              <input class="sled" type="range" id="cPrice" min="0.5" max="8" step="0.1" value="2">
+              <span class="val" id="cPriceV">$2.0 / 卡时</span>
+            </div>
+            <p class="rig-foot"><b>口径</b>：<span class="mono">C ≈ 6ND</span>，不扣注意力二次项与通信开销；H100/A100 取 BF16 稠密峰值，不含稀疏加速。单价是示例值，实际按合约与电力折算。</p>
+          </div>
+          <div class="screen">
+            <div class="rowline"><span>训练浮点运算量</span><b id="cFlops" class="hot">—</b></div>
+            <div class="rowline"><span>有效算力</span><b id="cEff">—</b></div>
+            <div class="rowline"><span>GPU·小时</span><b id="cHours">—</b></div>
+            <div class="rowline"><span>1024 卡天数</span><b id="cDays">—</b></div>
+            <div class="rowline"><span>训练成本</span><b id="cCost" class="hot">—</b></div>
+            <div class="rowline"><span>token / 参数</span><b id="cRatio">—</b></div>
+            <div class="rowline"><span>相对 Chinchilla 20×</span><b id="cChin">—</b></div>
+            <div class="bars">
+              <div class="bar"><span>实际 token</span><span class="track"><i class="fill" id="cBarD" style="width:0%"></i></span><span class="num" id="cBarDV">—</span></div>
+              <div class="bar"><span>20 × 参数</span><span class="track"><i class="fill alt" id="cBarOpt" style="width:0%"></i></span><span class="num" id="cBarOptV">—</span></div>
+            </div>
+            <p class="formula" id="cFormula" role="status" aria-live="polite">—</p>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        用默认值算一遍：70B × 1.4T 得 5.88×10²³ FLOPs；H100 的 BF16 稠密峰值 494.7 TFLOPS、MFU 40%，有效算力约 198 TFLOPS；相除得约 82.5 万 GPU·小时，按 $2/卡时约 165 万美元，1024 张卡跑约 34 天。把参数量降到 8B、token 拉到 15T，FLOPs 反而升到 7.2×10²³——这就是“多训小模型”的账单形态：训练更贵，推理更便宜。
+      </p>
+
+      <h3>并行与失败：大训练不是一次跑完</h3>
+      <p>
+        单卡放不下千亿参数，训练必须并行：数据并行复制模型、切分 batch；张量并行把单层矩阵切到多卡；流水并行把不同层放到不同卡；序列并行切分长序列的激活。真实的大训练通常是几者组合的 3D/4D 并行，再叠加梯度检查点、混合精度与通信重叠。规模越大，硬件故障越频繁；一个千卡级任务跑几十天，中途重启几次是常态。规格卡不会写这些，但“训练成本”里已经包含了它们。
+      </p>
+
+      <div class="mrow">
+        <div class="mrow-main">
+          <p>
+            预训练结束时，模型已经拥有了大部分世界知识、语言能力与推理底座。规格卡上的参数量、训练 token、数据截止，到此全部写死。接下来所有工序都只改“怎么回答”，不改“知道什么”。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · MFU</span>
+          MFU 不是越高越好：把 batch 拉大、序列拉长、通信压到最低，指标会好看，但可能牺牲收敛与稳定性。<b>账单口径要同时写 MFU 与并行配置</b>，否则两次“同样算力”的训练根本不可比。
+        </aside>
+      </div>
+    </div>
+  </section>
+<!-- ================= 03 基座 ================= -->
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>基座：能力与缺陷是同一件事</h2></div>
+    <div class="paper reveal">
+      <p class="dek">基座模型的知识、幻觉、上下文能力与不听话，来自同一个训练目标。把它们拆开看，才能判断哪些能修、哪些只能绕。</p>
+
+      <h3>参数里的知识：压缩，不是数据库</h3>
+      <p>
+        预训练把语料中的统计规律压进参数，而不是把原文存进一张表。好处是泛化：没见过的问题也能用相似结构回答；代价是<b>不可寻址</b>：你无法指出“这条知识存在第几层第几个神经元”，也无法像更新数据库一样只改一条事实。改一条知识，往往会牵动与它共现的其他关系；这就是“模型编辑”难以稳定落地、而检索增强更容易工程化的原因。
+      </p>
+      <p>
+        把模型称为“压缩”是一种有用的隐喻，但不要把隐喻当机制：训练目标并不是显式最小化描述长度，而是最大化下一个 token 的似然<sup class="cite"><a href="#ref-19">19</a></sup>。这也意味着，语料里反复出现的偏见、错误与过时信息，会和正确知识一起被压进去；数据治理的每一道闸，最终都会在模型行为里留下痕迹。
+      </p>
+
+      <h3>幻觉：目标函数的副产品</h3>
+      <p>
+        模型被训练成“给定前文，生成最可能的续写”。当它知道答案时，最可能的续写通常正确；当它不知道时，最可能的续写仍然是流畅的——于是它编。幻觉不是某一版模型的偶发 bug，而是<b>目标函数没有“不知道就说不知道”这一项</b>的结构性结果。SFT 可以教它说“我不确定”，偏好对齐可以惩罚编造，但都无法把“不知道”变成“知道”。
+      </p>
+      <p>
+        工程上的三道防线：一是<b>接地</b>，把答案限制在检索到的证据里，并要求逐句引用；二是<b>拒答</b>，证据不足时明确说不足，而不是给一个低置信度的猜测；三是<b>输出校验</b>，对数字、日期、实体做规则或二次模型检查。三道防线都不改模型参数，但都能把幻觉从“不可见”变成“可拦截”。
+      </p>
+
+      <h3>上下文不是记忆</h3>
+      <p>
+        上下文窗口是推理时的工作记忆：模型能在这段 token 内做注意力，但不会把它写回参数。把窗口从 8K 拉到 128K，不等于模型学会了长期记忆；它只是能在一次前向里看到更多证据。长上下文还有两个现实问题：<b>中间遗忘</b>——关键信息放在长文中间时，召回率明显低于开头与结尾<sup class="cite"><a href="#ref-20">20</a></sup>；<b>成本</b>——注意力随长度增长，长上下文的单次调用更贵、更慢。
+      </p>
+      <p>
+        因此“长上下文”与“检索”不是替代关系。证据少而固定，可以整段放进上下文；证据多、更新频繁、需要权限隔离，仍然要检索。RAG 篇把这条取舍拆得很细，这里只记结论：<b>上下文解决“这一次能看到”，检索解决“下一次还能找到”</b>。
+      </p>
+
+      <h3>基座不是产品</h3>
+      <p>
+        基座模型只会续写。你给它一个问句，它可能续写出更多问句；你给它一段代码，它可能续写出注释而不是可运行的程序。指令遵循、对话格式、拒答语气，都是后训练加上的行为层。把基座直接接进产品，最常见的失败不是“答错”，而是“不按你要的格式答”。
+      </p>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>现象</th><th>来源</th><th>应用层的对策</th></tr></thead>
+          <tbody>
+            <tr><td>知识过期</td><td>数据截止</td><td>检索新文档；把时效写进答案；不要指望微调记住新指南</td></tr>
+            <tr><td>幻觉</td><td>next-token 目标 + 稀疏知识</td><td>引用约束、拒答、数字与实体校验</td></tr>
+            <tr><td>长文中间遗忘</td><td>注意力分布与训练长度</td><td>分段检索、重排、关键证据前置</td></tr>
+            <tr><td>不守格式</td><td>基座只学续写</td><td>SFT、few-shot、JSON Schema 校验</td></tr>
+            <tr><td>过度自信</td><td>概率校准不足</td><td>置信度阈值、人工复核、分桶评估</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mrow">
+        <div class="mrow-main">
+          <p>
+            这张表解释了一个常见争论：幻觉要不要靠“更大的模型”解决？更大的模型通常更少幻觉，但不会归零，因为目标函数没变。真正可控的做法是把“不知道”显式建模进系统：检索不到就拒答，校验不过就回退，关键结论必须有人复核。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · 医学事实</span>
+          药品剂量、指南推荐等级、禁忌证属于<b>高时效、高后果</b>知识。模型参数里的版本可能滞后一两年；这类问题不要让模型“凭记忆”答，必须把最新版指南检索进来，并在答案里标出版本与日期。
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 04 SFT ================= -->
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>SFT：把续写器变成对话体</h2></div>
+    <div class="paper reveal">
+      <p class="dek">监督微调（SFT）是行为克隆：给模型看成对的“指令—回答”，让它学会模仿回答的格式、语气与步骤。它能把续写器变成助手，但不会给模型增加新知识。</p>
+
+      <h3>指令数据：质量、多样性、可验证性</h3>
+      <p>
+        SFT 的数据是 <span class="mono">(prompt, response)</span> 对。公开研究给过一个反直觉的起点：约 1000 条高质量、多样化的指令数据，就能把基座模型调到可用的对话水平<sup class="cite"><a href="#ref-17">17</a></sup>。这不是说 1000 条万能，而是说<b>质量与多样性比堆量更早成为瓶颈</b>：重复模板会让模型只会一种腔调，错误示范会被原样克隆。
+      </p>
+      <p>
+        生产上的指令数据通常来自四类来源：人工撰写、内部业务日志脱敏、强模型合成、以及拒绝采样筛选出的模型输出。四类都有风险：人工贵且慢；日志有隐私与偏置；合成数据会把教师模型的错误与风格一起蒸馏进来；拒绝采样需要可靠的判分器。SFT 数据表应至少记录来源、许可、去重方式与人工抽检比例。
+      </p>
+
+      <h3>loss mask：只学回答，不学问题</h3>
+      <p>
+        对话训练要把多轮对话拼成一条序列，并用 chat template 标出角色边界。关键细节是 <b>loss mask</b>：只在 assistant 的 token 上计算损失，system 与 user 的 token 置零。如果忘了 mask，模型会同时学习“怎样提问”，损失被大量非目标 token 稀释，训练效率下降；如果 mask 错位，模型可能学会在用户话没说完时抢答。
+      </p>
+      <p>
+        还有三个容易被忽略的工程点：<b>打包</b>（把多条短样本拼进一个长序列，注意别让后一条的注意力穿过前一条）、<b>截断</b>（长样本从哪一头截，决定模型看到的是开头还是结论）、<b>模板一致性</b>（训练与推理必须用同一套角色标记，否则格式迁移会失效）。
+      </p>
+
+      <h3>SFT 改什么，不改什么</h3>
+      <p>
+        SFT 改的是<b>表达</b>：指令遵循、输出结构、术语习惯、工具调用语法、拒答措辞。它不改的是<b>参数里的世界知识</b>：如果基座不知道某个新药，SFT 示范里写一百遍，模型也只是学会在类似问题里复述这个答案，换个问法就露馅。更糟的是，窄领域 SFT 过量会导致灾难性遗忘——通用能力回退，模型变得只会说训练集里的话。
+      </p>
+      <p>
+        缓解手段是数据混合：在领域 SFT 数据里掺入通用指令与一部分预训练语料（replay），并对通用能力做回归评估。SFT 不是“越专越好”，而是“在保持通用能力的前提下，把行为掰到目标格式”。
+      </p>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>数据来源</th><th>优势</th><th>风险</th></tr></thead>
+          <tbody>
+            <tr><td>人工撰写</td><td>质量高、可控</td><td>贵、慢、覆盖窄；标注者之间不一致</td></tr>
+            <tr><td>业务日志脱敏</td><td>分布真实、覆盖长尾</td><td>隐私、偏置、错误示范；脱敏不彻底会出域</td></tr>
+            <tr><td>强模型合成</td><td>便宜、可规模化</td><td>教师错误被克隆；风格单一；许可与蒸馏条款</td></tr>
+            <tr><td>拒绝采样</td><td>只保留判分通过的样本</td><td>判分器偏差决定数据分布；多样性下降</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mrow">
+        <div class="mrow-main">
+          <p>
+            对医学影像团队，SFT 最合适的落点是<b>报告格式与术语规范</b>：结构化字段、测量值单位、阴性/阳性表述、模板必填项。这些是“怎么答”的问题，SFT 擅长。至于“这个征象代表什么病”，那是知识与推理的问题，应该交给基座能力、检索与临床验证，而不是指望 SFT 背下来。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · 评估</span>
+          SFT 后至少跑三组评估：<b>格式合规率</b>（schema 校验通过比例）、<b>指令遵循率</b>（ held-out 指令）、<b>通用能力回归</b>（防止遗忘）。只看训练 loss 下降，等于没评估。
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 05 偏好对齐 ================= -->
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>偏好对齐：<br class="br-narrow">从“能答”到“答得合意”</h2></div>
+    <div class="paper reveal">
+      <p class="dek">同一个问题有很多条都算正确的回答。SFT 只能模仿其中一条；偏好对齐学习的是“哪条更好”，把帮助性、诚实性与无害性排进输出分布。</p>
+
+      <h3>为什么需要偏好：一个提示有很多好答案</h3>
+      <p>
+        指令数据里的“标准答案”只是众多可接受回答之一。偏好数据换一种问法：给模型同一个提示下的两个回答，让标注者判断哪个更好。成对比较比绝对打分更稳定，也更容易扩展；代价是需要定义清晰的标注指南，并处理标注者之间的一致性问题。偏好数据的质量，直接决定奖励模型与策略的上限。
+      </p>
+
+      <h3>RLHF：奖励模型 + PPO</h3>
+      <p>
+        经典 RLHF 分三步：先用 SFT 得到初始策略；再用成对偏好训练奖励模型（RM），让它给回答打分；最后用 PPO 优化策略，让高奖励回答的概率上升，同时用 KL 惩罚约束策略不要偏离参考模型太远<sup class="cite"><a href="#ref-10">10</a></sup><sup class="cite"><a href="#ref-11">11</a></sup><sup class="cite"><a href="#ref-13">13</a></sup>。KL 惩罚是安全绳：没有它，策略会找到奖励模型的漏洞，输出人类并不想要的东西。
+      </p>
+      <p>
+        这套管线能力强，但工程复杂：RM 与策略要同时维护，PPO 对超参敏感，训练不稳定；奖励模型本身也会被“刷分”——策略越优化，RM 分数越高，真实质量却可能先升后降<sup class="cite"><a href="#ref-14">14</a></sup>。这就是 reward hacking，后文还会遇到。
+      </p>
+
+      <h3>DPO：把 RL 折叠成一个损失</h3>
+      <p>
+        直接偏好优化（DPO）注意到：在 KL 约束下，最优策略可以用奖励函数解析表示；把这个关系代回偏好损失，就不需要显式训练 RM，也不需要 PPO 的在线采样<sup class="cite"><a href="#ref-12">12</a></sup>。最终损失只依赖策略与参考模型在 chosen / rejected 两个回答上的对数概率比：
+      </p>
+      <p class="mono" style="padding:12px 16px;border-radius:9px;background:var(--well);border:1px solid var(--rule);overflow-x:auto;">
+        L<sub>DPO</sub> = − log σ( β · [ log(π<sub>θ</sub>(y<sub>w</sub>)/π<sub>ref</sub>(y<sub>w</sub>)) − log(π<sub>θ</sub>(y<sub>l</sub>)/π<sub>ref</sub>(y<sub>l</sub>)) ] )
+      </p>
+      <p>
+        β 控制偏离参考模型的强度：β 越大，策略被推得越狠；β 越小，越保守。DPO 的优点是简单、稳定、只需离线偏好数据；代价是它只优化“给定偏好对上的相对概率”，没有在线探索，容易过拟合偏好数据的分布，也需要关注 chosen / rejected 的长度偏差。
+      </p>
+
+      <p>
+        下面这台仪器把 DPO 损失摊开。调 β 与两个 log-ratio，观察 margin 怎样进入 sigmoid；把 margin 拉到 0，损失应当回到 ln 2：
+      </p>
+
+      <!-- ============ 仪器 C：DPO 损失台 ============ -->
+      <div class="rig wide" id="rig-dpo">
+        <div class="rig-head">
+          <span class="dot" aria-hidden="true"></span>
+          <h4>DPO 损失台 · β × margin</h4>
+          <span class="live">现场计算 · LIVE</span>
+        </div>
+        <div class="rig-grid">
+          <div class="rig-ctrl">
+            <div class="knob">
+              <label for="dBeta">β</label>
+              <input class="sled" type="range" id="dBeta" min="0.01" max="0.5" step="0.01" value="0.1">
+              <span class="val" id="dBetaV">0.10</span>
+            </div>
+            <div class="knob">
+              <label for="dWin">chosen 回答</label>
+              <input class="sled" type="range" id="dWin" min="-2" max="2" step="0.1" value="1">
+              <span class="val" id="dWinV">+1.0</span>
+            </div>
+            <div class="knob">
+              <label for="dLose">rejected 回答</label>
+              <input class="sled" type="range" id="dLose" min="-2" max="2" step="0.1" value="-1">
+              <span class="val" id="dLoseV">−1.0</span>
+            </div>
+            <p class="rig-foot"><b>口径</b>：<span class="mono">m = log π(y_w)/π_ref(y_w) − log π(y_l)/π_ref(y_l)</span>，损失 <span class="mono">−log σ(β·m)</span>。两个 log-ratio 作为独立输入，用于观察 β 与 margin 的作用，不模拟真实训练轨迹。</p>
+          </div>
+          <div class="screen">
+            <div class="chart-wrap">
+              <svg id="dpoChart" viewBox="0 0 520 220" role="img" aria-label="DPO 损失随偏好 margin 变化的曲线；横轴 margin 从负四到正四，纵轴损失从零到二点五；当前 β 与 margin 以圆点标出。"></svg>
+            </div>
+            <div class="rowline"><span>偏好 margin</span><b id="dMargin">—</b></div>
+            <div class="rowline"><span>β × margin</span><b id="dZ">—</b></div>
+            <div class="rowline"><span>DPO loss</span><b id="dLoss" class="hot">—</b></div>
+            <div class="rowline"><span>偏好正确率 σ(βm)</span><b id="dAcc" class="good">—</b></div>
+            <div class="rowline"><span>梯度幅值</span><b id="dGrad">—</b></div>
+            <p class="formula" id="dFormula" role="status" aria-live="polite">—</p>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        试两组：默认 β=0.1、margin=2，βm=0.2，损失约 0.60，正确率约 55%——偏好信号很弱，策略只会被轻轻推一下。把 β 拉到 0.5，同样的 margin 得 βm=1.0，损失降到约 0.31，正确率约 73%；继续拉大 β，损失趋近 0，梯度也趋近 0，训练会“太自信而学不动”。β 不是越大越好，它是在“学得动”与“别跑太远”之间取平衡。另一个容易被忽略的约束是数据新鲜度：离线偏好对如果来自旧策略，策略更新后分布就漂了，需要迭代式 DPO 或重新采样——“DPO 简单”不等于“一次就够”。
+      </p>
+
+      <h3>对齐改的是排序，不是能力</h3>
+      <div class="mrow">
+        <div class="mrow-main">
+          <p>
+            偏好对齐能让模型更愿意帮忙、更少输出有害内容、语气更符合产品，但它不增加知识，也不保证事实正确。更麻烦的是<b>对齐税</b>：安全训练可能让模型过度拒答，或在某些通用能力上回退；偏好数据里的长度偏好会让回答越来越长；标注者的口味会被放大成模型的风格。上线前要用三类评估夹住：目标行为、通用能力、以及对抗性红队。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · 对齐税怎么量</span>
+          同一套评测要在 base、SFT、偏好对齐后各跑一遍；只看目标指标，会漏掉通用能力的回退。安全拒答率上升、回答变长、代码通过率下降，都是税单上的项目。
+        </aside>
+      </div>
+
+      <div class="wide">
+        <figure>
+          <div class="fig-frame">
+            <svg viewBox="0 0 1000 430" role="img" aria-label="RLHF 与 DPO 的管线对比。RLHF 需要奖励模型与 PPO 在线优化，并用 KL 约束参考模型；DPO 直接把偏好对上的策略与参考模型对数概率比代入损失，省掉奖励模型与 PPO。">
+              <defs>
+                <marker id="p3arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+                </marker>
+              </defs>
+              <!-- RLHF -->
+              <text x="30" y="30" font-size="13" font-weight="700" fill="var(--data-deep)">RLHF · 奖励模型 + PPO</text>
+              <g font-size="11" fill="var(--ink)" text-anchor="middle">
+                <rect x="30" y="48" width="104" height="48" rx="7" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="82" y="70">Prompt</text><text x="82" y="85" font-size="9.5" fill="var(--ink-3)">提示</text>
+                <rect x="168" y="48" width="116" height="48" rx="7" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="226" y="70">Policy</text><text x="226" y="85" font-size="9.5" fill="var(--ink-3)">当前策略</text>
+                <rect x="318" y="48" width="116" height="48" rx="7" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="376" y="70">Response</text><text x="376" y="85" font-size="9.5" fill="var(--ink-3)">采样回答</text>
+                <rect x="468" y="48" width="116" height="48" rx="7" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="526" y="70">Reward Model</text><text x="526" y="85" font-size="9.5" fill="var(--ink-3)">打分</text>
+                <rect x="618" y="48" width="116" height="48" rx="7" fill="var(--panel-2)" stroke="var(--data)" stroke-opacity=".55"/>
+                <text x="676" y="70">PPO update</text><text x="676" y="85" font-size="9.5" fill="var(--ink-3)">策略梯度</text>
+                <rect x="468" y="126" width="116" height="42" rx="7" fill="var(--well)" stroke="var(--rule-2)" stroke-dasharray="4 4"/>
+                <text x="526" y="145">Reference</text><text x="526" y="159" font-size="9.5" fill="var(--ink-3)">KL 约束</text>
+              </g>
+              <g fill="none" stroke="var(--ink-3)" stroke-opacity=".55" marker-end="url(#p3arr)">
+                <path d="M134 72 H164"/><path d="M284 72 H314"/><path d="M434 72 H464"/><path d="M584 72 H614"/>
+                <path d="M526 126 V100"/><path d="M676 96 C 676 126 620 140 588 146"/>
+              </g>
+              <text x="800" y="66" font-size="10" fill="var(--warn-deep)">奖励模型会被“刷分”</text>
+              <text x="800" y="82" font-size="10" fill="var(--ink-3)">PPO 对超参敏感</text>
+
+              <!-- 分隔 -->
+              <line x1="30" y1="196" x2="970" y2="196" stroke="var(--rule)" stroke-dasharray="4 5"/>
+
+              <!-- DPO -->
+              <text x="30" y="226" font-size="13" font-weight="700" fill="var(--jade-deep)">DPO · 直接偏好优化</text>
+              <g font-size="11" fill="var(--ink)" text-anchor="middle">
+                <rect x="30" y="244" width="148" height="52" rx="7" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="104" y="266">Preference pairs</text><text x="104" y="282" font-size="9.5" fill="var(--ink-3)">chosen / rejected</text>
+                <rect x="214" y="244" width="128" height="52" rx="7" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="278" y="266">Policy πθ</text><text x="278" y="282" font-size="9.5" fill="var(--ink-3)">当前策略</text>
+                <rect x="214" y="316" width="128" height="44" rx="7" fill="var(--well)" stroke="var(--rule-2)" stroke-dasharray="4 4"/>
+                <text x="278" y="336">Reference πref</text><text x="278" y="351" font-size="9.5" fill="var(--ink-3)">参考模型</text>
+                <rect x="378" y="244" width="150" height="52" rx="7" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="453" y="266">Log-ratio</text><text x="453" y="282" font-size="9.5" fill="var(--ink-3)">log π/πref</text>
+                <rect x="564" y="244" width="140" height="52" rx="7" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="634" y="266">DPO loss</text><text x="634" y="282" font-size="9.5" fill="var(--ink-3)">−log σ(βm)</text>
+                <rect x="740" y="244" width="116" height="52" rx="7" fill="var(--panel-2)" stroke="var(--jade)" stroke-opacity=".55"/>
+                <text x="798" y="266">Update</text><text x="798" y="282" font-size="9.5" fill="var(--ink-3)">梯度下降</text>
+              </g>
+              <g fill="none" stroke="var(--ink-3)" stroke-opacity=".55" marker-end="url(#p3arr)">
+                <path d="M178 270 H210"/><path d="M342 270 H374"/><path d="M528 270 H560"/><path d="M704 270 H736"/>
+                <path d="M278 316 V300"/><path d="M453 296 C 453 316 420 330 346 334"/>
+              </g>
+              <g font-size="10" fill="var(--ink-3)">
+                <text x="880" y="258">没有奖励模型</text>
+                <text x="880" y="274">没有在线 PPO</text>
+                <text x="880" y="290">只需离线偏好对</text>
+              </g>
+              <text x="500" y="410" text-anchor="middle" font-size="11" fill="var(--ink-3)">两者都在优化“chosen 比 rejected 更可能”，区别在于 RLHF 用一个可学习的奖励模型做中介，DPO 把中介解析地消掉。</text>
+            </svg>
+          </div>
+          <figcaption><b>图 3 · RLHF 与 DPO。</b>上半条管线多一个奖励模型和一次在线采样，换来更灵活的目标设计；下半条管线把偏好直接写进损失，工程更轻，但只能利用离线数据。选型不是“谁更先进”，而是“有没有稳定的偏好数据、有没有在线采样与 RM 维护能力”。</figcaption>
+        </figure>
+      </div>
+
+      <p>
+        偏好对齐之后，模型的“默认回答”已经接近产品想要的语气与边界。但它仍然是一个一次生成一个 token 的模型；面对需要多步推理的问题，它可能一步走错就整段跑偏。下一节的推理强化，专门训练“想久一点”。
+      </p>
+    </div>
+  </section>
+<!-- ================= 06 推理 RL ================= -->
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>推理强化：用可验证奖励教“想久一点”</h2></div>
+    <div class="paper reveal">
+      <p class="dek">偏好对齐教模型“哪种回答更讨喜”，推理强化教它“哪种推理能算对”。后者的关键不是更大的模型，而是有一个便宜、稳定、可扩展的验证器。</p>
+
+      <h3>从偏好到验证器</h3>
+      <p>
+        偏好数据需要人来判断“哪个更好”，成本高、主观性强。推理强化换了一条路：只给提示，不给示范，让模型自己采样多个回答，再用<b>可验证奖励</b>判对错。数学题可以核对最终答案，代码可以跑单元测试，结构化输出可以用 schema 校验，格式任务可以用规则匹配。这类做法通常称为 RLVR（Reinforcement Learning with Verifiable Rewards）。
+      </p>
+      <p>
+        它把监督信号从“人类偏好”换成了“程序判定”，于是可以大规模采样、自动打分、反复训练。代价是<b>奖励的覆盖面</b>：验证器只认它检查的那一部分，模型会学会在检查点上拿分，而不是在检查点之外变好。这就是后文 reward hacking 的入口。
+      </p>
+
+      <h3>GRPO：去掉 critic</h3>
+      <p>
+        PPO 需要一个与策略同规模的价值网络（critic）来估计基线，显存与工程成本都高。GRPO 的做法更轻：对同一个提示采样一组回答，用组内平均奖励作为基线，算每个回答的相对优势，再更新策略<sup class="cite"><a href="#ref-15">15</a></sup>。省掉 critic 后，同样的卡可以跑更大的策略或更大的 batch；代价是组内比较的方差、以及采样成本。
+      </p>
+      <p>
+        DeepSeek-R1 的公开报告展示了这条路线的一个极端版本：先不做 SFT，直接在基座上用可验证奖励做 RL，模型会自发长出更长的思维链、自我检查与回溯；但也会出现可读性下降、语言混杂等问题，所以最终系统仍然加入了冷启动 SFT 与多阶段训练<sup class="cite"><a href="#ref-16">16</a></sup>。这说明“纯 RL 涌现推理”不是免费的：奖励设计、数据课程与后处理仍然决定可用性。
+      </p>
+
+      <h3>长思维链的代价</h3>
+      <p>
+        推理 RL 的直接后果是<b>输出变长</b>：模型学会在给出答案前写更多中间步骤。长思维链在数学与代码上确实能提升正确率，但它把成本从训练转移到了推理——每个请求多几百到几千个 token，延迟与账单同步上升。更隐蔽的问题是长度膨胀：如果奖励只看正确率，模型可能学会用更长的篇幅碰运气；如果奖励里加入长度惩罚，又可能压制真正需要的推理。
+      </p>
+      <p>
+        图 4 是 reward hacking 的经典形态：优化压力越大，代理奖励（proxy）单调上升，真实质量却先升后降。最佳停止点不在曲线末端，而在两条线的差距开始扩大之前。工程上对应的是早停、KL 约束、定期人工抽检，以及把“真实质量”做成独立的评估集，而不是继续看训练奖励。
+      </p>
+
+      <div class="wide">
+        <figure>
+          <div class="fig-frame">
+            <svg viewBox="0 0 1000 400" role="img" aria-label="奖励优化压力与分数的关系示意图。横轴是优化压力，纵轴是分数。代理奖励随压力单调上升；真实质量先升后降，在两条曲线差距扩大前存在最佳停止点。">
+              <defs>
+                <marker id="p4arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+                </marker>
+              </defs>
+              <line x1="70" y1="340" x2="950" y2="340" class="ax"/>
+              <line x1="70" y1="40" x2="70" y2="340" class="ax"/>
+              <text x="510" y="382" text-anchor="middle" font-size="12" fill="var(--ink-2)">优化压力（RL 步数 / KL 预算）</text>
+              <text x="28" y="190" text-anchor="middle" font-size="12" fill="var(--ink-2)" transform="rotate(-90 28 190)">分数</text>
+              <g class="grid">
+                <line x1="70" y1="280" x2="950" y2="280"/><line x1="70" y1="220" x2="950" y2="220"/>
+                <line x1="70" y1="160" x2="950" y2="160"/><line x1="70" y1="100" x2="950" y2="100"/>
+              </g>
+              <g font-size="10" class="f-mono" fill="var(--ink-3)" text-anchor="end">
+                <text x="62" y="344">0</text><text x="62" y="284">0.25</text><text x="62" y="224">0.50</text><text x="62" y="164">0.75</text><text x="62" y="104">1.00</text>
+              </g>
+              <!-- proxy reward -->
+              <path d="M70 300 C 180 286 300 252 430 210 C 560 168 700 128 940 78" fill="none" stroke="var(--data)" stroke-width="2.6"/>
+              <text x="760" y="104" font-size="12" font-weight="700" fill="var(--data-deep)">代理奖励 / 验证器分数</text>
+              <!-- true quality -->
+              <path d="M70 300 C 160 274 240 232 330 204 C 410 180 470 176 520 182 C 610 194 720 236 940 296" fill="none" stroke="var(--jade)" stroke-width="2.6"/>
+              <text x="620" y="250" font-size="12" font-weight="700" fill="var(--jade-deep)">真实质量（独立评估集）</text>
+              <!-- stop point -->
+              <line x1="520" y1="60" x2="520" y2="340" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="5 5"/>
+              <circle cx="520" cy="182" r="5" fill="var(--warn)"/>
+              <text x="530" y="70" font-size="11" font-weight="700" fill="var(--warn-deep)">最佳停止点</text>
+              <text x="530" y="86" font-size="10" fill="var(--ink-3)">差距开始扩大之前</text>
+              <!-- gap bracket -->
+              <path d="M760 122 V232" fill="none" stroke="var(--warn)" stroke-opacity=".55" stroke-dasharray="3 4"/>
+              <path d="M752 122 H768 M752 232 H768" fill="none" stroke="var(--warn)" stroke-opacity=".55"/>
+              <text x="778" y="182" font-size="10" fill="var(--warn-deep)">reward hacking 区间</text>
+              <text x="90" y="62" font-size="10.5" fill="var(--ink-3)">示意曲线，非实测数据；形态依据 Gao et al. 2022 的奖励模型过优化结果</text>
+            </svg>
+          </div>
+          <figcaption><b>图 4 · 代理奖励与真实质量。</b>验证器或奖励模型只是“代理”，它给分越高不等于模型越好。训练应盯着独立评估集与人工抽检，而不是训练奖励；当两条曲线开始分叉，继续优化只会把模型推向验证器的漏洞。医学场景的“真实质量”还包括临床可接受性，单靠自动指标无法覆盖。</figcaption>
+        </figure>
+      </div>
+
+      <h3>没有验证器的领域怎么办</h3>
+      <p>
+        开放式写作、咨询建议、影像诊断都没有便宜的自动判分器。可选路径有三条：<b>过程奖励模型</b>（对中间步骤打分，成本高且本身可能被刷）、<b>规则化评分</b>（把可检查的部分抽出来，如引用是否可回查、单位是否正确、格式是否合规）、<b>人在回路</b>（小规模高质量偏好，而不是大规模自动奖励）。三条路都不是“纯 RL”，都需要把人类判断重新放回管线。
+      </p>
+      <p>
+        对医学影像，先分清两类任务：<b>可验证</b>的（测量值抽取、报告结构化、单位换算、指南条目匹配）可以走 RLVR；<b>不可验证</b>的（诊断结论、治疗建议）不适合用自动奖励硬训，应该走检索、证据引用与临床评估。把不可验证任务包装成可验证指标，是医疗 AI 最常见的自欺。
+      </p>
+
+      <div class="mrow">
+        <div class="mrow-main">
+          <p>
+            到这里，模型已经走完“预训练—SFT—偏好—推理 RL”四段。它知道很多、会按格式答、知道什么不该说、也会在可验证任务上多想几步。但它仍然会犯错，而且这些错误在评测与部署阶段才真正暴露。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · 长度膨胀</span>
+          推理 RL 后，回答长度可能翻倍。上线前要同时看<b>正确率、平均输出 token、P95 延迟</b>三条线；只看正确率，会把账单和延迟一起漏掉。
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 07 代价与边界 ================= -->
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>对齐的代价与评测的边界</h2></div>
+    <div class="paper reveal">
+      <p class="dek">对齐不是免费的：安全训练可能带来能力回退，公开分数可能被污染，开源权重也可能来自蒸馏。规格卡如果不披露这些，应用层就在雾里做采购。</p>
+
+      <h3>对齐税：安全与能力的拉扯</h3>
+      <p>
+        InstructGPT 的公开结果已经提示过对齐税：RLHF 后模型在人类偏好上大幅提升，但部分公开 NLP 基准出现回退<sup class="cite"><a href="#ref-10">10</a></sup>。后续工作用数据混合、参数高效微调、在线评估等手段把税压低，但没有把税消掉。典型症状是<b>过度拒答</b>：模型把正常的医学问题当成高风险问题拒绝，或者用一段免责声明替代实质回答。
+      </p>
+      <p>
+        对齐税要用三层评估夹住：目标行为（帮助性、拒答率）、通用能力（推理、代码、多语言）、对抗性红队（越狱、提示注入、诱导编造）。只报“安全分提升”而不报“能力回退”，等于把成本藏起来。
+      </p>
+
+      <h3>评测污染：分数可能来自训练集</h3>
+      <p>
+        公开基准的题目可能出现在预训练网页、SFT 合成数据或偏好数据里。GSM1k 的复现实验显示，把题目做轻微改写后，部分模型的数学准确率明显下降，说明原分数里混有记忆成分<sup class="cite"><a href="#ref-21">21</a></sup>。污染不一定来自故意作弊；数据管线规模太大，去重不可能覆盖所有基准的变体。
+      </p>
+      <p>
+        工程上的对策：按时间切分评估集（用截止日之后的题）、做 n-gram / 嵌入近邻污染检测、保留 canary 字符串、在规格卡里写清“评测集版本与污染检查结果”。榜单分数如果不附这些信息，只能当广告，不能当验收标准。
+      </p>
+
+      <h3>蒸馏血统与开源透明度</h3>
+      <p>
+        许多“开源”模型只开放权重，不开放数据与训练配方；部分模型的训练数据包含更强模型的合成输出。这不一定是问题，但会影响三件事：<b>许可</b>（教师模型的条款是否允许蒸馏）、<b>可复现性</b>（你无法重训，只能接受发布者的评测）、<b>能力归因</b>（模型的能力来自数据、架构还是蒸馏，外部无法拆开）。采购时要区分“开放权重”“开放数据”“开放配方”三种开放程度，它们对应的风险完全不同。
+      </p>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>披露项</th><th>为什么必须写</th><th>不写的后果</th></tr></thead>
+          <tbody>
+            <tr><td>数据截止</td><td>时效边界</td><td>用户以为模型知道最新指南</td></tr>
+            <tr><td>参数量 / 训练 token</td><td>判断训练充分度与成本</td><td>无法解释能力与账单</td></tr>
+            <tr><td>对齐方法</td><td>行为来源</td><td>无法预测拒答、风格与格式</td></tr>
+            <tr><td>评测集与版本</td><td>分数可比</td><td>榜单分数不可复现</td></tr>
+            <tr><td>污染检查</td><td>分数可信</td><td>虚高分数进入采购决策</td></tr>
+            <tr><td>许可 / 蒸馏来源</td><td>合规</td><td>商用与再分发风险</td></tr>
+            <tr><td>已知失败模式</td><td>风险边界</td><td>部署后重复踩坑</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mrow">
+        <div class="mrow-main">
+          <p>
+            规格卡不是法律文件，但它是应用层的合同：写清楚“不知道什么、不能做什么、分数怎么来的”，团队才能决定哪些任务交给模型、哪些必须检索、哪些必须人工复核<sup class="cite"><a href="#ref-18">18</a></sup>。下一节把这张卡收成一页，并落到医学影像团队的三条具体含义。
+          </p>
+        </div>
+        <aside class="mnote">
+          <span class="tag">边注 · 采购清单</span>
+          医学影像采购至少追问五件事：数据能否不出院、模型能否本地部署、版本能否锁定、评测能否在自建集上复跑、更新后的回归门禁谁负责。这五问比榜单排名更能决定项目成败。
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 08 收束 ================= -->
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>收束：把规格卡当合同</h2></div>
+    <div class="paper reveal">
+      <p class="dek">模型不是从发布会里长出来的，是从数据、算力与偏好数据里长出来的。规格卡把这条生产线的结果写成可核对的字段；应用层的每一个设计决定，都应该能回指到其中一个字段。</p>
+
+      <h3>能力溯源矩阵</h3>
+      <p>
+        图 5 把“应用层想要的能力”与“哪段工序能提供它”放在一张矩阵里。实心圆表示主要来源，空心圆表示次要影响，横杠表示基本无关。它的用途是防止两类错误：把知识问题当成格式问题去微调，或者把格式问题当成知识问题去换模型。
+      </p>
+
+      <div class="wide">
+        <figure>
+          <div class="fig-frame">
+            <svg viewBox="0 0 1000 400" role="img" aria-label="能力溯源矩阵。行是世界知识、时效、输出格式、拒答与安全、多步推理、单位 token 成本；列是预训练、SFT、偏好对齐、推理强化、RAG、部署与推理。实心圆表示主要来源，空心圆表示次要影响。">
+              <g font-size="11.5" fill="var(--ink)" text-anchor="middle">
+                <text x="360" y="38">预训练</text><text x="480" y="38">SFT</text><text x="600" y="38">偏好对齐</text>
+                <text x="720" y="38">推理 RL</text><text x="840" y="38">RAG</text><text x="948" y="38">部署</text>
+              </g>
+              <g font-size="11.5" fill="var(--ink-2)" text-anchor="end">
+                <text x="250" y="92">世界知识</text>
+                <text x="250" y="142">时效</text>
+                <text x="250" y="192">输出格式</text>
+                <text x="250" y="242">拒答 / 安全</text>
+                <text x="250" y="292">多步推理</text>
+                <text x="250" y="342">单位 token 成本</text>
+              </g>
+              <g class="grid">
+                <line x1="280" y1="58" x2="980" y2="58"/><line x1="280" y1="110" x2="980" y2="110"/>
+                <line x1="280" y1="160" x2="980" y2="160"/><line x1="280" y1="210" x2="980" y2="210"/>
+                <line x1="280" y1="260" x2="980" y2="260"/><line x1="280" y1="310" x2="980" y2="310"/>
+                <line x1="280" y1="360" x2="980" y2="360"/>
+              </g>
+              <!-- primary -->
+              <g fill="var(--jade)">
+                <circle cx="360" cy="88" r="6"/><circle cx="840" cy="138" r="6"/><circle cx="480" cy="188" r="6"/>
+                <circle cx="600" cy="238" r="6"/><circle cx="720" cy="288" r="6"/><circle cx="360" cy="338" r="6"/>
+                <circle cx="948" cy="338" r="6"/>
+              </g>
+              <!-- secondary -->
+              <g fill="none" stroke="var(--data)" stroke-width="2">
+                <circle cx="840" cy="88" r="5.5"/><circle cx="360" cy="138" r="5.5"/>
+                <circle cx="600" cy="188" r="5.5"/><circle cx="720" cy="188" r="5.5"/><circle cx="948" cy="188" r="5.5"/>
+                <circle cx="480" cy="238" r="5.5"/><circle cx="720" cy="238" r="5.5"/>
+                <circle cx="360" cy="288" r="5.5"/><circle cx="720" cy="338" r="5.5"/>
+              </g>
+              <!-- legend -->
+              <g font-size="10.5" fill="var(--ink-3)">
+                <circle cx="60" cy="378" r="5.5" fill="var(--jade)"/><text x="74" y="382">主要来源</text>
+                <circle cx="160" cy="378" r="5" fill="none" stroke="var(--data)" stroke-width="2"/><text x="174" y="382">次要影响</text>
+                <text x="280" y="382">横杠 = 基本无关</text>
+              </g>
+              <text x="500" y="20" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">同一行里先找实心圆，再决定该动哪一段工序</text>
+            </svg>
+          </div>
+          <figcaption><b>图 5 · 能力溯源矩阵。</b>世界知识的主来源只有预训练，时效的主来源只有 RAG；格式主要靠 SFT，拒答主要靠偏好对齐，多步推理主要靠推理 RL，单位成本主要靠模型尺寸与部署优化。矩阵不是教条：某些能力会跨格，但它足够挡住“用一个按钮解决所有问题”的冲动。</figcaption>
+        </figure>
+      </div>
+
+      <h3>对医学影像团队的三条含义</h3>
+      <p>
+        <b>第一，微调加不了新知识。</b>新指南、新药名、新政策属于参数外知识，正确路径是检索与证据引用；SFT 只负责把报告格式、术语与字段规范教给模型。把新知识写进 SFT 示范，短期看似有效，换一个问法就会暴露。
+      </p>
+      <p>
+        <b>第二，版本升级会破坏提示词与报告模板。</b>偏好对齐会改变默认语气、拒答边界与输出长度；同一个提示词在新版本上可能从“简洁结论”变成“长篇免责声明”。上线前要锁版本、保留 golden set、做逐版本回归；升级不是换一个 API 名称，而是一次行为变更。
+      </p>
+      <p>
+        <b>第三，数据脱敏与去重决定能不能自训。</b>院内数据涉及 PHI、多中心协议差异与数据使用许可；如果去标识化不彻底，tokenizer 或训练管线在第三方环境跑一遍就是出域事件。能本地做的预处理不要外包；能检索解决的知识不要靠自训；真要自训，先把数据治理与评估集做出来，再谈算力。
+      </p>
+
+      <h3>一页速记</h3>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>阶段</th><th>关键数字</th><th>主要失败</th><th>应用层含义</th></tr></thead>
+          <tbody>
+            <tr><td>数据</td><td>去重率、截止日、配比</td><td>重复、过期、偏科</td><td>新知识走检索</td></tr>
+            <tr><td>Tokenizer</td><td>词表 32k–128k</td><td>术语切碎、token 成本高</td><td>领域词表要重训</td></tr>
+            <tr><td>预训练</td><td>6ND、MFU 30–40%</td><td>幻觉、知识截止</td><td>参数知识不可寻址</td></tr>
+            <tr><td>SFT</td><td>1k–100k 指令对</td><td>格式过拟合、灾难性遗忘</td><td>教格式，不教知识</td></tr>
+            <tr><td>偏好对齐</td><td>β、偏好对数量</td><td>过度拒答、长度膨胀</td><td>版本升级要回归</td></tr>
+            <tr><td>推理 RL</td><td>验证器覆盖率</td><td>reward hacking、输出变长</td><td>只用在可验证任务</td></tr>
+            <tr><td>评测</td><td>置信区间、污染检查</td><td>分数虚高</td><td>自建集 + 时间切分</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        最后回到开篇：规格卡上的七个数字，是七段工序的收据。读懂它们，就不会把“模型不知道”误判成“提示词没写好”，也不会把“格式不对”误判成“模型太小”。模型层三部曲的下一篇谈评测：怎样用置信区间、污染检查与线上闭环，判断一张规格卡上的分数到底能不能信。
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 参考 ================= -->
+  <section id="refs">
+    <div class="sec-head"><span class="sec-num">§</span><h2>参考文献</h2></div>
+    <div class="paper reveal">
+      <p class="dek">正文引用均为上标锚点，点击跳转；每条标题外链到可回查的页面（arXiv / DOI）。</p>
+      <ol class="refs">
+        <li id="ref-1">Vaswani, A. et al. <a class="src" href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener noreferrer">Attention Is All You Need</a>. NeurIPS 2017. <span class="id">arXiv:1706.03762</span></li>
+        <li id="ref-2">Brown, T. et al. <a class="src" href="https://arxiv.org/abs/2005.14165" target="_blank" rel="noopener noreferrer">Language Models are Few-Shot Learners</a>. NeurIPS 2020. <span class="id">arXiv:2005.14165</span></li>
+        <li id="ref-3">Kaplan, J. et al. <a class="src" href="https://arxiv.org/abs/2001.08361" target="_blank" rel="noopener noreferrer">Scaling Laws for Neural Language Models</a>. 2020. <span class="id">arXiv:2001.08361</span></li>
+        <li id="ref-4">Hoffmann, J. et al. <a class="src" href="https://arxiv.org/abs/2203.15556" target="_blank" rel="noopener noreferrer">Training Compute-Optimal Large Language Models</a>. NeurIPS 2022. <span class="id">arXiv:2203.15556</span></li>
+        <li id="ref-5">Touvron, H. et al. <a class="src" href="https://arxiv.org/abs/2307.09288" target="_blank" rel="noopener noreferrer">Llama 2: Open Foundation and Fine-Tuned Chat Models</a>. 2023. <span class="id">arXiv:2307.09288</span></li>
+        <li id="ref-6">Grattafiori, A. et al. <a class="src" href="https://arxiv.org/abs/2407.21783" target="_blank" rel="noopener noreferrer">The Llama 3 Herd of Models</a>. 2024. <span class="id">arXiv:2407.21783</span></li>
+        <li id="ref-7">Sennrich, R., Haddow, B. &amp; Birch, A. <a class="src" href="https://arxiv.org/abs/1508.07909" target="_blank" rel="noopener noreferrer">Neural Machine Translation of Rare Words with Subword Units</a>. ACL 2016. <span class="id">arXiv:1508.07909</span></li>
+        <li id="ref-8">Lee, K. et al. <a class="src" href="https://arxiv.org/abs/2107.06499" target="_blank" rel="noopener noreferrer">Deduplicating Training Data Makes Language Models Better</a>. ACL 2022. <span class="id">arXiv:2107.06499</span></li>
+        <li id="ref-9">Gunasekar, S. et al. <a class="src" href="https://arxiv.org/abs/2306.11644" target="_blank" rel="noopener noreferrer">Textbooks Are All You Need</a>. 2023. <span class="id">arXiv:2306.11644</span></li>
+        <li id="ref-10">Ouyang, L. et al. <a class="src" href="https://arxiv.org/abs/2203.02155" target="_blank" rel="noopener noreferrer">Training Language Models to Follow Instructions with Human Feedback</a>. NeurIPS 2022. <span class="id">arXiv:2203.02155</span></li>
+        <li id="ref-11">Christiano, P. et al. <a class="src" href="https://arxiv.org/abs/1706.03741" target="_blank" rel="noopener noreferrer">Deep Reinforcement Learning from Human Preferences</a>. NeurIPS 2017. <span class="id">arXiv:1706.03741</span></li>
+        <li id="ref-12">Rafailov, R. et al. <a class="src" href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener noreferrer">Direct Preference Optimization: Your Language Model is Secretly a Reward Model</a>. NeurIPS 2023. <span class="id">arXiv:2305.18290</span></li>
+        <li id="ref-13">Schulman, J. et al. <a class="src" href="https://arxiv.org/abs/1707.06347" target="_blank" rel="noopener noreferrer">Proximal Policy Optimization Algorithms</a>. 2017. <span class="id">arXiv:1707.06347</span></li>
+        <li id="ref-14">Gao, L., Schulman, J. &amp; Hilton, J. <a class="src" href="https://arxiv.org/abs/2210.10760" target="_blank" rel="noopener noreferrer">Scaling Laws for Reward Model Overoptimization</a>. ICML 2023. <span class="id">arXiv:2210.10760</span></li>
+        <li id="ref-15">Shao, Z. et al. <a class="src" href="https://arxiv.org/abs/2402.03300" target="_blank" rel="noopener noreferrer">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models</a>. 2024. <span class="id">arXiv:2402.03300</span></li>
+        <li id="ref-16">DeepSeek-AI. <a class="src" href="https://arxiv.org/abs/2501.12948" target="_blank" rel="noopener noreferrer">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</a>. 2025. <span class="id">arXiv:2501.12948</span></li>
+        <li id="ref-17">Zhou, C. et al. <a class="src" href="https://arxiv.org/abs/2305.11206" target="_blank" rel="noopener noreferrer">LIMA: Less Is More for Alignment</a>. NeurIPS 2023. <span class="id">arXiv:2305.11206</span></li>
+        <li id="ref-18">Mitchell, M. et al. <a class="src" href="https://arxiv.org/abs/1810.03993" target="_blank" rel="noopener noreferrer">Model Cards for Model Reporting</a>. FAT* 2019. <span class="id">arXiv:1810.03993</span></li>
+        <li id="ref-19">Bender, E. M., Gebru, T., McMillan-Major, A. &amp; Shmitchell, S. <a class="src" href="https://doi.org/10.1145/3442188.3445922" target="_blank" rel="noopener noreferrer">On the Dangers of Stochastic Parrots: Can Language Models Be Too Big?</a>. FAccT 2021. <span class="id">doi:10.1145/3442188.3445922</span></li>
+        <li id="ref-20">Liu, N. F. et al. <a class="src" href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener noreferrer">Lost in the Middle: How Language Models Use Long Contexts</a>. TACL 2024. <span class="id">arXiv:2307.03172</span></li>
+        <li id="ref-21">Zhang, H. et al. <a class="src" href="https://arxiv.org/abs/2405.00332" target="_blank" rel="noopener noreferrer">A Careful Examination of Large Language Model Performance on Grade School Arithmetic</a>. 2024. <span class="id">arXiv:2405.00332</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="site">
+    <p>创建于 2026-11-18。本篇为「模型层三部曲」第一篇；三台仪器（分词台、算力账单、DPO 损失台）全部为页面内现场计算，公式随台面给出，可逐项复核。</p>
+    <p>相关阅读：<a href="neural-network-overview.html">《神经网络全景：从单个神经元到 Transformer》</a>（概念前置：注意力、损失与反向传播）· <a href="neural-network-training-optimization.html">《神经网络训练优化：从学习率到部署》</a>（工程配套：优化器、显存、并行与推理部署）· <a href="ai-product-fundamentals.html">《AI 产品基础认知：能力边界、需求真伪与指标体系》</a>（应用视角：这些边界如何变成产品指标）· <a href="index.html">返回首页</a></p>
+  </footer>
+
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  /* =============== 主题三态（与站内其他页共用 technotes-theme 键） =============== */
+
+  var btn = document.getElementById('themeBtn');
+  var MODES = ['auto', 'light', 'dark'];
+  var LABEL = { auto: '主题：跟随系统', light: '主题：浅色', dark: '主题：深色' };
+  var mode = 'auto';
+
+  try {
+    var saved = localStorage.getItem('technotes-theme');
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') mode = saved;
+  } catch (e) { /* storage blocked */ }
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function setTheme(m) {
+    mode = m;
+    if (m === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', m);
+    root.classList.toggle('is-light', m === 'light' || (m === 'auto' && systemLight()));
+    btn.textContent = LABEL[m];
+  }
+
+  btn.addEventListener('click', function () {
+    setTheme(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
+    try { localStorage.setItem('technotes-theme', mode); } catch (e) {}
+  });
+
+  if (window.matchMedia) {
+    var mqL = window.matchMedia('(prefers-color-scheme: light)');
+    var onL = function () { if (mode === 'auto') setTheme('auto'); };
+    if (mqL.addEventListener) mqL.addEventListener('change', onL);
+    else if (mqL.addListener) mqL.addListener(onL);
+  }
+
+  setTheme(mode);
+
+  /* =============== 导航（从章节自动构建）与当前节高亮 =============== */
+
+  var LABELS = {
+    s0: '规格卡', s1: '数据', s2: '预训练', s3: '基座', s4: 'SFT',
+    s5: '偏好', s6: '推理RL', s7: '边界', s8: '收束', refs: '参考'
+  };
+
+  var nav = document.getElementById('nav');
+  var sections = [].slice.call(document.querySelectorAll('section[id]'));
+  var links = {};
+
+  sections.forEach(function (sec) {
+    var num = sec.querySelector('.sec-num');
+    var h = sec.querySelector('h2');
+    if (!num || !h) return;
+    var a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = LABELS[sec.id] || h.textContent;
+    nav.appendChild(a);
+    links[sec.id] = a;
+  });
+
+  var navLinks = [].slice.call(nav.querySelectorAll('a'));
+
+  function markActive(id) {
+    navLinks.forEach(function (a) {
+      a.classList.toggle('on', a.getAttribute('href') === '#' + id);
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        seen[e.target.id] = e.isIntersecting ? (e.intersectionRatio || 0.001) : 0;
+      });
+      var best = null, bestR = 0;
+      Object.keys(seen).forEach(function (k) {
+        if (seen[k] > bestR) { bestR = seen[k]; best = k; }
+      });
+      if (best) markActive(best);
+    }, { rootMargin: '-20% 0px -55% 0px', threshold: [0, .2, .6, 1] });
+    sections.forEach(function (s) { io.observe(s); });
+  }
+
+  /* =============== 进度条 =============== */
+
+  var bar = document.getElementById('progress');
+  var ticking = false;
+
+  function paint() {
+    var h = root.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? Math.min(100, (window.scrollY / h) * 100) : 0) + '%';
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(paint); }
+  }, { passive: true });
+  window.addEventListener('resize', paint);
+  paint();
+
+  /* =============== 揭示动画（无 IO / reduced-motion / 看门狗时直接可见） =============== */
+
+  var reveals = [].slice.call(document.querySelectorAll('.reveal'));
+  var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  function revealAll() {
+    reveals.forEach(function (el) { el.classList.add('in'); });
+  }
+
+  if (reduceMotion || !('IntersectionObserver' in window)) {
+    revealAll();
+  } else {
+    var rio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); rio.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: .06 });
+    reveals.forEach(function (el) { rio.observe(el); });
+    /* IAB/内嵌浏览器可能不派发 IO 回调；2.4s 后强制显形，避免整页空白 */
+    setTimeout(revealAll, 2400);
+  }
+
+  /* =============== 英雄区盖章（动画失败也有静态可见态） =============== */
+
+  var spec = document.getElementById('specCard');
+  if (spec && !reduceMotion) {
+    spec.classList.add('stamping');
+    setTimeout(function () { spec.classList.remove('stamping'); }, 1200);
+  }
+
+  /* =============== 仪器 A：字符级 BPE 分词台 =============== */
+
+  (function () {
+    var rig = document.getElementById('rig-bpe');
+    if (!rig) return;
+
+    var textEl = document.getElementById('bpeText');
+    var mergeEl = document.getElementById('bpeMerges');
+    var mergeV = document.getElementById('bpeMergesV');
+    var tokensEl = document.getElementById('bpeTokens');
+    var charsEl = document.getElementById('bpeChars');
+    var countEl = document.getElementById('bpeCount');
+    var ratioEl = document.getElementById('bpeRatio');
+    var vocabEl = document.getElementById('bpeVocab');
+    var logEl = document.getElementById('bpeLog');
+    var formulaEl = document.getElementById('bpeFormula');
+
+    var CORPUS = '医学影像的三维重建需要体素级的传递函数。医学影像的三维重建需要体素级的传递函数。低剂量CT的噪声抑制与迭代重建。三维重建需要传递函数与体素级采样。医学影像的重建管线包括去噪、分割、体绘制与传递函数设计。The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. 1234567890 1234567890 2026-11-18 128K 0.625mm HU -1000 3000.';
+    var MAX_MERGES = 80;
+    var SEP = '\u0000';
+
+    function train(limit) {
+      var seq = Array.from(CORPUS);
+      var out = [];
+      for (var step = 0; step < limit; step++) {
+        var counts = Object.create(null);
+        for (var i = 0; i < seq.length - 1; i++) {
+          var k = seq[i] + SEP + seq[i + 1];
+          counts[k] = (counts[k] || 0) + 1;
+        }
+        var best = null, bestN = 0;
+        Object.keys(counts).forEach(function (k) {
+          var n = counts[k];
+          if (n > bestN || (n === bestN && (best === null || k < best))) {
+            best = k; bestN = n;
+          }
+        });
+        if (!best || bestN < 2) break;
+        var parts = best.split(SEP);
+        out.push({ a: parts[0], b: parts[1], n: bestN });
+        var next = [];
+        var j = 0;
+        while (j < seq.length) {
+          if (j < seq.length - 1 && seq[j] === parts[0] && seq[j + 1] === parts[1]) {
+            next.push(parts[0] + parts[1]); j += 2;
+          } else {
+            next.push(seq[j]); j++;
+          }
+        }
+        seq = next;
+      }
+      return out;
+    }
+
+    var rules = train(MAX_MERGES);
+
+    function tokenize(text, n) {
+      var seq = Array.from(text);
+      for (var r = 0; r < n && r < rules.length; r++) {
+        var a = rules[r].a, b = rules[r].b;
+        var next = [];
+        var i = 0;
+        while (i < seq.length) {
+          if (i < seq.length - 1 && seq[i] === a && seq[i + 1] === b) {
+            next.push(a + b); i += 2;
+          } else {
+            next.push(seq[i]); i++;
+          }
+        }
+        seq = next;
+      }
+      return seq;
+    }
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function render() {
+      var n = +mergeEl.value;
+      var text = textEl.value;
+      var toks = tokenize(text, n);
+      var chars = Array.from(text).length;
+      var vocab = new Set(Array.from(CORPUS)).size + Math.min(n, rules.length);
+
+      mergeV.textContent = n;
+      charsEl.textContent = chars.toLocaleString('en-US');
+      countEl.textContent = toks.length.toLocaleString('en-US');
+      ratioEl.textContent = toks.length ? (chars / toks.length).toFixed(2) : '—';
+      vocabEl.textContent = vocab.toLocaleString('en-US');
+
+      tokensEl.innerHTML = '';
+      if (!toks.length) {
+        var empty = document.createElement('span');
+        empty.className = 'tok empty';
+        empty.textContent = '输入文本后开始分词';
+        tokensEl.appendChild(empty);
+      } else {
+        toks.forEach(function (t) {
+          var s = document.createElement('span');
+          var isSpace = /^\s+$/.test(t);
+          s.className = 'tok' + (isSpace ? ' ws' : '');
+          if (t === '\n') s.textContent = '↵';
+          else if (isSpace) s.textContent = t.replace(/ /g, '␣').replace(/\t/g, '⇥');
+          else s.textContent = t;
+          tokensEl.appendChild(s);
+        });
+      }
+
+      logEl.innerHTML = '';
+      var start = Math.max(0, Math.min(n, rules.length) - 8);
+      for (var i = start; i < Math.min(n, rules.length); i++) {
+        var r = rules[i];
+        var row = document.createElement('div');
+        row.className = 'mrowlog';
+        row.innerHTML = '<span>#' + String(i + 1).padStart(2, '0') + '</span>' +
+          '<code>' + esc(r.a) + '</code><span class="arrow">+</span>' +
+          '<code>' + esc(r.b) + '</code><span class="cnt">×' + r.n + '</span>';
+        logEl.appendChild(row);
+      }
+      if (!logEl.children.length) {
+        logEl.innerHTML = '<div class="mrowlog"><span>—</span><code>合并次数为 0</code><span></span><span></span><span></span></div>';
+      }
+
+      formulaEl.textContent = '应用前 ' + Math.min(n, rules.length) + ' 条合并规则；' +
+        '词表 = 语料唯一字符 ' + new Set(Array.from(CORPUS)).size + ' + 合并 ' + Math.min(n, rules.length) +
+        ' = ' + vocab + '。';
+    }
+
+    var presets = {
+      zh: '医学影像的三维重建需要体素级的传递函数',
+      en: 'The quick brown fox jumps over the lazy dog.',
+      num: 'CT值 -1000 到 3000 HU，层厚 0.625 mm。'
+    };
+
+    [].slice.call(rig.querySelectorAll('[data-bpe-preset]')).forEach(function (b) {
+      b.addEventListener('click', function () {
+        rig.querySelectorAll('[data-bpe-preset]').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        textEl.value = presets[b.getAttribute('data-bpe-preset')] || presets.zh;
+        render();
+      });
+    });
+
+    textEl.addEventListener('input', render);
+    mergeEl.addEventListener('input', render);
+    render();
+  })();
+
+  /* =============== 仪器 B：算力账单 =============== */
+
+  (function () {
+    var rig = document.getElementById('rig-compute');
+    if (!rig) return;
+
+    var pEl = document.getElementById('cParams');
+    var dEl = document.getElementById('cTokens');
+    var mEl = document.getElementById('cMfu');
+    var gEl = document.getElementById('cGpu');
+    var prEl = document.getElementById('cPrice');
+
+    var pV = document.getElementById('cParamsV');
+    var dV = document.getElementById('cTokensV');
+    var mV = document.getElementById('cMfuV');
+    var prV = document.getElementById('cPriceV');
+
+    var flopsEl = document.getElementById('cFlops');
+    var effEl = document.getElementById('cEff');
+    var hoursEl = document.getElementById('cHours');
+    var daysEl = document.getElementById('cDays');
+    var costEl = document.getElementById('cCost');
+    var ratioEl = document.getElementById('cRatio');
+    var chinEl = document.getElementById('cChin');
+    var barD = document.getElementById('cBarD');
+    var barOpt = document.getElementById('cBarOpt');
+    var barDV = document.getElementById('cBarDV');
+    var barOptV = document.getElementById('cBarOptV');
+    var formulaEl = document.getElementById('cFormula');
+
+    function fmt(n, digits) {
+      if (!isFinite(n)) return '—';
+      return n.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+    }
+
+    function sci(n) {
+      if (!isFinite(n) || n <= 0) return '—';
+      var e = Math.floor(Math.log10(n));
+      var m = n / Math.pow(10, e);
+      return m.toFixed(2) + ' × 10<sup>' + e + '</sup>';
+    }
+
+    function render() {
+      var N = +pEl.value;
+      var D = +dEl.value;
+      var mfu = +mEl.value;
+      var peak = +gEl.value;
+      var price = +prEl.value;
+
+      pV.textContent = N + ' B';
+      dV.textContent = D.toFixed(1) + ' T';
+      mV.textContent = mfu + '%';
+      prV.textContent = '$' + price.toFixed(1) + ' / 卡时';
+
+      var flops = 6 * N * 1e9 * D * 1e12;
+      var eff = peak * mfu / 100;
+      var hours = flops / (eff * 1e12 * 3600);
+      var days = hours / 1024 / 24;
+      var cost = hours * price;
+      var ratio = (D * 1e12) / (N * 1e9);
+      var optT = 20 * N / 1000;
+      var chin = optT > 0 ? D / optT : 0;
+
+      flopsEl.innerHTML = sci(flops);
+      effEl.textContent = fmt(eff, 1) + ' TFLOPS';
+      hoursEl.textContent = fmt(hours, 0);
+      daysEl.textContent = fmt(days, 1);
+      costEl.textContent = '$' + fmt(cost, 0);
+      ratioEl.textContent = fmt(ratio, 1);
+      chinEl.textContent = fmt(chin, 2) + '×';
+      chinEl.className = (chin >= 0.5 && chin <= 2) ? 'good' : (chin > 2 ? 'bad' : 'hot');
+
+      var maxD = Math.max(D, optT);
+      barD.style.width = (maxD > 0 ? (D / maxD) * 100 : 0) + '%';
+      barOpt.style.width = (maxD > 0 ? (optT / maxD) * 100 : 0) + '%';
+      barDV.textContent = D.toFixed(1) + ' T';
+      barOptV.textContent = optT.toFixed(1) + ' T';
+
+      formulaEl.innerHTML = 'C = 6 × ' + N + 'B × ' + D.toFixed(1) + 'T = ' + sci(flops) +
+        ' FLOPs<br>GPU·h = C / (' + fmt(eff, 1) + ' TFLOPS × 3600) = ' + fmt(hours, 0) +
+        '；成本 = GPU·h × $' + price.toFixed(1) + ' = $' + fmt(cost, 0);
+    }
+
+    [pEl, dEl, mEl, gEl, prEl].forEach(function (el) {
+      el.addEventListener('input', render);
+      el.addEventListener('change', render);
+    });
+    render();
+  })();
+
+  /* =============== 仪器 C：DPO 损失台 =============== */
+
+  (function () {
+    var rig = document.getElementById('rig-dpo');
+    if (!rig) return;
+
+    var bEl = document.getElementById('dBeta');
+    var wEl = document.getElementById('dWin');
+    var lEl = document.getElementById('dLose');
+    var bV = document.getElementById('dBetaV');
+    var wV = document.getElementById('dWinV');
+    var lV = document.getElementById('dLoseV');
+
+    var marginEl = document.getElementById('dMargin');
+    var zEl = document.getElementById('dZ');
+    var lossEl = document.getElementById('dLoss');
+    var accEl = document.getElementById('dAcc');
+    var gradEl = document.getElementById('dGrad');
+    var formulaEl = document.getElementById('dFormula');
+    var chart = document.getElementById('dpoChart');
+
+    var X0 = 44, X1 = 500, Y0 = 18, Y1 = 190, YMAX = 2.5;
+
+    function sigmoid(z) {
+      if (z >= 0) return 1 / (1 + Math.exp(-z));
+      var e = Math.exp(z);
+      return e / (1 + e);
+    }
+
+    function lossAt(x, beta) {
+      return -Math.log(sigmoid(beta * x));
+    }
+
+    function px(x) { return X0 + ((x + 4) / 8) * (X1 - X0); }
+    function py(y) { return Y1 - Math.min(y, YMAX) / YMAX * (Y1 - Y0); }
+
+    function drawChart(beta, m, loss) {
+      var parts = [];
+      parts.push('<rect x="' + X0 + '" y="' + Y0 + '" width="' + (X1 - X0) + '" height="' + (Y1 - Y0) + '" fill="none"/>');
+      for (var y = 0; y <= YMAX + 0.01; y += 0.5) {
+        var yy = py(y);
+        parts.push('<line x1="' + X0 + '" y1="' + yy.toFixed(1) + '" x2="' + X1 + '" y2="' + yy.toFixed(1) + '" stroke="var(--rule)" stroke-dasharray="3 4"/>');
+        parts.push('<text x="' + (X0 - 6) + '" y="' + (yy + 3.5).toFixed(1) + '" text-anchor="end" font-size="9" class="f-mono" fill="var(--ink-3)">' + y.toFixed(1) + '</text>');
+      }
+      [-4, -2, 0, 2, 4].forEach(function (x) {
+        var xx = px(x);
+        parts.push('<line x1="' + xx.toFixed(1) + '" y1="' + Y0 + '" x2="' + xx.toFixed(1) + '" y2="' + Y1 + '" stroke="var(--rule)" stroke-dasharray="3 4"/>');
+        parts.push('<text x="' + xx.toFixed(1) + '" y="' + (Y1 + 15) + '" text-anchor="middle" font-size="9" class="f-mono" fill="var(--ink-3)">' + (x > 0 ? '+' + x : x) + '</text>');
+      });
+      parts.push('<line x1="' + X0 + '" y1="' + Y1 + '" x2="' + X1 + '" y2="' + Y1 + '" stroke="var(--ink-3)" stroke-width="1.2"/>');
+      parts.push('<line x1="' + X0 + '" y1="' + Y0 + '" x2="' + X0 + '" y2="' + Y1 + '" stroke="var(--ink-3)" stroke-width="1.2"/>');
+      parts.push('<text x="' + ((X0 + X1) / 2) + '" y="' + (Y1 + 30) + '" text-anchor="middle" font-size="10" fill="var(--ink-3)">偏好 margin m</text>');
+      parts.push('<text x="12" y="' + ((Y0 + Y1) / 2) + '" text-anchor="middle" font-size="10" fill="var(--ink-3)" transform="rotate(-90 12 ' + ((Y0 + Y1) / 2) + ')">DPO loss</text>');
+
+      var d = '';
+      for (var i = 0; i <= 120; i++) {
+        var x = -4 + 8 * i / 120;
+        var yv = lossAt(x, beta);
+        d += (i ? 'L' : 'M') + px(x).toFixed(1) + ' ' + py(yv).toFixed(1);
+      }
+      parts.push('<path d="' + d + '" fill="none" stroke="var(--jade)" stroke-width="2.6" stroke-linecap="round"/>');
+      parts.push('<line x1="' + px(0).toFixed(1) + '" y1="' + Y0 + '" x2="' + px(0).toFixed(1) + '" y2="' + Y1 + '" stroke="var(--warn)" stroke-dasharray="4 5" stroke-opacity=".7"/>');
+      parts.push('<text x="' + (px(0) + 5) + '" y="' + (Y0 + 12) + '" font-size="9" class="f-mono" fill="var(--warn-deep)">m = 0 → ln 2</text>');
+
+      if (m >= -4 && m <= 4) {
+        var cx = px(m), cy = py(loss);
+        parts.push('<line x1="' + cx.toFixed(1) + '" y1="' + cy.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + Y1 + '" stroke="var(--jade)" stroke-opacity=".35" stroke-dasharray="3 4"/>');
+        parts.push('<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="5.5" fill="var(--warn)" stroke="var(--panel-2)" stroke-width="2"/>');
+      }
+      chart.innerHTML = parts.join('');
+    }
+
+    function render() {
+      var beta = +bEl.value;
+      var w = +wEl.value;
+      var l = +lEl.value;
+      var m = w - l;
+      var z = beta * m;
+      var loss = -Math.log(sigmoid(z));
+      var acc = sigmoid(z);
+      var grad = beta * (1 - acc);
+
+      bV.textContent = beta.toFixed(2);
+      wV.textContent = (w >= 0 ? '+' : '') + w.toFixed(1);
+      lV.textContent = (l >= 0 ? '+' : '') + l.toFixed(1);
+
+      marginEl.textContent = (m >= 0 ? '+' : '') + m.toFixed(1);
+      zEl.textContent = (z >= 0 ? '+' : '') + z.toFixed(2);
+      lossEl.textContent = loss.toFixed(3);
+      accEl.textContent = (acc * 100).toFixed(1) + '%';
+      gradEl.textContent = grad.toFixed(3);
+
+      if (Math.abs(m) < 0.001) {
+        formulaEl.textContent = 'm = 0 时 σ(0) = 0.5，loss = −ln 0.5 = ln 2 ≈ 0.693。';
+      } else {
+        formulaEl.textContent = 'βm = ' + beta.toFixed(2) + ' × ' + m.toFixed(1) + ' = ' + z.toFixed(2) +
+          '；loss = −ln σ(' + z.toFixed(2) + ') = ' + loss.toFixed(3) +
+          '；梯度幅值 = β(1−σ) = ' + grad.toFixed(3) + '。';
+      }
+
+      drawChart(beta, m, loss);
+    }
+
+    [bEl, wEl, lEl].forEach(function (el) { el.addEventListener('input', render); });
+    render();
+  })();
+
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM2I1ZDc4IiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzLjgiIHk9IjMuMiIgd2lkdGg9IjEyLjQiIGhlaWdodD0iMTcuMiIgcng9IjIiLz48cGF0aCBkPSJNNi44IDcuNmg2LjRNNi44IDExaDYuNE02LjggMTQuNGgzLjYiLz48Y2lyY2xlIGN4PSIxNyIgY3k9IjE3LjIiIHI9IjMuOSIvPjxwYXRoIGQ9Im0xNS40IDE3LjMgMS4xIDEuMSAyLTIuMyIvPjwvZz48L3N2Zz4=";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTNhN2UwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzLjgiIHk9IjMuMiIgd2lkdGg9IjEyLjQiIGhlaWdodD0iMTcuMiIgcng9IjIiLz48cGF0aCBkPSJNNi44IDcuNmg2LjRNNi44IDExaDYuNE02LjggMTQuNGgzLjYiLz48Y2lyY2xlIGN4PSIxNyIgY3k9IjE3LjIiIHI9IjMuOSIvPjxwYXRoIGQ9Im0xNS40IDE3LjMgMS4xIDEuMSAyLTIuMyIvPjwvZz48L3N2Zz4=";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

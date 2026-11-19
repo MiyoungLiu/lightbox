@@ -1,0 +1,3330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>神经网络全景 · 从单个神经元到 Transformer</title>
+<meta name="description" content="写给零基础读者的神经网络讲义：一个神经元在算什么、损失怎么定义、训练为什么是沿梯度下山、架构为什么一代代换。含一个可操作的梯度下降仪表和四段手算。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="神经网络全景 · 从单个神经元到 Transformer">
+<meta property="og:description" content="写给零基础读者的神经网络讲义：一个神经元在算什么、损失怎么定义、训练为什么是沿梯度下山、架构为什么一代代换。含一个可操作的梯度下降仪表和四段手算。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/neural-network-overview.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/neural-network-overview.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+/* ============================================================
+   设计系统
+   母题：标尺 / 坐标轴。颜色只承担语义，不承担装饰。
+   字体双轨：等宽承载结构骨架，无衬线承载阅读。
+   圆角规则：内容块一律直角，只有交互控件用 2px。
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --paper:  #fcfcfb;
+  --panel:  #f5f5f3;
+  --panel2: #ececea;
+
+  --ink:  #15171a;
+  --ink2: #545a63;
+  --ink3: #868d96;
+
+  --rule:  #e3e4e2;
+  --rule2: #c8cac6;
+
+  --insight: #0f6b5e;
+  --warn:    #974a06;
+  --fail:    #a81f14;
+  --ok:      #186635;
+  --mark:    #dbeee8;
+
+  --sans: "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+
+  --r: 2px;
+  --width: 720px;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --paper:  #101113;
+  --panel:  #17191c;
+  --panel2: #1e2124;
+
+  --ink:  #e6e5e2;
+  --ink2: #a3a7ad;
+  --ink3: #71767d;
+
+  --rule:  #262a2e;
+  --rule2: #3a4046;
+
+  --insight: #5ecfc2;
+  --warn:    #e8a33d;
+  --fail:    #f0736a;
+  --ok:      #6cc48a;
+  --mark:    #12332d;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:  #101113;
+    --panel:  #17191c;
+    --panel2: #1e2124;
+
+    --ink:  #e6e5e2;
+    --ink2: #a3a7ad;
+    --ink3: #71767d;
+
+    --rule:  #262a2e;
+    --rule2: #3a4046;
+
+    --insight: #5ecfc2;
+    --warn:    #e8a33d;
+    --fail:    #f0736a;
+    --ok:      #6cc48a;
+    --mark:    #12332d;
+
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.9;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+::selection { background: var(--mark); color: var(--ink); }
+
+:focus-visible {
+  outline: 2px solid var(--insight);
+  outline-offset: 2px;
+  border-radius: var(--r);
+}
+
+/* ---------- 骨架 ---------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  align-items: start;
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 48px 24px 32px 28px;
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.rail-home {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: .02em;
+  color: var(--ink);
+  text-decoration: none;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.rail-home:hover { color: var(--insight); }
+
+.rail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail a {
+  display: block;
+  padding: 5px 0 5px 12px;
+  border-left: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink2);
+  text-decoration: none;
+  transition: color .15s, border-color .15s;
+}
+.rail a:hover { color: var(--ink); border-left-color: var(--rule2); }
+.rail a[aria-current="true"] {
+  color: var(--ink);
+  border-left-color: var(--ink);
+  font-weight: 600;
+}
+
+.rail-foot { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--rule); }
+
+.theme-btn {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink2);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 5px 9px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color .15s, color .15s;
+}
+.theme-btn:hover { color: var(--ink); border-color: var(--rule2); }
+.theme-btn:active { transform: translateY(1px); }
+
+.doc { padding: 72px 48px 140px; min-width: 0; }
+.doc-inner { max-width: var(--width); margin: 0 auto; position: relative; }
+
+@media (min-width: 1280px) {
+  .doc-inner::before {
+    content: "";
+    position: absolute;
+    left: -30px;
+    top: 4px;
+    bottom: 0;
+    width: 1px;
+    background: var(--rule);
+  }
+}
+
+@media (max-width: 1080px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .rail {
+    position: sticky;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: var(--paper);
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    z-index: 10;
+    overflow: hidden;
+  }
+  .rail-home { border-bottom: 0; padding-bottom: 0; white-space: nowrap; flex: 0 0 auto; }
+  .rail nav { flex: 1 1 auto; min-width: 0; }
+  .rail ol {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: row;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .rail ol::-webkit-scrollbar { display: none; }
+  .rail a {
+    white-space: nowrap;
+    border-left: 0;
+    border-bottom: 1px solid transparent;
+    padding: 4px 11px;
+  }
+  .rail a[aria-current="true"] { border-left: 0; border-bottom-color: var(--ink); }
+  .rail-foot { margin: 0; padding: 0; border: 0; flex: 0 0 auto; }
+  .theme-btn { width: auto; white-space: nowrap; }
+  .doc { padding: 44px 24px 100px; }
+  .doc-inner::before { display: none; }
+}
+
+@media (max-width: 720px) {
+  .rail-home { font-size: 12px; }
+  .rail-foot .theme-btn { font-size: 11.5px; padding: 4px 7px; }
+}
+
+/* ---------- 排版 ---------- */
+
+p { margin: 0 0 18px; max-width: 42em; }
+
+a { color: var(--ink); text-decoration-color: var(--rule2); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--ink); }
+
+strong { font-weight: 600; }
+
+code, .mono { font-family: var(--mono); font-size: .88em; }
+
+/* 行内数学量走等宽字体，与正文的无衬线形成双轨 */
+.var { font-family: var(--mono); font-size: .92em; white-space: nowrap; }
+
+p code, li code, td code {
+  background: var(--panel);
+  padding: 1px 5px;
+  border-radius: var(--r);
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+/* ---------- 开篇 ---------- */
+
+.lede { padding-bottom: 56px; border-bottom: 1px solid var(--rule); }
+
+.lede h1 {
+  margin: 0 0 20px;
+  font-size: 34px;
+  line-height: 1.28;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  max-width: 20em;
+}
+
+.lede .standfirst {
+  font-size: 18.5px;
+  line-height: 1.8;
+  color: var(--ink2);
+  max-width: 34em;
+  margin-bottom: 32px;
+}
+
+.premise {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink3);
+  margin: 0 0 36px;
+  max-width: 44em;
+}
+
+.threemin { border-top: 1px solid var(--rule); padding-top: 24px; }
+
+.threemin > h2 {
+  margin: 0 0 16px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: .04em;
+  font-weight: 500;
+  color: var(--ink3);
+  text-transform: none;
+}
+
+.threemin ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: tm;
+  display: grid;
+  gap: 12px;
+}
+
+.threemin li {
+  counter-increment: tm;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.threemin li::before {
+  content: counter(tm);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  padding-top: 4px;
+  text-align: right;
+}
+
+/* ---------- 章节 ---------- */
+
+section { padding-top: 72px; scroll-margin-top: 24px; }
+
+.sec-head { margin-bottom: 28px; }
+
+.sec-head .rule {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 1px;
+  background: var(--rule2);
+  margin-bottom: 18px;
+}
+.sec-head .rule::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  background: var(--ink2);
+}
+
+.sec-head h2 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+
+.sec-head .q {
+  margin: 8px 0 0;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--ink2);
+  max-width: 40em;
+}
+
+h3 {
+  margin: 44px 0 14px;
+  font-size: 19px;
+  line-height: 1.55;
+  font-weight: 600;
+  scroll-margin-top: 24px;
+}
+
+h3 .en {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink3);
+  margin-left: 8px;
+  letter-spacing: .01em;
+}
+
+h4 {
+  margin: 28px 0 10px;
+  font-size: 15.5px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+ul, ol { margin: 0 0 20px; padding-left: 22px; max-width: 42em; }
+li { margin-bottom: 8px; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 40px 0;
+}
+
+/* ---------- 公式 ---------- */
+
+.formula {
+  display: block;
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 2;
+  padding: 16px 18px;
+  margin: 0 0 20px;
+  background: var(--panel);
+  border-left: 2px solid var(--rule2);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.formula .lbl {
+  color: var(--ink3);
+  font-size: 13px;
+}
+
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  font-size: .92em;
+  line-height: 1.15;
+  margin: 0 2px;
+  text-align: center;
+}
+.frac > span:first-child {
+  display: block;
+  padding: 0 5px 2px;
+  border-bottom: 1px solid currentColor;
+}
+.frac > span:last-child { display: block; padding: 2px 5px 0; }
+
+/* ---------- 手算块 ---------- */
+
+.calc {
+  margin: 0 0 24px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  overflow-x: auto;
+}
+
+.calc figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: baseline;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+.calc figcaption .t { color: var(--ink); font-weight: 600; }
+
+.calc table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.calc td {
+  padding: 3px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+  font-size: 13.5px;
+}
+
+.calc tr:last-child td { border-bottom: 0; }
+
+.calc td.n {
+  width: 42px;
+  text-align: right;
+  color: var(--ink3);
+  font-size: 12px;
+  padding-right: 10px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.calc td.f { color: var(--ink); }
+
+.calc td.note {
+  width: 34%;
+  white-space: normal;
+  color: var(--ink3);
+  font-size: 12px;
+  line-height: 1.6;
+  border-left: 1px solid var(--rule);
+  padding-left: 14px;
+}
+
+.calc tr.sep td {
+  border-bottom: 1px solid var(--rule2);
+  padding-top: 12px;
+  padding-bottom: 8px;
+  color: var(--ink2);
+  font-size: 12px;
+}
+.calc tr.sep td.n { color: transparent; }
+
+.calc tr.hl td.f,
+.calc tr.hl td.note { background: var(--mark); }
+.calc tr.hl td.n { background: var(--mark); color: var(--ink2); }
+.calc tr.hl td.note { color: var(--ink2); }
+
+@media (max-width: 768px) {
+  .calc table { font-size: 13px; }
+  .calc td { padding: 3px 9px; }
+  .calc td.note { width: 40%; font-size: 11.5px; }
+}
+
+/* ---------- 提示条 ---------- */
+
+.note-box {
+  margin: 0 0 24px;
+  padding: 16px 18px;
+  border-left: 2px solid var(--rule2);
+  background: var(--panel);
+  font-size: 16px;
+  line-height: 1.8;
+}
+.note-box > :last-child { margin-bottom: 0; }
+.note-box .tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .03em;
+  margin-bottom: 6px;
+  color: var(--ink3);
+}
+
+.note-box.insight { border-left-color: var(--insight); }
+.note-box.insight .tag { color: var(--insight); }
+
+.note-box.pitfall { border-left-color: var(--warn); }
+.note-box.pitfall .tag { color: var(--warn); }
+
+/* ---------- 图 ---------- */
+
+figure.fig {
+  margin: 0 0 28px;
+  border: 1px solid var(--rule);
+  padding: 18px 18px 14px;
+  background: var(--paper);
+  overflow-x: auto;
+}
+
+figure.fig svg { display: block; width: 100%; height: auto; max-width: 100%; }
+
+figure.fig figcaption {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink3);
+}
+
+svg text {
+  font-family: var(--mono);
+  fill: var(--ink3);
+  font-size: 9px;
+}
+svg text.lbl { fill: var(--ink2); font-size: 10px; }
+svg text.klbl { fill: var(--ink); font-size: 10px; font-weight: 600; }
+
+/* ---------- 表格 ---------- */
+
+.table-wrap { overflow-x: auto; margin: 0 0 24px; }
+
+table.grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+table.grid th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink2);
+  padding: 8px 14px 8px 0;
+  border-bottom: 1px solid var(--rule2);
+  white-space: nowrap;
+}
+
+table.grid td {
+  padding: 9px 14px 9px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+table.grid td:last-child, table.grid th:last-child { padding-right: 0; }
+
+table.grid .num { font-family: var(--mono); white-space: nowrap; }
+
+table.grid tr:last-child td { border-bottom: 0; }
+
+/* ---------- 梯度仪表 ---------- */
+
+.rig {
+  margin: 0 0 28px;
+  border: 1px solid var(--rule2);
+  background: var(--panel);
+}
+
+.rig-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 138px;
+  border-bottom: 1px solid var(--rule);
+}
+
+@media (max-width: 720px) {
+  .rig-top { grid-template-columns: 1fr; }
+}
+
+.rig-canvas { padding: 14px 10px 6px 6px; min-width: 0; }
+
+#gauge { display: block; width: 100%; height: 356px; }
+
+@media (max-width: 560px) {
+  #gauge { height: 300px; }
+}
+
+.rig-read {
+  border-left: 1px solid var(--rule);
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 720px) {
+  .rig-read {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 16px;
+    padding: 10px 14px;
+  }
+  .rr { padding: 3px 0; min-width: 0; }
+  .rr-state { grid-column: 1 / -1; }
+}
+
+.rr {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.rr-k { color: var(--ink3); font-size: 11.5px; }
+.rr-v { color: var(--ink); text-align: right; }
+.rr-state .rr-v { font-family: var(--sans); font-size: 12.5px; }
+.rr-state[data-s="diverge"] .rr-v { color: var(--fail); font-weight: 600; }
+.rr-state[data-s="diverged"] .rr-v { color: var(--fail); font-weight: 600; }
+.rr-state[data-s="unstable"] .rr-v { color: var(--warn); font-weight: 600; }
+.rr-state[data-s="settled"] .rr-v { color: var(--ok); }
+.rr-state[data-s="running"] .rr-v { color: var(--insight); }
+
+.rig-ctl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+@media (max-width: 720px) {
+  .rig-ctl { grid-template-columns: 1fr; }
+}
+
+.ctl { padding: 16px 18px; border-right: 1px solid var(--rule); }
+
+@media (max-width: 720px) {
+  .ctl { border-right: 0; border-bottom: 1px solid var(--rule); }
+}
+
+.ctl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.ctl-head label {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+
+.ctl-val {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.ctl-hint {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink2);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ctl-hint .warnzone { color: var(--fail); }
+
+/* 自绘刻度标尺 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  display: block;
+  margin: 0;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border: 1px solid var(--rule2);
+  background-image: repeating-linear-gradient(90deg, var(--rule2) 0 .5px, transparent .5px 100%);
+  background-size: 7.2% 100%;
+  background-repeat: repeat-x;
+  background-position: left center;
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border: 1px solid var(--rule2);
+  background-image: repeating-linear-gradient(90deg, var(--rule2) 0 .5px, transparent .5px 100%);
+  background-size: 7.2% 100%;
+  background-repeat: repeat-x;
+  background-position: left center;
+}
+
+/* 学习率标尺：右上三分之一标成会发散的区间 */
+#lr::-webkit-slider-runnable-track {
+  background-image:
+    linear-gradient(90deg, rgba(168,31,20,.14), rgba(168,31,20,.14)),
+    repeating-linear-gradient(90deg, var(--rule2) 0 .5px, transparent .5px 100%);
+  background-size: 33.4% 100%, 7.2% 100%;
+  background-repeat: no-repeat, repeat-x;
+  background-position: right center, left center;
+}
+#lr::-moz-range-track {
+  background-image:
+    linear-gradient(90deg, rgba(168,31,20,.14), rgba(168,31,20,.14)),
+    repeating-linear-gradient(90deg, var(--rule2) 0 .5px, transparent .5px 100%);
+  background-size: 33.4% 100%, 7.2% 100%;
+  background-repeat: no-repeat, repeat-x;
+  background-position: right center, left center;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 4px;
+  height: 20px;
+  margin-top: -7px;
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  cursor: ew-resize;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 4px;
+  height: 20px;
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  cursor: ew-resize;
+}
+
+.rig-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.btn {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--rule2);
+  border-radius: var(--r);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.btn:hover { background: var(--panel2); }
+.btn:active { transform: translateY(1px); }
+.btn[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.rig-caption {
+  margin: 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink3);
+  background: var(--paper);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- 代码 ---------- */
+
+pre.code {
+  margin: 0 0 24px;
+  padding: 18px;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink);
+  tab-size: 4;
+}
+pre.code .c { color: var(--ink3); }
+pre.code .k { color: var(--insight); }
+
+/* ---------- 术语索引 ---------- */
+
+.index-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 8px;
+}
+
+.index-tools input[type="search"] {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 7px 11px;
+  border: 1px solid var(--rule2);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+.index-tools input[type="search"]::placeholder { color: var(--ink3); }
+
+.chip {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 5px 11px;
+  border: 1px solid var(--rule2);
+  border-radius: var(--r);
+  background: var(--paper);
+  color: var(--ink2);
+  cursor: pointer;
+}
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.index-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  margin: 0 0 20px;
+}
+
+dl.index { margin: 0; }
+
+dl.index .grp { margin: 0 0 28px; }
+
+dl.index dt {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .03em;
+  color: var(--ink3);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule2);
+  margin-bottom: 2px;
+}
+
+dl.index dd {
+  display: grid;
+  grid-template-columns: 152px 106px minmax(0, 1fr);
+  gap: 0 14px;
+  align-items: baseline;
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+dl.index dd .en {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink3);
+  text-align: right;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+dl.index dd .zh { font-weight: 600; color: var(--ink); }
+dl.index dd .def { color: var(--ink2); }
+
+dl.index dd[hidden] { display: none; }
+dl.index .grp[hidden] { display: none; }
+
+.index-empty {
+  padding: 24px 0;
+  font-size: 15px;
+  color: var(--ink3);
+  border-top: 1px solid var(--rule);
+}
+
+@media (max-width: 640px) {
+  dl.index dd {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 10px 0;
+  }
+  dl.index dd .en { text-align: left; order: 2; }
+  dl.index dd .zh { order: 1; }
+  dl.index dd .def { order: 3; }
+}
+
+/* ---------- 误区 ---------- */
+
+ol.misread { counter-reset: mr; list-style: none; padding: 0; margin: 0 0 24px; max-width: 46em; }
+
+ol.misread li {
+  counter-increment: mr;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  margin: 0;
+}
+ol.misread li::before {
+  content: counter(mr);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  padding-top: 5px;
+}
+ol.misread strong { display: block; margin-bottom: 4px; }
+ol.misread p { margin: 0; font-size: 15.5px; color: var(--ink2); }
+
+/* ---------- 页脚 ---------- */
+
+footer {
+  margin-top: 80px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule2);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.9;
+  color: var(--ink3);
+}
+footer p { margin: 0 0 6px; max-width: none; }
+
+/* ---------- 打印 ---------- */
+
+@media print {
+  .rail { display: none; }
+  .shell { grid-template-columns: 1fr; }
+  .doc { padding: 0; }
+  body { font-size: 11pt; background: #fff; color: #000; }
+  .rig, .calc, figure.fig, pre.code { break-inside: avoid; }
+  .rig-btns, .index-tools, .theme-btn { display: none; }
+  section { padding-top: 32pt; }
+  a { text-decoration: none; color: #000; }
+}
+
+/* ============================================================
+   视觉层 v2
+   渐变（环境光）/ 毛玻璃（导航）/ 粒子（神经网络节点）/
+   黏液（metaball 拖尾）/ 聚光灯（指针）/ 拟物（仪表外壳）/ 颗粒
+   ============================================================ */
+
+/* ---------- 主题令牌 ---------- */
+
+:root {
+  --accent: #4fd8c4;
+  --accent-2: #8fb7ff;
+  --accent-3: #c5a8ff;
+
+  --aurora-1: rgba(42, 76, 168, .52);
+  --aurora-2: rgba(12, 96, 88, .46);
+  --aurora-3: rgba(92, 54, 138, .34);
+
+  --chrome-1: #2c3644;
+  --chrome-2: #19212b;
+  --chrome-3: #0a0f15;
+  --chrome-text: #dde5ee;
+
+  --metal-hi: rgba(255, 255, 255, .13);
+  --metal-lo: rgba(0, 0, 0, .72);
+
+  --well: #070b10;
+  --well-line: rgba(255, 255, 255, .06);
+
+  --glass: rgba(12, 17, 24, .55);
+  --glass-line: rgba(255, 255, 255, .09);
+
+  --torch: rgba(150, 200, 255, .07);
+  --screen-bg: #05080c;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --accent: #0c6f64;
+    --accent-2: #2b5cc9;
+    --accent-3: #6f43bb;
+
+    --aurora-1: rgba(110, 152, 255, .30);
+    --aurora-2: rgba(74, 190, 175, .24);
+    --aurora-3: rgba(178, 138, 250, .20);
+
+    --chrome-1: #ffffff;
+    --chrome-2: #e2e8ef;
+    --chrome-3: #b6c0cc;
+    --chrome-text: #182029;
+
+    --metal-hi: rgba(255, 255, 255, .95);
+    --metal-lo: rgba(20, 32, 46, .18);
+
+    --well: #e9edf2;
+    --well-line: rgba(20, 32, 46, .08);
+
+    --glass: rgba(255, 255, 255, .58);
+    --glass-line: rgba(20, 32, 46, .08);
+
+    --torch: rgba(255, 255, 255, .75);
+    --screen-bg: #eef2f7;
+  }
+}
+
+[data-theme="light"] {
+  --accent: #0c6f64;
+  --accent-2: #2b5cc9;
+  --accent-3: #6f43bb;
+
+  --aurora-1: rgba(110, 152, 255, .30);
+  --aurora-2: rgba(74, 190, 175, .24);
+  --aurora-3: rgba(178, 138, 250, .20);
+
+  --chrome-1: #ffffff;
+  --chrome-2: #e2e8ef;
+  --chrome-3: #b6c0cc;
+  --chrome-text: #182029;
+
+  --metal-hi: rgba(255, 255, 255, .95);
+  --metal-lo: rgba(20, 32, 46, .18);
+
+  --well: #e9edf2;
+  --well-line: rgba(20, 32, 46, .08);
+
+  --glass: rgba(255, 255, 255, .58);
+  --glass-line: rgba(20, 32, 46, .08);
+
+  --torch: rgba(255, 255, 255, .75);
+  --screen-bg: #eef2f7;
+}
+
+/* ---------- 1. 环境光：极光渐变 + 颗粒 ---------- */
+
+body { background: transparent; }
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--paper);
+}
+
+.shell { position: relative; z-index: 1; }
+
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.bg-blob.b1 {
+  width: 78vw; height: 78vw;
+  left: -22vw; top: -30vw;
+  background: radial-gradient(closest-side, var(--aurora-1), transparent 72%);
+  animation: drift1 54s ease-in-out infinite alternate;
+}
+.bg-blob.b2 {
+  width: 64vw; height: 64vw;
+  right: -20vw; top: 8vw;
+  background: radial-gradient(closest-side, var(--aurora-2), transparent 72%);
+  animation: drift2 68s ease-in-out infinite alternate;
+}
+.bg-blob.b3 {
+  width: 70vw; height: 70vw;
+  left: 18vw; bottom: -34vw;
+  background: radial-gradient(closest-side, var(--aurora-3), transparent 72%);
+  animation: drift3 80s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(6vw, 4vw, 0) scale(1.12); }
+}
+@keyframes drift2 {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to   { transform: translate3d(-5vw, 7vw, 0) scale(1); }
+}
+@keyframes drift3 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-7vw, -5vw, 0) scale(1.14); }
+}
+
+.bg-noise {
+  position: absolute;
+  inset: 0;
+  opacity: .038;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* 指针跟随的柔光，靠 transform 走合成层 */
+.bg-torch {
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  left: -280px;
+  top: -280px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--torch), transparent 70%);
+  transform: translate3d(50vw, 24vh, 0);
+  will-change: transform;
+  opacity: 0;
+  transition: opacity .5s ease;
+}
+@media (pointer: fine) {
+  .bg-torch { opacity: 1; }
+}
+
+/* ---------- 2. 毛玻璃导航 ---------- */
+
+.rail {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  backdrop-filter: blur(22px) saturate(165%);
+  border-right: 1px solid var(--glass-line);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, .035);
+}
+
+.rail a {
+  border-radius: 0 5px 5px 0;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.rail a:hover { background: rgba(127, 127, 127, .07); }
+.rail a[aria-current="true"] {
+  background: linear-gradient(90deg, rgba(79, 216, 196, .13), transparent 85%);
+}
+
+.theme-btn {
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--chrome-1), var(--chrome-2));
+  border: 1px solid var(--chrome-3);
+  color: var(--chrome-text);
+  box-shadow: inset 0 1px 0 var(--metal-hi), 0 1px 2px var(--metal-lo);
+}
+.theme-btn:hover { color: var(--chrome-text); filter: brightness(1.08); }
+.theme-btn:active { transform: translateY(1px); box-shadow: inset 0 1px 3px var(--metal-lo); }
+
+@media (max-width: 1080px) {
+  .rail {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(22px) saturate(165%);
+    backdrop-filter: blur(22px) saturate(165%);
+    border-bottom: 1px solid var(--glass-line);
+  }
+}
+
+/* ---------- 3. 标题渐变与章节刻度 ---------- */
+
+.lede h1 { position: relative; }
+
+.lede h1 .grad {
+  background: linear-gradient(102deg, var(--accent) 0%, var(--accent-2) 58%, var(--accent-3) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* 渐变文字在有背景裁剪时需要一点描边感来保住笔画 */
+  -webkit-text-fill-color: transparent;
+}
+
+.sec-head .rule {
+  height: 2px;
+  width: 64px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), rgba(79, 216, 196, 0) 92%);
+  box-shadow: 0 0 10px rgba(79, 216, 196, .35);
+}
+.sec-head .rule::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 9px 2px rgba(79, 216, 196, .55);
+}
+
+/* ---------- 4. 首屏粒子：神经网络节点 ---------- */
+
+.lede { position: relative; }
+
+.field {
+  position: absolute;
+  left: -48px;
+  right: -48px;
+  top: -40px;
+  width: calc(100% + 96px);
+  height: 420px;
+  pointer-events: none;
+  opacity: .72;
+  z-index: 0;
+  -webkit-mask-image: radial-gradient(120% 90% at 40% 30%, #000 30%, transparent 78%);
+  mask-image: radial-gradient(120% 90% at 40% 30%, #000 30%, transparent 78%);
+}
+
+.lede > *:not(.field) { position: relative; z-index: 1; }
+
+/* ---------- 5. 拟物仪表 ---------- */
+
+.rig {
+  position: relative;
+  border: 1px solid var(--chrome-3);
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, .014) 0 1px,
+      rgba(0, 0, 0, .014) 1px 3px),
+    linear-gradient(178deg, var(--chrome-1) 0%, var(--chrome-2) 42%, var(--chrome-3) 100%);
+  box-shadow:
+    inset 0 1px 0 var(--metal-hi),
+    inset 0 -1px 0 rgba(0, 0, 0, .5),
+    0 2px 4px rgba(0, 0, 0, .45),
+    0 26px 60px -24px rgba(0, 0, 0, .9);
+  overflow: hidden;
+}
+
+/* 面板上的聚光灯 */
+.rig::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(170px circle at var(--mx, 50%) var(--my, 0%),
+    rgba(255, 255, 255, .15), transparent 70%);
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+.rig:hover::before { opacity: 1; }
+
+.rig-canvas {
+  padding: 12px 12px 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.screen {
+  position: relative;
+  border-radius: 9px;
+  background:
+    radial-gradient(140% 120% at 50% 0%, rgba(79, 216, 196, .06), transparent 55%),
+    var(--screen-bg);
+  box-shadow:
+    inset 0 3px 9px rgba(0, 0, 0, .55),
+    inset 0 0 0 1px var(--well-line),
+    0 1px 0 var(--metal-hi);
+  overflow: hidden;
+}
+
+.screen::after {
+  /* 屏幕玻璃的一层斜向高光 */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(158deg, rgba(255, 255, 255, .07) 0%, transparent 34%);
+}
+
+#gauge { position: relative; display: block; width: 100%; height: 356px; }
+
+html[data-theme="light"] .screen {
+  box-shadow:
+    inset 0 3px 9px rgba(20, 32, 46, .16),
+    inset 0 0 0 1px var(--well-line),
+    0 1px 0 rgba(255, 255, 255, .9);
+}
+
+.rig-read {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .16), transparent 18%);
+  border-left: 1px solid rgba(0, 0, 0, .45);
+  box-shadow: inset 1px 0 0 var(--metal-hi);
+}
+
+.rr { font-variant-numeric: tabular-nums; }
+.rr-v { color: var(--ink); text-shadow: 0 0 12px rgba(127, 127, 127, .16); }
+
+/* 状态 LED */
+.ledwrap { display: inline-flex; align-items: center; gap: 7px; }
+
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3a444f;
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, .9), 0 0 0 1px rgba(0, 0, 0, .4);
+  flex: 0 0 auto;
+}
+.led[data-s="running"] {
+  background: var(--accent);
+  box-shadow: 0 0 9px 2px rgba(79, 216, 196, .75), inset 0 0 2px rgba(255, 255, 255, .8);
+  animation: ledPulse 1.5s ease-in-out infinite;
+}
+.led[data-s="unstable"] {
+  background: #f0b34a;
+  box-shadow: 0 0 9px 2px rgba(240, 179, 74, .7), inset 0 0 2px rgba(255, 255, 255, .7);
+}
+.led[data-s="settled"] {
+  background: #63c98d;
+  box-shadow: 0 0 9px 2px rgba(99, 201, 141, .65), inset 0 0 2px rgba(255, 255, 255, .7);
+}
+.led[data-s="diverged"] {
+  background: #f2606b;
+  box-shadow: 0 0 12px 3px rgba(242, 96, 107, .8), inset 0 0 2px rgba(255, 255, 255, .7);
+  animation: ledPulse 1s ease-in-out infinite;
+}
+
+@keyframes ledPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+/* 控制区：凹槽 */
+.rig-ctl { border-top: 1px solid rgba(0, 0, 0, .5); box-shadow: inset 0 1px 0 var(--metal-hi); }
+.ctl { border-right: 1px solid rgba(0, 0, 0, .45); box-shadow: inset -1px 0 0 var(--metal-hi); }
+
+.ctl-head label,
+.ctl-head .ctl-val {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .55), 0 -1px 0 rgba(255, 255, 255, .10);
+}
+html[data-theme="light"] .ctl-head label,
+html[data-theme="light"] .ctl-head .ctl-val {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .9), 0 -1px 0 rgba(20, 32, 46, .10);
+}
+
+/* 滑轨：内凹槽 + 金属推子 */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px;
+  border: 1px solid rgba(0, 0, 0, .55);
+  border-radius: 6px;
+  background-color: var(--well);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .09);
+}
+input[type="range"]::-moz-range-track {
+  height: 10px;
+  border: 1px solid rgba(0, 0, 0, .55);
+  border-radius: 6px;
+  background-color: var(--well);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .09);
+}
+
+#lr::-webkit-slider-runnable-track {
+  background-image:
+    linear-gradient(90deg, rgba(242, 96, 107, .22), rgba(242, 96, 107, .22)),
+    repeating-linear-gradient(90deg, var(--well-line) 0 1px, transparent 1px 100%);
+  background-size: 33.4% 100%, 7.2% 100%;
+  background-repeat: no-repeat, repeat-x;
+  background-position: right center, left center;
+  background-color: var(--well);
+}
+#lr::-moz-range-track {
+  background-image:
+    linear-gradient(90deg, rgba(242, 96, 107, .22), rgba(242, 96, 107, .22)),
+    repeating-linear-gradient(90deg, var(--well-line) 0 1px, transparent 1px 100%);
+  background-size: 33.4% 100%, 7.2% 100%;
+  background-repeat: no-repeat, repeat-x;
+  background-position: right center, left center;
+  background-color: var(--well);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 26px;
+  margin-top: -9px;
+  border: 1px solid rgba(0, 0, 0, .7);
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, transparent 45%, rgba(0, 0, 0, .45) 45%, rgba(0, 0, 0, .45) 55%, transparent 55%),
+    linear-gradient(180deg, var(--chrome-1) 0%, var(--chrome-2) 55%, var(--chrome-3) 100%);
+  box-shadow:
+    inset 0 1px 0 var(--metal-hi),
+    inset 0 -1px 0 rgba(0, 0, 0, .5),
+    0 2px 5px rgba(0, 0, 0, .65);
+  cursor: ew-resize;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 26px;
+  border: 1px solid rgba(0, 0, 0, .7);
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, transparent 45%, rgba(0, 0, 0, .45) 45%, rgba(0, 0, 0, .45) 55%, transparent 55%),
+    linear-gradient(180deg, var(--chrome-1) 0%, var(--chrome-2) 55%, var(--chrome-3) 100%);
+  box-shadow:
+    inset 0 1px 0 var(--metal-hi),
+    inset 0 -1px 0 rgba(0, 0, 0, .5),
+    0 2px 5px rgba(0, 0, 0, .65);
+  cursor: ew-resize;
+}
+
+/* 按键 */
+.rig-btns {
+  border-top: 1px solid rgba(0, 0, 0, .5);
+  background: linear-gradient(180deg, rgba(0, 0, 0, .1), transparent);
+  box-shadow: inset 0 1px 0 var(--metal-hi);
+}
+
+.btn {
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--chrome-1), var(--chrome-2));
+  border: 1px solid var(--chrome-3);
+  color: var(--chrome-text);
+  box-shadow:
+    inset 0 1px 0 var(--metal-hi),
+    inset 0 -1px 0 rgba(0, 0, 0, .35),
+    0 2px 0 var(--chrome-3),
+    0 4px 9px rgba(0, 0, 0, .42);
+  transition: transform .07s ease, box-shadow .07s ease, filter .15s;
+}
+.btn:hover { background: linear-gradient(180deg, var(--chrome-1), var(--chrome-2)); filter: brightness(1.09); }
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6), 0 0 0 var(--chrome-3);
+}
+.btn[aria-pressed="true"] {
+  background: linear-gradient(180deg, #1d6f66, #12463f);
+  border-color: #0a2c28;
+  color: #e2fdf7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    inset 0 0 18px rgba(79, 216, 196, .35),
+    0 0 16px -2px rgba(79, 216, 196, .45);
+}
+html[data-theme="light"] .btn[aria-pressed="true"] {
+  background: linear-gradient(180deg, #17907f, #0f6f62);
+  color: #f0fffb;
+}
+
+.rig-caption {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(0, 0, 0, .45);
+  box-shadow: inset 0 1px 0 var(--metal-hi);
+  background: transparent;
+  color: var(--ink2);
+}
+
+/* ---------- 6. 黏液层 ---------- */
+
+.goo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  color: var(--accent);
+  z-index: 2;
+}
+
+/* ---------- 7. 手算块与索引 ---------- */
+
+.calc {
+  border-radius: 10px;
+  border-color: var(--rule);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .028), transparent 40%),
+    var(--panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    0 1px 3px rgba(0, 0, 0, .28);
+  transition: box-shadow .25s ease;
+}
+.calc:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 1px 3px rgba(0, 0, 0, .28),
+    0 0 0 1px rgba(79, 216, 196, .16),
+    0 8px 26px -14px rgba(79, 216, 196, .30);
+}
+
+.calc figcaption {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .01));
+  border-radius: 10px 10px 0 0;
+}
+
+.calc tr.hl td.f,
+.calc tr.hl td.note,
+.calc tr.hl td.n {
+  background: linear-gradient(90deg, rgba(79, 216, 196, .16), rgba(79, 216, 196, .05));
+}
+
+figure.fig { border-radius: 10px; }
+pre.code { border-radius: 10px; }
+.formula { border-radius: 0 8px 8px 0; }
+
+.note-box { border-radius: 0 10px 10px 0; }
+
+/* 术语索引：行悬停的微光 */
+dl.index dd {
+  border-radius: 6px;
+  transition: background .18s ease, padding-left .18s ease;
+}
+dl.index dd:hover {
+  background: linear-gradient(90deg, rgba(79, 216, 196, .10), transparent 70%);
+  padding-left: 8px;
+}
+
+.chip {
+  border-radius: 8px;
+  transition: background .16s, color .16s, box-shadow .16s;
+}
+.chip:hover { box-shadow: 0 0 0 1px var(--accent) inset, 0 0 12px -2px rgba(79, 216, 196, .4); }
+.chip[aria-pressed="true"] {
+  background: linear-gradient(180deg, #1d6f66, #12463f);
+  border-color: #0a2c28;
+  color: #e2fdf7;
+  box-shadow: 0 0 14px -2px rgba(79, 216, 196, .55);
+}
+
+/* ---------- 8. 无障碍与降级 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob { animation: none !important; }
+  .led[data-s="running"],
+  .led[data-s="diverged"] { animation: none; }
+  .bg-torch { transition: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .rail {
+    background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .bg-noise { display: none; }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .rail { background: var(--paper); }
+}
+
+@media (max-width: 720px) {
+  .field { left: -24px; right: -24px; top: -24px; width: calc(100% + 48px); height: 340px; }
+  .bg-torch { display: none; }
+  .rig { border-radius: 12px; }
+  .rig::before { display: none; }
+}
+
+@media print {
+  .bg, .field, .goo, .bg-torch { display: none !important; }
+  .rig, .calc, .chip { box-shadow: none !important; }
+  .rig::before { display: none; }
+}
+</style>
+
+
+
+
+
+
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI1IiBjeT0iNi41IiByPSIxLjciLz48Y2lyY2xlIGN4PSI1IiBjeT0iMTcuNSIgcj0iMS43Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMS43Ii8+PGNpcmNsZSBjeD0iMTkiIGN5PSI3IiByPSIxLjciLz48Y2lyY2xlIGN4PSIxOSIgY3k9IjE3IiByPSIxLjciLz48cGF0aCBkPSJNNi41IDcuMyAxMC42IDExLjJNNi41IDE2LjcgMTAuNiAxMi44TTEzLjQgMTEuNmw0LTMuMU0xMy40IDEyLjRsNCAzLjEiLz48L2c+PC9zdmc+">
+</head>
+<body id="top">
+
+<div class="bg" aria-hidden="true">
+  <span class="bg-blob b1"></span>
+  <span class="bg-blob b2"></span>
+  <span class="bg-blob b3"></span>
+  <span class="bg-noise"></span>
+  <span class="bg-torch"></span>
+</div>
+
+<div class="shell">
+
+<aside class="rail">
+  <a class="rail-home" href="index.html">← 首页 · 灯箱</a>
+  <nav aria-label="目录">
+    <ol>
+      <li><a href="#opening">开篇</a></li>
+      <li><a href="#sec-neuron">一、神经元在算什么</a></li>
+      <li><a href="#sec-loss">二、损失是什么</a></li>
+      <li><a href="#sec-training">三、训练是怎么发生的</a></li>
+      <li><a href="#sec-arch">四、架构为什么不断进化</a></li>
+      <li><a href="#sec-glossary">五、术语索引</a></li>
+      <li><a href="#sec-close">收尾</a></li>
+    </ol>
+  </nav>
+  <div class="rail-foot">
+    <button class="theme-btn" id="themeBtn" type="button">主题：跟随系统</button>
+  </div>
+</aside>
+
+<main class="doc">
+<div class="doc-inner">
+
+<header class="lede" id="opening">
+  <canvas class="field" id="field" aria-hidden="true"></canvas>
+  <h1>神经网络全景：从单个神经元到 <span class="grad">Transformer</span></h1>
+  <p class="standfirst">写给完全没有接触过深度学习的人。读完之后，你能亲手算一遍反向传播，也会明白 CNN、ResNet、Transformer 各自是为了补哪个短板才出现的。</p>
+  <p class="premise">阅读前提：会四则运算，知道“函数”是什么。<br>不需要微积分，不需要线性代数，不需要写代码。<br>本页所有数字都能用计算器复核，五段手算共用同一套记号。</p>
+
+  <div class="threemin">
+    <h2>如果你只有三分钟</h2>
+    <ol>
+      <li><span>神经网络是一个带旋钮的函数。旋钮就是权重和偏置，训练就是把这些旋钮拧到合适的位置。</span></li>
+      <li><span>拧的方向由梯度决定。梯度告诉你“往哪边拧会让误差变小”，沿它反方向走一步，就是一次参数更新。</span></li>
+      <li><span>CNN、ResNet、Transformer 不是越新越好，它们分别补上了“参数量爆炸”“层加不深”“卷积看不远”这三个具体的坑。</span></li>
+    </ol>
+  </div>
+</header>
+
+<!-- ================= 一 ================= -->
+<section id="sec-neuron">
+  <div class="sec-head">
+    <span class="rule"></span>
+    <h2>一、神经元在算什么</h2>
+    <p class="q">这一节回答一个问题：一个神经元接收几个数，吐出什么。答案只有两步运算。</p>
+  </div>
+
+  <p>先把一件事说清楚：神经网络不是对大脑的复刻，它是一个普通的数学函数。给一组输入，它算出一个输出。整个深度学习做的事情，就是让这个函数在训练数据上算出正确的输出。</p>
+
+  <p>最小的计算单元叫<b>神经元</b>（Neuron）。它做两件事：先加权求和，再过一次非线性。</p>
+
+  <h3>加权求和<span class="en">weighted sum</span></h3>
+
+  <p>假设一个神经元接收两个输入 <span class="var">x<sub>1</sub></span>、<span class="var">x<sub>2</sub></span>，它给每个输入配一个<b>权重</b>（Weight）<span class="var">w</span>，再加一个<b>偏置</b>（Bias）<span class="var">b</span>：</p>
+
+  <div class="formula">z = w<sub>1</sub>·x<sub>1</sub> + w<sub>2</sub>·x<sub>2</sub> + b</div>
+
+  <p>权重表示“这个输入有多重要”，偏置表示“这个神经元天生偏向哪一边”。这两个量都是可调的数字，训练调的就是它们。</p>
+
+  <h3>过非线性<span class="en">activation</span></h3>
+
+  <p>把 <span class="var">z</span> 送进<b>激活函数</b>（Activation Function），得到神经元的输出 <span class="var">a</span>。最常用的是 <b>ReLU</b>（Rectified Linear Unit）：负数一律压成零，正数原样放过。</p>
+
+  <div class="formula">a = ReLU(z) = max(0, z)</div>
+
+  <p>就这两步。下面把它完整算一遍。</p>
+
+  <figure class="calc">
+    <figcaption>
+      <span class="t">手算 1 · 前向传播</span>
+      <span>输入 x₁ = 2，x₂ = 1；参数 w₁ = 0.5，w₂ = −0.3，b = 0.1</span>
+    </figcaption>
+    <table aria-label="单个神经元的前向传播手算过程">
+      <tr><td class="n">1</td><td class="f">z = w₁·x₁ + w₂·x₂ + b</td><td class="note">加权求和</td></tr>
+      <tr><td class="n">2</td><td class="f">&nbsp;&nbsp;= 0.5×2 + (−0.3)×1 + 0.1</td><td class="note">逐项代入</td></tr>
+      <tr><td class="n">3</td><td class="f">&nbsp;&nbsp;= 1.0 − 0.3 + 0.1</td><td class="note"></td></tr>
+      <tr><td class="n">4</td><td class="f">&nbsp;&nbsp;= 0.80</td><td class="note"></td></tr>
+      <tr><td class="n">5</td><td class="f">a = max(0, 0.80)</td><td class="note">ReLU：负数压零</td></tr>
+      <tr class="hl"><td class="n">6</td><td class="f">&nbsp;&nbsp;= 0.80</td><td class="note">正数原样通过，这就是输出</td></tr>
+    </table>
+  </figure>
+
+  <p>现在只改偏置，把 <span class="var">b</span> 从 <span class="var">0.1</span> 换成 <span class="var">−1.0</span>：</p>
+
+  <figure class="calc">
+    <figcaption>
+      <span class="t">手算 1b · 只改偏置</span>
+      <span>w₁、w₂、x₁、x₂ 全部不变，仅 b = −1.0</span>
+    </figcaption>
+    <table aria-label="修改偏置后的手算过程">
+      <tr><td class="n">1</td><td class="f">z = 1.0 − 0.3 − 1.0 = −0.30</td><td class="note">同一组输入，累加结果变负</td></tr>
+      <tr class="hl"><td class="n">2</td><td class="f">a = max(0, −0.30) = 0.00</td><td class="note">整个神经元被关掉，输出零</td></tr>
+    </table>
+  </figure>
+
+  <p>这就是 ReLU 的开关行为：偏置把阈值挪到哪，神经元就从哪开始“通电”。输入没变、权重没变，只是偏置动了一下，输出从 <span class="var">0.80</span> 变成 <span class="var">0.00</span>。</p>
+
+  <h3>为什么必须有非线性<span class="en">why activation</span></h3>
+
+  <p>如果去掉激活函数，神经元就只剩一次线性变换。而线性变换有个致命性质：叠多少层，都还是一层。</p>
+
+  <figure class="calc">
+    <figcaption><span class="t">手算 2 · 线性层叠不出深度</span></figcaption>
+    <table aria-label="两层线性变换合并为一层的推导">
+      <tr><td class="n">1</td><td class="f">单层：y = W₁x + b₁</td><td class="note"></td></tr>
+      <tr><td class="n">2</td><td class="f">两层：y = W₂(W₁x + b₁) + b₂</td><td class="note">把第一层的输出整个代进第二层</td></tr>
+      <tr><td class="n">3</td><td class="f">↳ (W₂W₁)x + (W₂b₁ + b₂)</td><td class="note">展开括号</td></tr>
+      <tr class="hl"><td class="n">4</td><td class="f">↳ W′x + b′</td><td class="note">令 W′ = W₂W₁，b′ = W₂b₁ + b₂</td></tr>
+      <tr><td class="n">5</td><td class="f">结论：仍然是一个线性函数</td><td class="note">叠 100 层也一样，等价于 1 层</td></tr>
+    </table>
+  </figure>
+
+  <div class="note-box insight">
+    <span class="tag">关键结论</span>
+    <p>非线性不是锦上添花，它是“深度”能成立的前提。没有激活函数，网络再深也只是把输入乘了一个大矩阵，表达能力停在单层线性模型。</p>
+  </div>
+
+  <h3>激活函数的形状<span class="en">shapes</span></h3>
+
+  <figure class="fig">
+    <svg viewBox="0 0 560 250" role="img" aria-label="三种激活函数曲线。纵轴从负一到二。ReLU 在 x 小于零时恒为零，正半轴沿对角线上升并在 x 约等于二处超出图幅；Sigmoid 从零平滑升到一，两端趋平；Tanh 从负一平滑升到一，中间穿过零点。左右两条灰带标注 x 绝对值大于二的饱和区间。">
+      <defs>
+        <clipPath id="plotClip"><rect x="70" y="30" width="460" height="170"/></clipPath>
+      </defs>
+
+      <!-- 饱和区 -->
+      <rect x="70" y="30" width="76.7" height="170" fill="var(--rule)" opacity=".55"/>
+      <rect x="453.3" y="30" width="76.7" height="170" fill="var(--rule)" opacity=".55"/>
+      <text x="74" y="42" style="font-size:8px;fill:var(--warn)">|x| &gt; 2</text>
+      <text x="458" y="42" style="font-size:8px;fill:var(--warn)">|x| &gt; 2</text>
+
+      <!-- 坐标轴 -->
+      <line x1="64" y1="140" x2="540" y2="140" stroke="var(--rule2)" stroke-width="1"/>
+      <line x1="300" y1="22" x2="300" y2="206" stroke="var(--rule2)" stroke-width="1"/>
+
+      <text x="60" y="43" text-anchor="end">2</text>
+      <text x="60" y="93" text-anchor="end">1</text>
+      <text x="60" y="143" text-anchor="end">0</text>
+      <text x="60" y="193" text-anchor="end">−1</text>
+
+      <text x="70" y="216" text-anchor="middle">−3</text>
+      <text x="300" y="216" text-anchor="middle">0</text>
+      <text x="530" y="216" text-anchor="middle">3</text>
+      <text x="546" y="143">x</text>
+      <text x="300" y="18" text-anchor="middle">y</text>
+
+      <g clip-path="url(#plotClip)">
+        <polyline points="70,140 300,140 376.7,90 415,65 453.3,40 491.7,15 530,-10"
+                  fill="none" stroke="var(--ink)" stroke-width="2"/>
+        <polyline points="70,137.6 108.3,136.2 146.7,134.0 185,130.9 223.3,126.6 261.7,121.1 300,115.0 338.3,108.9 376.7,103.4 415,99.1 453.3,96.0 491.7,93.8 530,92.4"
+                  fill="none" stroke="var(--ink2)" stroke-width="1.6" stroke-dasharray="7 4"/>
+        <polyline points="70,189.8 108.3,189.3 146.7,188.2 185,185.3 223.3,178.1 261.7,163.1 300,140.0 338.3,116.9 376.7,101.9 415,94.8 453.3,91.8 491.7,90.7 530,90.3"
+                  fill="none" stroke="var(--ink2)" stroke-width="1.6" stroke-dasharray="2 3"/>
+      </g>
+
+      <!-- 图例 -->
+      <line x1="70" y1="234" x2="100" y2="234" stroke="var(--ink)" stroke-width="2"/>
+      <text x="106" y="237" class="klbl">ReLU</text>
+      <line x1="180" y1="234" x2="210" y2="234" stroke="var(--ink2)" stroke-width="1.6" stroke-dasharray="7 4"/>
+      <text x="216" y="237" class="lbl">Sigmoid</text>
+      <line x1="294" y1="234" x2="324" y2="234" stroke="var(--ink2)" stroke-width="1.6" stroke-dasharray="2 3"/>
+      <text x="330" y="237" class="lbl">Tanh</text>
+      <text x="396" y="237" style="font-size:8.5px;fill:var(--warn)">灰带为饱和区，导数趋近 0</text>
+    </svg>
+    <figcaption>三条曲线画在同一组轴上，纵轴范围 −1 到 2。ReLU 在负半轴完全压平，正半轴是一比一的直线，所以形状和另外两条完全不同。Sigmoid 与 Tanh 都是 S 形，在两端趋于水平，那里的导数接近零。</figcaption>
+  </figure>
+
+  <div class="note-box pitfall">
+    <span class="tag">这里容易错</span>
+    <p>Sigmoid 的两端不是“学得慢”，是导数真的趋近于零。梯度的连乘里只要有一项接近零，整条链的梯度都会被拉到接近零。这是<b>梯度消失</b>（Vanishing Gradient）的直接来源，也是 ReLU 后来取代 Sigmoid 的主要原因。</p>
+  </div>
+
+  <h3>从一个到一层<span class="en">from neuron to layer</span></h3>
+
+  <p>把一排神经元并排放，就是<b>层</b>（Layer）。真正的实现不会逐个算，而是把输入堆成向量、把权重堆成矩阵，一次乘完：</p>
+
+  <div class="formula">
+    z<sub>(4×1)</sub> = W<sub>(4×3)</sub> · x<sub>(3×1)</sub> + b<sub>(4×1)</sub>
+  </div>
+
+  <p>一个 3 维输入，经过 4 个神经元，得到一个 4 维输出。矩阵里的第 <span class="var">i</span> 行就是第 <span class="var">i</span> 个神经元的权重。</p>
+
+  <p>把矩阵乘法写成一次批量运算，是 GPU 能把这件事做得极快的全部原因。这也解释了为什么所有框架的第一步都是把数据变成<b>张量</b>（Tensor），也就是多维数组。</p>
+</section>
+
+<!-- ================= 二 ================= -->
+<section id="sec-loss">
+  <div class="sec-head">
+    <span class="rule"></span>
+    <h2>二、损失：把“错得多离谱”变成一个数</h2>
+    <p class="q">这一节回答：怎么用一个标量描述“当前参数有多差”。</p>
+  </div>
+
+  <p>网络输出一个数，我们希望它接近正确答案。要调参数，先得把“差多远”变成一个可以求导的量，这个量叫<b>损失</b>（Loss）。</p>
+
+  <p>回归任务最常用的是<b>均方误差</b>（Mean Squared Error, MSE）：对每个样本求预测与真值之差，平方，再取平均。</p>
+
+  <div class="formula">
+    L = <span class="frac"><span>1</span><span>n</span></span> · Σ<sub>i</sub> (ŷ<sub>i</sub> − y<sub>i</sub>)<sup>2</sup>
+  </div>
+
+  <p>为什么用平方，而不是直接取差值的平均？两个原因。一是差值有正有负，直接平均会互相抵消，一个偏大 1.0、一个偏小 1.0 会被算成完全正确。二是平方会放大较大的错误，让模型优先修正错得最狠的样本。</p>
+
+  <figure class="calc">
+    <figcaption>
+      <span class="t">手算 3 · 三个样本的 MSE</span>
+      <span>预测 0.80 / 0.40 / 0.90，真值 1.00 / 0.00 / 1.00</span>
+    </figcaption>
+    <table aria-label="三个样本的均方误差手算过程">
+      <tr><td class="n">1</td><td class="f">ŷ = [0.80, 0.40, 0.90]</td><td class="note">三组预测值</td></tr>
+      <tr><td class="n">2</td><td class="f">y = [1.00, 0.00, 1.00]</td><td class="note">对应的真值</td></tr>
+      <tr><td class="n">3</td><td class="f">e = ŷ − y = [−0.20, 0.40, −0.10]</td><td class="note">逐个求差</td></tr>
+      <tr><td class="n">4</td><td class="f">e² = [0.04, 0.16, 0.01]</td><td class="note">平方，负号消失</td></tr>
+      <tr><td class="n">5</td><td class="f">Σe² = 0.04 + 0.16 + 0.01 = 0.2100</td><td class="note"></td></tr>
+      <tr class="hl"><td class="n">6</td><td class="f">MSE = 0.2100 / 3 = 0.0700</td><td class="note">这就是当前参数的“成绩单”</td></tr>
+    </table>
+  </figure>
+
+  <p>如果第 2 个样本的预测是 0.00 而不是 0.40，误差从 0.40 变成 1.00，平方后从 0.16 变成 1.00，一项就让 MSE 涨到 0.35。平方把这一项放大了六倍多，模型会被迫先修它。这就是“优先修正错得最狠的样本”的实际含义。</p>
+
+  <div class="note-box">
+    <span class="tag">分类任务用的不是 MSE</span>
+    <p>分类通常用<b>交叉熵</b>（Cross-Entropy）。它衡量两个概率分布的差异，配合 softmax 使用，和 MSE 相比在概率输出上的梯度性质更好。选哪个取决于任务，不取决于新旧。它的完整推导不在本页展开，记住这一条判断依据就够了。</p>
+  </div>
+</section>
+
+<!-- ================= 三 ================= -->
+<section id="sec-training">
+  <div class="sec-head">
+    <span class="rule"></span>
+    <h2>三、训练是怎么发生的</h2>
+    <p class="q">这一节从一维的“蒙眼下山”讲到多层的反向传播，中间有一个可以动手操作的仪表。</p>
+  </div>
+
+  <h3>一维热身<span class="en">descent in one dimension</span></h3>
+
+  <p>先把参数缩减到一个。假设损失只依赖一个参数 <span class="var">w</span>，曲线像一个碗，碗底就是我们要找的位置。问题是：站在碗的某一侧，你看不见碗底在哪，只能摸到脚下的坡度。</p>
+
+  <p>坡度就是<b>导数</b>，多个参数时推广为<b>梯度</b>（Gradient）。它告诉你两件事：往哪边是上坡，坡有多陡。既然要下山，就往反方向走。</p>
+
+  <div class="formula">w ← w − η · <span class="frac"><span>∂L</span><span>∂w</span></span></div>
+
+  <p><span class="var">η</span> 是<b>学习率</b>（Learning Rate），表示每步走多远。这一行公式就是整个深度学习最核心的动作，后面所有复杂的网络，训练时做的都是这一行。</p>
+
+  <h3>梯度下降仪表<span class="en">gradient descent rig</span></h3>
+
+  <p>下面这个仪表把刚才的一维情形画出来了。上半部分是损失曲线，小球就是当前的 <span class="var">w</span>；下半部分是每一步的梯度，正是这个量在推动小球。</p>
+
+  <div class="rig">
+    <div class="rig-top">
+      <div class="rig-canvas">
+        <div class="screen">
+          <canvas id="gauge" role="img" aria-label="梯度下降仪表。上半部分显示一维损失曲线与当前参数位置，下半部分显示每一步的梯度大小。具体数值见右侧读数区。"></canvas>
+          <svg class="goo" aria-hidden="true" focusable="false">
+            <defs>
+              <filter id="gooFilter" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blurred" />
+                <feColorMatrix in="blurred" mode="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 26 -10" />
+              </filter>
+            </defs>
+            <g id="gooGroup" filter="url(#gooFilter)"></g>
+          </svg>
+        </div>
+      </div>
+      <div class="rig-read">
+        <div class="rr"><span class="rr-k">w</span><span class="rr-v" id="r-w">1.000</span></div>
+        <div class="rr"><span class="rr-k">L(w)</span><span class="rr-v" id="r-l">4.0000</span></div>
+        <div class="rr"><span class="rr-k">∂L/∂w</span><span class="rr-v" id="r-g">−4.0000</span></div>
+        <div class="rr"><span class="rr-k">步数</span><span class="rr-v" id="r-s">0</span></div>
+        <div class="rr rr-state" id="r-st-wrap" data-s="idle"><span class="rr-k ledwrap"><i class="led" id="rigLed" data-s="idle"></i>状态</span><span class="rr-v" id="r-st">待启动</span></div>
+      </div>
+    </div>
+
+    <div class="rig-ctl">
+      <div class="ctl">
+        <div class="ctl-head">
+          <label for="lr">学习率 η</label>
+          <span class="ctl-val" id="lr-v">0.30</span>
+        </div>
+        <input id="lr" type="range" min="1" max="150" step="1" value="30"
+               aria-describedby="lr-hint">
+        <p class="ctl-hint" id="lr-hint">
+          <span>0.01</span>
+          <span class="warnzone">η &gt; 1.00 会发散</span>
+          <span>1.50</span>
+        </p>
+      </div>
+      <div class="ctl">
+        <div class="ctl-head">
+          <label for="spd">步速</label>
+          <span class="ctl-val" id="spd-v">中</span>
+        </div>
+        <input id="spd" type="range" min="1" max="10" step="1" value="5"
+               aria-describedby="spd-hint">
+        <p class="ctl-hint" id="spd-hint">
+          <span>慢</span>
+          <span>连续运行时每步的间隔</span>
+          <span>快</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="rig-btns">
+      <button class="btn" id="btn-step" type="button">单步</button>
+      <button class="btn" id="btn-run" type="button" aria-pressed="false">连续</button>
+      <button class="btn" id="btn-reset" type="button">重置</button>
+      <button class="btn" id="btn-terrain" type="button">换地形</button>
+    </div>
+
+    <p class="rig-caption" id="rig-caption">提示：先把学习率拉到 1.10 按“连续”，看小球怎么飞出去。再拉回 0.30，同样的地形会稳稳收敛。</p>
+  </div>
+
+  <p class="sr-only" id="rig-live" aria-live="polite" role="status">仪表已就绪，当前参数 w 等于 1.000，损失 4.0000。</p>
+
+  <h3>学习率三档<span class="en">three regimes</span></h3>
+
+  <p>同一座山，同一个起点，只改学习率，行为会分成三档。这不是比喻，是上面那个仪表里真实发生的事。</p>
+
+  <div class="table-wrap">
+    <table class="grid">
+      <thead>
+        <tr><th>学习率</th><th>表现</th><th>原因</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num">0.05</td>
+          <td>收敛，但很慢</td>
+          <td>每步只挪一小段，离最低点还远着就耗掉几十步。现实训练里表现为“跑了一整天损失几乎不动”。</td>
+        </tr>
+        <tr>
+          <td class="num">0.30</td>
+          <td>几步内收敛</td>
+          <td>步长和地形坡度匹配，一次跨过大部分距离，靠近后再逐步减小。</td>
+        </tr>
+        <tr>
+          <td class="num">1.10</td>
+          <td>越过最低点，反复震荡并放大</td>
+          <td>一步跨得太远，直接冲过碗底落到对岸更高处。下一步又冲回来更远，误差按固定倍数放大，直到数值溢出。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>在 <span class="var">L(w) = (w − 3)²</span> 上，收敛的条件是 <span class="var">η &lt; 1</span>。这个临界值和曲线的曲率有关：曲率越大，能容忍的学习率越小。真实网络里每一层的曲率都不一样，这也是为什么实践中要用学习率调度，而不是从头到尾一个值。</p>
+
+  <h3>多参数与反向传播<span class="en">backpropagation</span></h3>
+
+  <p>真实网络有上百万个参数，损失对每一个参数各有一个偏导，这些偏导排成向量就是梯度。问题是：逐个用数值方法去试（扰动一个参数、重新算损失）代价高到不可行，一次完整计算就要前向跑上百万遍。</p>
+
+  <p><b>反向传播</b>（Backpropagation）解决的正是这个代价问题。它的数学内核是链式法则：复合函数的导数等于各层局部导数连乘。</p>
+
+  <div class="formula">
+    <span class="frac"><span>∂L</span><span>∂w<sub>1</sub></span></span>
+    =
+    <span class="frac"><span>∂L</span><span>∂a</span></span>
+    ·
+    <span class="frac"><span>∂a</span><span>∂z</span></span>
+    ·
+    <span class="frac"><span>∂z</span><span>∂w<sub>1</sub></span></span>
+  </div>
+
+  <p>关键在于运算顺序。前向传播时已经算过的那些中间值（每一层的 <span class="var">z</span> 和 <span class="var">a</span>），反向时可以直接复用，不必重算。所以从损失往回走一遍，就能一次性拿到所有参数的梯度，代价和前向传播同一量级。</p>
+
+  <p>下面这个 2-2-1 网络把整件事完整走一遍：两个输入、两个隐藏神经元、一个输出。每一行都可以拿计算器复核。</p>
+
+  <div class="formula">
+    <span class="lbl">x</span> = [1, 2]　　
+    <span class="lbl">W₁</span> = [[0.5, −0.2], [0.3, 0.8]]　　
+    <span class="lbl">b₁</span> = [0.1, −0.1]<br>
+    <span class="lbl">w₂</span> = [0.6, −0.4]　　
+    <span class="lbl">b₂</span> = 0.2　　
+    <span class="lbl">真值 y</span> = 1.0　　
+    <span class="lbl">学习率 η</span> = 0.1
+  </div>
+
+  <figure class="calc">
+    <figcaption>
+      <span class="t">手算 4 · 一个完整的前向 + 反向</span>
+      <span>输出层不过激活函数，损失 L = (ŷ − y)²</span>
+    </figcaption>
+    <table aria-label="两层网络的前向传播与反向传播手算过程">
+      <tr class="sep"><td class="n">·</td><td class="f">前向传播</td><td class="note"></td></tr>
+      <tr><td class="n">1</td><td class="f">z₁[1] = 0.5×1 + (−0.2)×2 + 0.1 = 0.20</td><td class="note">第一个隐藏神经元</td></tr>
+      <tr><td class="n">2</td><td class="f">z₁[2] = 0.3×1 + 0.8×2 + (−0.1) = 1.80</td><td class="note">第二个隐藏神经元</td></tr>
+      <tr><td class="n">3</td><td class="f">a₁ = ReLU([0.20, 1.80]) = [0.20, 1.80]</td><td class="note">两个都是正数，原样通过</td></tr>
+      <tr><td class="n">4</td><td class="f">z₂ = 0.6×0.20 + (−0.4)×1.80 + 0.2 = −0.40</td><td class="note">输出层加权求和</td></tr>
+      <tr><td class="n">5</td><td class="f">ŷ = z₂ = −0.40</td><td class="note">回归任务，输出层不加激活</td></tr>
+      <tr class="hl"><td class="n">6</td><td class="f">L = (−0.40 − 1.00)² = 1.9600</td><td class="note">当前损失：预测 0.4 偏左，损失接近 2</td></tr>
+
+      <tr class="sep"><td class="n">·</td><td class="f">反向传播</td><td class="note"></td></tr>
+      <tr><td class="n">7</td><td class="f">∂L/∂ŷ = 2(ŷ − y) = 2×(−1.40) = −2.8000</td><td class="note">平方的导数，从损失出发</td></tr>
+      <tr><td class="n">8</td><td class="f">∂ŷ/∂z₂ = 1</td><td class="note">输出层是线性的</td></tr>
+      <tr><td class="n">9</td><td class="f">∂L/∂w₂[1] = −2.8 × 0.20 = −0.5600</td><td class="note">乘上这一路的输入</td></tr>
+      <tr><td class="n">10</td><td class="f">∂L/∂w₂[2] = −2.8 × 1.80 = −5.0400</td><td class="note"></td></tr>
+      <tr><td class="n">11</td><td class="f">∂L/∂b₂&nbsp;&nbsp;&nbsp;&nbsp;= −2.8 × 1 = −2.8000</td><td class="note">偏置的输入恒为 1</td></tr>
+      <tr><td class="n">12</td><td class="f">∂L/∂a₁[1] = −2.8 × 0.60 = −1.6800</td><td class="note">要把梯度继续往回传</td></tr>
+      <tr><td class="n">13</td><td class="f">∂L/∂a₁[2] = −2.8 × (−0.40) = 1.1200</td><td class="note">权重是负的，符号翻转</td></tr>
+      <tr><td class="n">14</td><td class="f">∂L/∂z₁[1] = −1.68 × 1 = −1.6800</td><td class="note">z₁[1] = 0.20 &gt; 0，ReLU 导数为 1</td></tr>
+      <tr><td class="n">15</td><td class="f">∂L/∂z₁[2] = 1.12 × 1 = 1.1200</td><td class="note">z₁[2] = 1.80 &gt; 0，同理</td></tr>
+      <tr><td class="n">16</td><td class="f">∂L/∂W₁[1][1] = −1.68 × 1 = −1.6800</td><td class="note">对第一层权重求导，乘上输入 x₁</td></tr>
+      <tr><td class="n">17</td><td class="f">∂L/∂W₁[1][2] = −1.68 × 2 = −3.3600</td><td class="note">乘上输入 x₂</td></tr>
+      <tr><td class="n">18</td><td class="f">∂L/∂W₁[2][1] = 1.12 × 1 = 1.1200</td><td class="note"></td></tr>
+      <tr><td class="n">19</td><td class="f">∂L/∂W₁[2][2] = 1.12 × 2 = 2.2400</td><td class="note"></td></tr>
+      <tr><td class="n">20</td><td class="f">∂L/∂b₁ = [−1.6800, 1.1200]</td><td class="note">隐藏层偏置，直接等于 ∂L/∂z₁</td></tr>
+    </table>
+  </figure>
+
+  <p>拿到梯度，更新就是照公式执行：<span class="var">w ← w − η·∂L/∂w</span>。九个参数一次更新完：</p>
+
+  <div class="table-wrap">
+    <table class="grid">
+      <thead>
+        <tr><th>参数</th><th>旧值</th><th>梯度</th><th>新值 = 旧值 − 0.1 × 梯度</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">w₂[1]</td><td class="num">0.600</td><td class="num">−0.560</td><td class="num">0.656</td></tr>
+        <tr><td class="num">w₂[2]</td><td class="num">−0.400</td><td class="num">−5.040</td><td class="num">0.104</td></tr>
+        <tr><td class="num">b₂</td><td class="num">0.200</td><td class="num">−2.800</td><td class="num">0.480</td></tr>
+        <tr><td class="num">W₁[1][1]</td><td class="num">0.500</td><td class="num">−1.680</td><td class="num">0.668</td></tr>
+        <tr><td class="num">W₁[1][2]</td><td class="num">−0.200</td><td class="num">−3.360</td><td class="num">0.136</td></tr>
+        <tr><td class="num">W₁[2][1]</td><td class="num">0.300</td><td class="num">1.120</td><td class="num">0.188</td></tr>
+        <tr><td class="num">W₁[2][2]</td><td class="num">0.800</td><td class="num">2.240</td><td class="num">0.576</td></tr>
+        <tr><td class="num">b₁[1]</td><td class="num">0.100</td><td class="num">−1.680</td><td class="num">0.268</td></tr>
+        <tr><td class="num">b₁[2]</td><td class="num">−0.100</td><td class="num">1.120</td><td class="num">−0.212</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>用新参数再跑一次前向，验证损失确实变小了：</p>
+
+  <figure class="calc">
+    <figcaption><span class="t">手算 4b · 一步之后</span><span>用上面更新完的参数重新前向</span></figcaption>
+    <table aria-label="更新一步后重新前向传播的验证">
+      <tr><td class="n">1</td><td class="f">z₁[1] = 0.668×1 + 0.136×2 + 0.268 = 1.208</td><td class="note"></td></tr>
+      <tr><td class="n">2</td><td class="f">z₁[2] = 0.188×1 + 0.576×2 − 0.212 = 1.128</td><td class="note"></td></tr>
+      <tr><td class="n">3</td><td class="f">z₂ = 0.656×1.208 + 0.104×1.128 + 0.48 = 1.3898</td><td class="note"></td></tr>
+      <tr class="hl"><td class="n">4</td><td class="f">L = (1.3898 − 1.00)² = 0.1519</td><td class="note">1.9600 → 0.1519，一步降了 92%</td></tr>
+    </table>
+  </figure>
+
+  <div class="note-box insight">
+    <span class="tag">这就是全部</span>
+    <p>把这一步重复上万次，每次换一批数据、算一次前向、回传一次梯度、更新一次参数。所谓“训练模型”，字面意思就是这个循环。GPT 和自编码器用的是同一套流程，区别只在网络结构和损失函数的形状。</p>
+  </div>
+
+  <h3>同样的三十行代码<span class="en">the same thing in numpy</span></h3>
+
+  <p>下面这段代码和手算 4 是同一个网络、同一组数字。跑出来的梯度应当逐位等于手算结果，误差在浮点精度内。</p>
+
+<pre class="code"><span class="k">import</span> numpy <span class="k">as</span> np
+
+x  = np.array([1.0, 2.0])
+W1 = np.array([[0.5, -0.2],
+               [0.3,  0.8]])
+b1 = np.array([0.1, -0.1])
+w2 = np.array([0.6, -0.4])
+b2 = 0.2
+y  = 1.0
+lr = 0.1
+
+<span class="c"># forward</span>
+z1    = W1 @ x + b1
+a1    = np.maximum(0.0, z1)      <span class="c"># ReLU</span>
+z2    = w2 @ a1 + b2
+y_hat = z2
+loss  = (y_hat - y) ** 2
+
+<span class="c"># backward: dLoss/dy_hat -> dLoss/dz2 -> dLoss/da1 -> dLoss/dz1</span>
+g   = 2.0 * (y_hat - y)          <span class="c"># dLoss/dy_hat</span>
+dw2 = g * a1
+db2 = g
+da1 = g * w2
+dz1 = da1 * (z1 &gt; 0)             <span class="c"># ReLU gradient: pass where z1 &gt; 0</span>
+dW1 = np.outer(dz1, x)
+db1 = dz1
+
+<span class="c"># update</span>
+w2 -= lr * dw2
+b2 -= lr * db2
+W1 -= lr * dW1
+b1 -= lr * db1</pre>
+
+  <p>PyTorch 里这段反向传播不用手写。把 <code>requires_grad=True</code> 打开，前面的计算照常进行，然后调一次 <code>loss.backward()</code>，所有参数的 <code>.grad</code> 就已经填好了。它做的和上面 <code>g / dw2 / da1 / dz1</code> 那几行完全一样，只是自动帮你把链式法则应用到整张计算图上。</p>
+</section>
+
+<!-- ================= 四 ================= -->
+<section id="sec-arch">
+  <div class="sec-head">
+    <span class="rule"></span>
+    <h2>四、架构为什么不断进化</h2>
+    <p class="q">这一节不列模型清单，只讲每一次换架构，是为了补上一个具体的缺陷。</p>
+  </div>
+
+  <h3>全连接处理图像的三个硬伤<span class="en">why not MLP</span></h3>
+
+  <p>最朴素的网络叫<b>多层感知机</b>（Multilayer Perceptron, MLP），就是若干全连接层叠起来。它在表格数据上能用，直接拿来处理图像会立刻撞墙。</p>
+
+  <p>先算参数量。一张 224×224 的彩色图展开成向量是 <span class="var">224 × 224 × 3 = 150,528</span> 个输入。接一个只有 1000 个神经元的隐藏层：</p>
+
+  <figure class="calc">
+    <figcaption><span class="t">手算 5 · 一层全连接就吃掉一亿五千万参数</span></figcaption>
+    <table aria-label="全连接层参数量的手算">
+      <tr><td class="n">1</td><td class="f">输入维度 = 224 × 224 × 3 = 150,528</td><td class="note">图像展开成长向量</td></tr>
+      <tr><td class="n">2</td><td class="f">隐藏层 = 1,000 个神经元</td><td class="note"></td></tr>
+      <tr><td class="n">3</td><td class="f">权重 = 150,528 × 1,000 = 150,528,000</td><td class="note">约一亿五千万</td></tr>
+      <tr class="hl"><td class="n">4</td><td class="f">仅这一层 = 150,528,000 + 1,000 ≈ 1.5 亿参数</td><td class="note">还没算第二层</td></tr>
+    </table>
+  </figure>
+
+  <p>而一个 LeNet 级别的卷积网络处理同样的输入，全部权重加起来不到六万。差了三个数量级。</p>
+
+  <p>另外两个硬伤同样致命。展开会把相邻像素的空间关系彻底打散，网络再也分不清“上”和“下”。同时全连接对位置毫无敏感性：把一只猫平移十个像素，对网络来说这是一张全新的图，一切要重学。</p>
+
+  <h3>卷积：局部连接加权重共享<span class="en">CNN</span></h3>
+
+  <p><b>卷积神经网络</b>（Convolutional Neural Network, CNN）用两个约束同时解决上面三个问题。</p>
+
+  <p><b>局部连接</b>：每个输出只连线到输入的一个小窗口（比如 3×3），参数量从“全图乘以所有神经元”降到“窗口大小乘以通道数”。</p>
+
+  <p><b>权重共享</b>：同一个 3×3 的核在整张图上滑动，每一处都用同一组权重。这既把参数量压到常数级，又让网络天然具备平移等变性：猫在左上角和右下角，触发的是同一个检测器。</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 520 150" role="img" aria-label="一个 3×3 卷积核在 6×6 网格上滑动三个位置的示意：窗口每移动一格，就与对应区域逐元素相乘并求和，产生输出图上的一个值。">
+      <g id="c0">
+        <g>
+          <rect x="10" y="20" width="108" height="108" fill="none" stroke="var(--rule)" stroke-width="1"/>
+          <line x1="28" y1="20" x2="28" y2="128" stroke="var(--rule)"/><line x1="46" y1="20" x2="46" y2="128" stroke="var(--rule)"/>
+          <line x1="64" y1="20" x2="64" y2="128" stroke="var(--rule)"/><line x1="82" y1="20" x2="82" y2="128" stroke="var(--rule)"/>
+          <line x1="100" y1="20" x2="100" y2="128" stroke="var(--rule)"/>
+          <line x1="10" y1="38" x2="118" y2="38" stroke="var(--rule)"/><line x1="10" y1="56" x2="118" y2="56" stroke="var(--rule)"/>
+          <line x1="10" y1="74" x2="118" y2="74" stroke="var(--rule)"/><line x1="10" y1="92" x2="118" y2="92" stroke="var(--rule)"/>
+          <line x1="10" y1="110" x2="118" y2="110" stroke="var(--rule)"/>
+          <rect x="10" y="20" width="54" height="54" fill="var(--mark)" stroke="var(--ink2)" stroke-width="1.5"/>
+          <text x="24" y="143" class="lbl">起点 (0,0)</text>
+        </g>
+      </g>
+
+      <text x="128" y="78" class="lbl">→</text>
+
+      <g>
+        <rect x="150" y="20" width="108" height="108" fill="none" stroke="var(--rule)" stroke-width="1"/>
+        <line x1="168" y1="20" x2="168" y2="128" stroke="var(--rule)"/><line x1="186" y1="20" x2="186" y2="128" stroke="var(--rule)"/>
+        <line x1="204" y1="20" x2="204" y2="128" stroke="var(--rule)"/><line x1="222" y1="20" x2="222" y2="128" stroke="var(--rule)"/>
+        <line x1="240" y1="20" x2="240" y2="128" stroke="var(--rule)"/>
+        <line x1="150" y1="38" x2="258" y2="38" stroke="var(--rule)"/><line x1="150" y1="56" x2="258" y2="56" stroke="var(--rule)"/>
+        <line x1="150" y1="74" x2="258" y2="74" stroke="var(--rule)"/><line x1="150" y1="92" x2="258" y2="92" stroke="var(--rule)"/>
+        <line x1="150" y1="110" x2="258" y2="110" stroke="var(--rule)"/>
+        <rect x="168" y="38" width="54" height="54" fill="var(--mark)" stroke="var(--ink2)" stroke-width="1.5"/>
+        <text x="164" y="143" class="lbl">右移一格</text>
+      </g>
+
+      <text x="268" y="78" class="lbl">→</text>
+
+      <g>
+        <rect x="290" y="20" width="108" height="108" fill="none" stroke="var(--rule)" stroke-width="1"/>
+        <line x1="308" y1="20" x2="308" y2="128" stroke="var(--rule)"/><line x1="326" y1="20" x2="326" y2="128" stroke="var(--rule)"/>
+        <line x1="344" y1="20" x2="344" y2="128" stroke="var(--rule)"/><line x1="362" y1="20" x2="362" y2="128" stroke="var(--rule)"/>
+        <line x1="380" y1="20" x2="380" y2="128" stroke="var(--rule)"/>
+        <line x1="290" y1="38" x2="398" y2="38" stroke="var(--rule)"/><line x1="290" y1="56" x2="398" y2="56" stroke="var(--rule)"/>
+        <line x1="290" y1="74" x2="398" y2="74" stroke="var(--rule)"/><line x1="290" y1="92" x2="398" y2="92" stroke="var(--rule)"/>
+        <line x1="290" y1="110" x2="398" y2="110" stroke="var(--rule)"/>
+        <rect x="326" y="56" width="54" height="54" fill="var(--mark)" stroke="var(--ink2)" stroke-width="1.5"/>
+        <text x="304" y="143" class="lbl">再右移一格</text>
+      </g>
+
+      <text x="406" y="78" class="lbl">→</text>
+      <g>
+        <rect x="428" y="38" width="72" height="72" fill="none" stroke="var(--rule2)" stroke-width="1"/>
+        <line x1="446" y1="38" x2="446" y2="110" stroke="var(--rule2)"/><line x1="464" y1="38" x2="464" y2="110" stroke="var(--rule2)"/>
+        <line x1="482" y1="38" x2="482" y2="110" stroke="var(--rule2)"/>
+        <line x1="428" y1="56" x2="500" y2="56" stroke="var(--rule2)"/><line x1="428" y1="74" x2="500" y2="74" stroke="var(--rule2)"/>
+        <line x1="428" y1="92" x2="500" y2="92" stroke="var(--rule2)"/>
+        <text x="428" y="34" style="font-size:8px">输出图</text>
+      </g>
+      <text x="10" y="12" class="lbl">输入图 6×6，同一个 3×3 核在滑动</text>
+    </svg>
+    <figcaption>同一个核在每一处复用，所以权重数量与图像大小无关。每个窗口做逐元素相乘再求和，得到一个输出值；窗口滑满全图就得到一张输出特征图。</figcaption>
+  </figure>
+
+  <h3>感受野<span class="en">receptive field</span></h3>
+
+  <p><b>感受野</b>是一个神经元在原始输入上能看到多大范围。单个 3×3 卷积看三格，但把三层叠起来，第三层的每个输出就能看到 <span class="var">7 × 7</span> 的范围，因为每一层都在上一层的窗口基础上再扩一圈。</p>
+
+  <p>关键在于代价：用三层 3×3 达到 <span class="var">7 × 7</span> 的感受野，和直接用一层 7×7，参数量差很多。设通道数为 <span class="var">C</span>：</p>
+
+  <div class="table-wrap">
+    <table class="grid">
+      <thead>
+        <tr><th>方案</th><th>参数量</th><th>C = 64 时</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>一层 7×7</td><td class="num">49·C²</td><td class="num">200,704</td></tr>
+        <tr><td>三层 3×3</td><td class="num">27·C²</td><td class="num">110,592</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>大约省掉百分之四十五的权重，同时还多插入了两次 ReLU，非线性更强。这就是 VGG 用三个 3×3 替代一个 7×7 的原因，也是现代网络的默认做法。</p>
+
+  <h3>更深带来的新问题：退化<span class="en">degradation</span></h3>
+
+  <p>既然层叠能扩大感受野，那是不是越深越好？不是。实验里出现了一个反直觉的现象：给一个已经收敛的网络再接几层，训练损失反而变大。</p>
+
+  <p>注意这不是过拟合。过拟合是训练损失小、测试损失大；退化是训练损失本身都压不下去。原因是纯堆叠让优化变难了：恒等映射（原样输出输入）对多层非线性组合来说反而不好学，而它本该是最容易的退路。</p>
+
+  <p><b>残差连接</b>（Residual Connection）直接把这个退路铺好：</p>
+
+  <div class="formula">
+    y = F(x) + x
+  </div>
+
+  <p>网络不再需要学习“恒等映射”，只需要学习“在输入基础上的修正量” <span class="var">F(x)</span>。如果这一层没用，把 <span class="var">F(x)</span> 学成零就退化成恒等，至少不比原来差。求导时：</p>
+
+  <div class="formula">
+    <span class="frac"><span>∂L</span><span>∂x</span></span>
+    =
+    <span class="frac"><span>∂L</span><span>∂y</span></span>
+    ·
+    (1 + <span class="frac"><span>∂F</span><span>∂x</span></span>)
+  </div>
+
+  <p>那个 <span class="var">1</span> 意味着梯度总有一条不经过任何非线性层的直达通道。即使 <span class="var">∂F/∂x</span> 因为连乘变得很小，梯度也不会被完全掐断。ResNet 靠这个把网络从二十层推到一百五十二层，后来的一千层版本也成立。</p>
+
+  <h3>卷积看不远，于是有了注意力<span class="en">attention</span></h3>
+
+  <p>卷积的视野是局部的，要它看到全图就得堆很多层。能不能让每个位置直接看到所有其他位置？能，代价是要用<b>注意力</b>（Attention）替换卷积。</p>
+
+  <p>注意力机制的直觉是查字典。你手里有一个查询 <span class="var">Q</span>（Query，你想找什么），每一条信息有一个键 <span class="var">K</span>（Key，它能提供什么），和一份内容 <span class="var">V</span>（Value，它实际是什么）。用 <span class="var">Q</span> 和每个 <span class="var">K</span> 算相似度，按相似度把所有 <span class="var">V</span> 加权求和：</p>
+
+  <div class="formula">
+    Attention(Q, K, V) = softmax(<span class="frac"><span>QK<sup>T</sup></span><span>√d<sub>k</sub></span></span>) · V
+  </div>
+
+  <p>权重是算出来的，不是人设的。一句话里“它”指代谁，由“它”的查询向量和各个名词的键向量算出的相似度决定。这正是卷积做不到的事：卷积的权重由位置决定，注意力的权重由内容决定。</p>
+
+  <div class="note-box pitfall">
+    <span class="tag">代价要一起说</span>
+    <p><span class="var">n</span> 个位置两两算相似度，计算量随 <span class="var">n²</span> 增长。序列翻倍，算力要涨四倍。这是 Transformer 处理高分辨率图像和长文本时的实际瓶颈，也是后来一堆线性注意力、状态空间模型（Mamba）要解决的问题。</p>
+  </div>
+
+  <h3>Transformer 与位置编码<span class="en">positional encoding</span></h3>
+
+  <p>把注意力和全连接层交替堆起来，就是 <b>Transformer</b>。它摆脱了循环网络必须逐字处理的串行依赖，整段序列可以并行算。</p>
+
+  <p>但注意力有一个副作用：它对输入顺序完全不敏感。把一句话的词打乱，每个词算出的注意力权重集合是一样的，因为相似度只看内容不看位置。而对语言和图像来说，顺序本身就是信息。</p>
+
+  <p>解决办法是<b>位置编码</b>（Positional Encoding）：给每个位置额外的向量，加到输入的表示上，让模型能区分“第一个词”和“第五个词”。这一步很小，但没有它，Transformer 就只是一个无序的词袋。</p>
+
+  <h3>演化时间轴<span class="en">timeline</span></h3>
+
+  <p>把上面这些串起来，就是一条“每一代补一个坑”的线索。</p>
+
+  <div class="table-wrap">
+    <table class="grid">
+      <thead>
+        <tr><th>年份</th><th>模型</th><th>补的什么坑</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">1958</td><td>感知机</td><td>第一个能自动学习的分类器。但单层结构连异或都学不会。</td></tr>
+        <tr><td class="num">1986</td><td>反向传播</td><td>让多层网络真正可训练，解决了单层表达力不足。</td></tr>
+        <tr><td class="num">1998</td><td>LeNet-5</td><td>卷积加池化用于手写数字，确立了处理图像的基本形状。</td></tr>
+        <tr><td class="num">2012</td><td>AlexNet</td><td>深卷积 + ReLU + GPU + Dropout，在 ImageNet 上把错误率砍掉近一半。</td></tr>
+        <tr><td class="num">2015</td><td>ResNet</td><td>残差连接解决退化，网络深度从二十层跳到一百五十二层。</td></tr>
+        <tr><td class="num">2017</td><td>Transformer</td><td>纯注意力，去掉循环结构的串行依赖，可整段并行。</td></tr>
+        <tr><td class="num">2020</td><td>ViT / DDPM</td><td>把 Transformer 用于图像；扩散模型成为生成任务的主流路线。</td></tr>
+        <tr><td class="num">2023</td><td>Mamba</td><td>状态空间模型，把注意力的平方复杂度降到线性。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note-box insight">
+    <span class="tag">看这条线的正确方式</span>
+    <p>新架构不是把旧架构淘汰掉。CNN 仍然是图像复原的主流 backbone，ResNet 的残差连接被几乎每个现代网络沿用，注意力则被塞进了 CNN 里当成模块用。所谓演进，更多是“把上一代的零件拆下来装到新的结构里”。</p>
+  </div>
+</section>
+
+<!-- ================= 五 ================= -->
+<section id="sec-glossary">
+  <div class="sec-head">
+    <span class="rule"></span>
+    <h2>五、术语索引</h2>
+    <p class="q">30 条。按类别分组，可以搜中文、英文或释义里的字。</p>
+  </div>
+
+  <div class="index-tools">
+    <input type="search" id="q" placeholder="搜索术语，比如 卷积、loss、梯度" aria-label="搜索术语" autocomplete="off">
+    <button class="chip" type="button" data-cat="" aria-pressed="true">全部</button>
+    <button class="chip" type="button" data-cat="基础" aria-pressed="false">基础</button>
+    <button class="chip" type="button" data-cat="数学" aria-pressed="false">数学</button>
+    <button class="chip" type="button" data-cat="训练" aria-pressed="false">训练</button>
+    <button class="chip" type="button" data-cat="架构" aria-pressed="false">架构</button>
+    <button class="chip" type="button" data-cat="生成" aria-pressed="false">生成</button>
+    <button class="chip" type="button" data-cat="评测" aria-pressed="false">评测</button>
+  </div>
+
+  <p class="index-count" id="count" aria-live="polite">显示 30 条</p>
+
+  <dl class="index" id="index">
+    <div class="grp" data-cat="基础">
+      <dt>基础</dt>
+      <dd><span class="en">Neuron</span><span class="zh">神经元</span><span class="def">加权求和后过一个激活函数的最小计算单元</span></dd>
+      <dd><span class="en">Weight</span><span class="zh">权重</span><span class="def">表示某个输入有多重要，训练调的就是它</span></dd>
+      <dd><span class="en">Bias</span><span class="zh">偏置</span><span class="def">神经元的起点，决定输入全为零时它还活不活跃</span></dd>
+      <dd><span class="en">Activation Function</span><span class="zh">激活函数</span><span class="def">在网络里注入非线性，没有它多层等于一层</span></dd>
+      <dd><span class="en">ReLU</span><span class="zh">修正线性单元</span><span class="def">负数压成零、正数原样放过，最常用的激活函数</span></dd>
+      <dd><span class="en">Layer</span><span class="zh">层</span><span class="def">一批并行计算的神经元，全连接层等价于一次矩阵乘法</span></dd>
+    </div>
+
+    <div class="grp" data-cat="数学">
+      <dt>数学</dt>
+      <dd><span class="en">Tensor</span><span class="zh">张量</span><span class="def">多维数组的统称，标量、向量、矩阵都是它的特例</span></dd>
+      <dd><span class="en">Gradient</span><span class="zh">梯度</span><span class="def">损失对每个参数的偏导组成的向量，指向上升最快的方向</span></dd>
+      <dd><span class="en">Chain Rule</span><span class="zh">链式法则</span><span class="def">复合函数求导把各层局部导数连乘，反向传播的数学依据</span></dd>
+      <dd><span class="en">Backpropagation</span><span class="zh">反向传播</span><span class="def">从损失往回逐层算梯度，每个中间量只算一次</span></dd>
+      <dd><span class="en">Vanishing Gradient</span><span class="zh">梯度消失</span><span class="def">深层连乘让梯度趋近零，浅层几乎学不动</span></dd>
+    </div>
+
+    <div class="grp" data-cat="训练">
+      <dt>训练</dt>
+      <dd><span class="en">Loss Function</span><span class="zh">损失函数</span><span class="def">把预测错得多离谱压缩成一个可以求导的标量</span></dd>
+      <dd><span class="en">MSE</span><span class="zh">均方误差</span><span class="def">预测与真值之差的平方取平均，回归任务常用</span></dd>
+      <dd><span class="en">Cross-Entropy</span><span class="zh">交叉熵</span><span class="def">衡量两个概率分布的差异，分类任务常用</span></dd>
+      <dd><span class="en">Learning Rate</span><span class="zh">学习率</span><span class="def">每步沿梯度走多远，太小学得慢，太大直接发散</span></dd>
+      <dd><span class="en">Gradient Descent</span><span class="zh">梯度下降</span><span class="def">沿负梯度方向迭代更新参数，训练的基本动作</span></dd>
+      <dd><span class="en">SGD</span><span class="zh">随机梯度下降</span><span class="def">每次只用一小批样本估梯度，速度快但方向抖</span></dd>
+      <dd><span class="en">Batch</span><span class="zh">批</span><span class="def">一次前向加反向一起处理的样本数</span></dd>
+      <dd><span class="en">Epoch</span><span class="zh">轮次</span><span class="def">把训练集完整过一遍叫一轮</span></dd>
+      <dd><span class="en">Overfitting</span><span class="zh">过拟合</span><span class="def">训练集表现好、新数据表现差，模型记住了噪声</span></dd>
+    </div>
+
+    <div class="grp" data-cat="架构">
+      <dt>架构</dt>
+      <dd><span class="en">MLP</span><span class="zh">多层感知机</span><span class="def">若干全连接层堆起来的最朴素网络</span></dd>
+      <dd><span class="en">CNN</span><span class="zh">卷积神经网络</span><span class="def">用局部连接加权重共享处理网格数据</span></dd>
+      <dd><span class="en">Receptive Field</span><span class="zh">感受野</span><span class="def">一个神经元在原始输入上能看到的范围</span></dd>
+      <dd><span class="en">Residual Connection</span><span class="zh">残差连接</span><span class="def">输出加回输入，让梯度有一条直达通道</span></dd>
+      <dd><span class="en">Attention</span><span class="zh">注意力</span><span class="def">按内容相似度动态加权，汇总其他位置的信息</span></dd>
+      <dd><span class="en">Transformer</span><span class="zh">变换器</span><span class="def">完全由注意力与前馈层堆成的架构，可整段并行</span></dd>
+    </div>
+
+    <div class="grp" data-cat="生成">
+      <dt>生成</dt>
+      <dd><span class="en">GAN</span><span class="zh">生成对抗网络</span><span class="def">生成器与判别器互相对抗，逼着生成结果变逼真</span></dd>
+      <dd><span class="en">Diffusion Model</span><span class="zh">扩散模型</span><span class="def">学会逐步去噪，从纯噪声一路还原出数据</span></dd>
+    </div>
+
+    <div class="grp" data-cat="评测">
+      <dt>评测</dt>
+      <dd><span class="en">PSNR</span><span class="zh">峰值信噪比</span><span class="def">基于像素误差的保真度指标，数值越高越接近原图</span></dd>
+      <dd><span class="en">SSIM</span><span class="zh">结构相似性</span><span class="def">比较亮度、对比度与结构，比 PSNR 更贴近人眼判断</span></dd>
+    </div>
+  </dl>
+
+  <p class="index-empty" id="empty" hidden>没有匹配的术语。换一个关键词，或点“全部”清除筛选。</p>
+</section>
+
+<!-- ================= 收尾 ================= -->
+<section id="sec-close">
+  <div class="sec-head">
+    <span class="rule"></span>
+    <h2>收尾：五个常见误区</h2>
+    <p class="q">这五条如果一开始就搞清楚，能省掉很多弯路。</p>
+  </div>
+
+  <ol class="misread">
+    <li>
+      <div>
+        <strong>“局部极小值是训练的死穴。”</strong>
+        <p>在几十万维的参数空间里，真正的局部极小值比鞍点稀少得多，而鞍点是可以走出来的。实践中的问题很少是“卡在局部极小”，更常见的是学习率没调好和数据有问题。</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>“参数越多效果越好。”</strong>
+        <p>参数量要和数据量匹配。数据不够而参数极多，模型会去记训练集的噪声，测试表现反而更差，也就是过拟合。大模型之所以能用，前提是有海量数据。</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>“没有大算力就入不了门。”</strong>
+        <p>跑通一个手写数字识别的小卷积网络，笔记本 CPU 几分钟就够，也不需要显卡。理解原理和训练出一个可用的模型，是两件要求完全不同的事。</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>“数学不熟就学不了。”</strong>
+        <p>起步只需要三样东西：能看懂导数表示变化率、会算矩阵乘法、知道均值和方差是什么意思。其余的可以边做边补，而且缺哪块补哪块的效率更高。</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>“从 Transformer 开始学最快。”</strong>
+        <p>Transformer 是为了解决卷积看不远、循环网络不能并行这两个具体问题才出现的。跳过前两代直接看它，会不明白它为什么长这个样子，也不容易判断它的代价在哪。</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="note-box insight">
+    <span class="tag">一页速记</span>
+    <p>神经元是<span class="mono">加权求和 + 非线性</span>。损失把误差压成一个数。梯度指出变差最快的方向，所以往反方向走。反向传播是链式法则的高效实现，代价与前向同量级。CNN 用局部连接与权重共享对抗参数量，ResNet 用残差对抗退化，Attention 用内容相似度对抗局部视野。每一代都在补上一代的一个坑。</p>
+  </div>
+</section>
+
+<footer>
+  <p>创建于 2026-10-29，收入本博客 2026-11-11。本页所有数字示例共用同一组记号，可用计算器逐行复核。</p>
+  <p>相关阅读：<a href="neural-network-training-optimization.html">《神经网络训练优化：从学习率到部署》</a>（本篇续作：优化器、显存工程、量化与推理引擎）· <a href="index.html">返回首页</a></p>
+</footer>
+
+</div>
+</main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =============== 主题三态 =============== */
+  var root = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  var MODES = ['auto', 'light', 'dark'];
+  var LABEL = { auto: '跟随系统', light: '浅色', dark: '深色' };
+  var mode = 'auto';
+
+  try {
+    var saved = localStorage.getItem('technotes-theme') || localStorage.getItem('nn-theme');
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') mode = saved;
+  } catch (e) { /* storage may be unavailable in private mode */ }
+
+  function applyTheme(m) {
+    if (m === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', m);
+    btn.textContent = '主题：' + LABEL[m];
+    btn.setAttribute('aria-label', '主题：' + LABEL[m] + '，点击切换');
+    try { window.dispatchEvent(new CustomEvent('nn:theme')); } catch (e) {}
+  }
+  applyTheme(mode);
+
+  btn.addEventListener('click', function () {
+    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+    applyTheme(mode);
+    try { localStorage.setItem('technotes-theme', mode); localStorage.removeItem('nn-theme'); } catch (e) {}
+  });
+
+  /* =============== 环境层：指针柔光 + 粒子网络 =============== */
+
+  var reduceMotion = !!(window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var finePointer = !!(window.matchMedia &&
+    window.matchMedia('(pointer: fine)').matches);
+
+  function cssRGBA(name, alpha) {
+    var v = getComputedStyle(root).getPropertyValue(name).trim();
+    var m = /^#([0-9a-fA-F]{6})$/.exec(v);
+    if (!m) return 'rgba(79,216,196,' + alpha + ')';
+    var n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+  }
+
+  // 指针柔光：只改 transform，走合成层
+  (function torchFollow() {
+    var torch = document.querySelector('.bg-torch');
+    if (!torch || !finePointer || reduceMotion) return;
+    var tx = 0, ty = 0, queued = false;
+    window.addEventListener('pointermove', function (e) {
+      tx = e.clientX;
+      ty = e.clientY;
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        torch.style.transform = 'translate3d(' + tx + 'px,' + ty + 'px,0)';
+        queued = false;
+      });
+    }, { passive: true });
+  })();
+
+  // 首屏粒子：节点漂浮 + 近邻连线，语义上就是一张神经网络
+  (function particleField() {
+    var cv = document.getElementById('field');
+    if (!cv || !cv.getContext) return;
+
+    var ctx = cv.getContext('2d');
+    var dpr = 1, W = 0, H = 0;
+    var dots = [];
+    var raf = null;
+    var visible = true;
+    var ptr = { x: -9999, y: -9999 };
+    var colLine = null, colDot = null;
+
+    function readColors() {
+      colLine = cssRGBA('--accent', 1);
+      colDot = cssRGBA('--accent-2', 1);
+    }
+
+    function resize() {
+      var r = cv.getBoundingClientRect();
+      W = Math.max(200, Math.round(r.width));
+      H = Math.max(140, Math.round(r.height));
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(W * dpr);
+      cv.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      seed();
+      draw();
+    }
+
+    function seed() {
+      var n = Math.round(Math.min(54, Math.max(14, W / 30)));
+      if (!finePointer) n = Math.round(n * 0.6);
+      dots = [];
+      for (var i = 0; i < n; i++) {
+        dots.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.24,
+          vy: (Math.random() - 0.5) * 0.24,
+          r: 0.9 + Math.random() * 1.6
+        });
+      }
+    }
+
+    function draw() {
+      if (!colLine) readColors();
+      ctx.clearRect(0, 0, W, H);
+
+      var LINK = 122;
+      var i, j, a, b;
+
+      for (i = 0; i < dots.length; i++) {
+        a = dots[i];
+        if (!visible) break;
+
+        if (!reduceMotion) {
+          a.x += a.vx;
+          a.y += a.vy;
+          if (a.x < -12) a.x = W + 12;
+          if (a.x > W + 12) a.x = -12;
+          if (a.y < -12) a.y = H + 12;
+          if (a.y > H + 12) a.y = -12;
+
+          var dx = a.x - ptr.x, dy = a.y - ptr.y;
+          var d2 = dx * dx + dy * dy;
+          if (d2 < 9600 && d2 > 0.5) {
+            var d = Math.sqrt(d2);
+            a.x += (dx / d) * 0.85;
+            a.y += (dy / d) * 0.85;
+          }
+        }
+
+        for (j = i + 1; j < dots.length; j++) {
+          b = dots[j];
+          var ox = a.x - b.x, oy = a.y - b.y;
+          var dd = ox * ox + oy * oy;
+          if (dd < LINK * LINK) {
+            var t = 1 - Math.sqrt(dd) / LINK;
+            ctx.strokeStyle = colLine.replace(',1)', ',' + (0.30 * t).toFixed(3) + ')');
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (i = 0; i < dots.length; i++) {
+        a = dots[i];
+        var near = Math.hypot(a.x - ptr.x, a.y - ptr.y);
+        var alpha = near < 160 ? 1 : 0.72;
+        ctx.fillStyle = colDot.replace(',1)', ',' + alpha + ')');
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function loop() {
+      draw();
+      raf = requestAnimationFrame(loop);
+    }
+
+    function start() {
+      if (reduceMotion || raf !== null) return;
+      raf = requestAnimationFrame(loop);
+    }
+
+    function stop() {
+      if (raf !== null) { cancelAnimationFrame(raf); raf = null; }
+    }
+
+    cv.addEventListener('pointermove', function (e) {
+      var r = cv.getBoundingClientRect();
+      ptr.x = e.clientX - r.left;
+      ptr.y = e.clientY - r.top;
+    }, { passive: true });
+    cv.addEventListener('pointerleave', function () {
+      ptr.x = -9999; ptr.y = -9999;
+    }, { passive: true });
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('nn:theme', function () {
+      readColors();
+      draw();
+    });
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) {
+        visible = es[0].isIntersecting;
+        if (visible) start(); else stop();
+      }, { threshold: 0 }).observe(cv);
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop();
+      else if (visible) start();
+    });
+
+    resize();
+    start();
+  })();
+
+  /* =============== 目录高亮 =============== */
+  var links = Array.prototype.slice.call(document.querySelectorAll('.rail nav a'));
+  var targets = links.map(function (a) {
+    return document.querySelector(a.getAttribute('href'));
+  }).filter(Boolean);
+
+  function markCurrent(id) {
+    links.forEach(function (a) {
+      a.setAttribute('aria-current', a.getAttribute('href') === '#' + id ? 'true' : 'false');
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var visible = new Map();
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        visible.set(en.target.id, en.isIntersecting ? en.intersectionRatio : 0);
+      });
+      var best = null, bestRatio = 0;
+      visible.forEach(function (r, id) {
+        if (r > bestRatio) { bestRatio = r; best = id; }
+      });
+      if (best) markCurrent(best);
+    }, { rootMargin: '-15% 0px -55% 0px', threshold: [0, 0.2, 0.5, 1] });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+  markCurrent('opening');
+
+  /* =============== 梯度仪表 =============== */
+  var canvas = document.getElementById('gauge');
+  var ctx = canvas.getContext('2d');
+  var lrInput = document.getElementById('lr');
+  var spdInput = document.getElementById('spd');
+  var lrVal = document.getElementById('lr-v');
+  var spdVal = document.getElementById('spd-v');
+  var elW = document.getElementById('r-w');
+  var elL = document.getElementById('r-l');
+  var elG = document.getElementById('r-g');
+  var elS = document.getElementById('r-s');
+  var elSt = document.getElementById('r-st');
+  var elStWrap = document.getElementById('r-st-wrap');
+  var live = document.getElementById('rig-live');
+  var btnStep = document.getElementById('btn-step');
+  var btnRun = document.getElementById('btn-run');
+  var btnReset = document.getElementById('btn-reset');
+  var btnTerrain = document.getElementById('btn-terrain');
+  var ledEl = document.getElementById('rigLed');
+
+  /* --- 黏液层：小球拖尾的 metaball 融合 --- */
+  var gooCircles = [];
+  (function initGoo() {
+    var group = document.getElementById('gooGroup');
+    if (!group) return;
+    var NS = 'http://www.w3.org/2000/svg';
+    for (var i = 0; i < 12; i++) {
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', '-100');
+      c.setAttribute('cy', '-100');
+      c.setAttribute('r', '0');
+      c.setAttribute('fill', 'currentColor');
+      group.appendChild(c);
+      gooCircles.push(c);
+    }
+  })();
+
+  function updateGoo(X, Y, offScreen) {
+    if (!gooCircles.length) return;
+
+    var blank = function () {
+      for (var z = 0; z < gooCircles.length; z++) gooCircles[z].setAttribute('r', '0');
+    };
+
+    if (offScreen) { blank(); return; }
+
+    var hist = state.hist;
+    var MAX_SEG = 150;
+
+    // 从最新一步往回收集，遇到过大跳跃就截断，避免发散时画出横贯全图的直线
+    var lastH = hist[hist.length - 1];
+    var pts = [{ x: X(lastH.w), y: Y(lastH.L) }];
+    var limit = reduceMotion ? 1 : 9;
+    for (var i = hist.length - 2; i >= 0 && pts.length < limit; i--) {
+      var np = { x: X(hist[i].w), y: Y(hist[i].L) };
+      if (Math.hypot(np.x - pts[0].x, np.y - pts[0].y) > MAX_SEG) break;
+      pts.unshift(np);
+    }
+
+    if (pts.length < 2) {
+      blank();
+      gooCircles[0].setAttribute('cx', pts[0].x.toFixed(1));
+      gooCircles[0].setAttribute('cy', pts[0].y.toFixed(1));
+      gooCircles[0].setAttribute('r', '8');
+      return;
+    }
+
+    // 沿折线累计长度
+    var cum = [0];
+    for (var q = 1; q < pts.length; q++) {
+      cum.push(cum[q - 1] + Math.hypot(pts[q].x - pts[q - 1].x, pts[q].y - pts[q - 1].y));
+    }
+    var total = cum[cum.length - 1];
+
+    // 在折线上等距取样，越新越大
+    var N = gooCircles.length;
+    for (var k = 0; k < N; k++) {
+      var u = k / (N - 1);
+      var d = total * (1 - u);
+      var seg = 1;
+      while (seg < cum.length - 1 && cum[seg] < d) seg++;
+      var span = cum[seg] - cum[seg - 1] || 1;
+      var f = (d - cum[seg - 1]) / span;
+      f = Math.max(0, Math.min(1, f));
+      var px = pts[seg - 1].x + (pts[seg].x - pts[seg - 1].x) * f;
+      var py = pts[seg - 1].y + (pts[seg].y - pts[seg - 1].y) * f;
+
+      var c = gooCircles[k];
+      c.setAttribute('cx', px.toFixed(1));
+      c.setAttribute('cy', py.toFixed(1));
+      c.setAttribute('r', (8 * (1 - u * 0.52)).toFixed(2));
+    }
+  }
+
+  /* --- 仪表面板上的聚光灯 --- */
+  (function rigSpotlight() {
+    var rig = document.querySelector('.rig');
+    if (!rig || !finePointer) return;
+    rig.addEventListener('pointermove', function (e) {
+      var r = rig.getBoundingClientRect();
+      rig.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      rig.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    }, { passive: true });
+  })();
+
+  var TERRAINS = {
+    convex: {
+      label: '凸地形',
+      L: function (w) { return (w - 3) * (w - 3); },
+      dL: function (w) { return 2 * (w - 3); },
+      w0: 1.0,
+      xr: [-1, 7],
+      yr: [0, 16],
+      xticks: [-1, 0, 1, 2, 3, 4, 5, 6, 7],
+      yticks: [0, 4, 8, 12, 16],
+      minLabel: '全局最低点',
+      minW: 3,
+      caption: '凸地形：只有一个最低点。学习率 0.30 几步就贴到底部，1.10 会直接飞出去。'
+    },
+    bumpy: {
+      label: '非凸地形',
+      L: function (w) { return 0.02 * w * w * w * w - 0.55 * w * w + 0.05 * w + 4; },
+      dL: function (w) { return 0.08 * w * w * w - 1.1 * w + 0.05; },
+      w0: 3.0,
+      xr: [-5, 5],
+      yr: [0, 4.6],
+      xticks: [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+      yticks: [0, 1, 2, 3, 4],
+      minLabel: '比它更低的谷在左边',
+      minW: -3.71,
+      caption: '非凸地形：右边这个谷不是最低的，但沿梯度走进去就出不来了。这就是局部极小值的直观样子。'
+    }
+  };
+
+  var terrainKey = 'convex';
+  var state = { w: 0, L: 0, g: 0, steps: 0, hist: [], status: 'idle' };
+  var running = false;
+  var timer = null;
+  var dpr = 1;
+  var cssW = 640, cssH = 320;
+
+  function terrain() { return TERRAINS[terrainKey]; }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function reset() {
+    stopRun();
+    var t = terrain();
+    state.w = t.w0;
+    state.L = t.L(t.w0);
+    state.g = t.dL(t.w0);
+    state.steps = 0;
+    state.hist = [{ w: state.w, g: state.g, L: state.L }];
+    state.status = 'idle';
+    render();
+    announce();
+  }
+
+  function step() {
+    var t = terrain();
+    var eta = parseInt(lrInput.value, 10) / 100;
+
+    if (state.status === 'diverged') return;
+
+    state.w = state.w - eta * state.g;
+    state.L = t.L(state.w);
+    state.g = t.dL(state.w);
+    state.steps += 1;
+
+    state.hist.push({ w: state.w, g: state.g, L: state.L });
+    if (state.hist.length > 240) state.hist.shift();
+
+    var h = state.hist, n = h.length;
+
+    if (!isFinite(state.w) || !isFinite(state.L) || Math.abs(state.w) > 80) {
+      state.w = Math.max(-80, Math.min(80, state.w));
+      state.status = 'diverged';
+      stopRun();
+    } else if (Math.abs(state.g) < 1e-3) {
+      state.status = 'settled';
+      stopRun();
+    } else {
+      // 损失连续三步上升，说明步长已经越过最低点并放大误差
+      var rising = n >= 3 &&
+        Math.abs(h[n - 1].L) > Math.abs(h[n - 2].L) &&
+        Math.abs(h[n - 2].L) > Math.abs(h[n - 3].L);
+      state.status = rising ? 'unstable' : 'running';
+    }
+
+    render();
+    announce();
+  }
+
+  function startRun() {
+    if (state.status === 'diverged' || state.status === 'settled') reset();
+    running = true;
+    btnRun.setAttribute('aria-pressed', 'true');
+    btnRun.textContent = '暂停';
+    tick();
+  }
+
+  function stopRun() {
+    running = false;
+    if (timer) { clearTimeout(timer); timer = null; }
+    btnRun.setAttribute('aria-pressed', 'false');
+    btnRun.textContent = '连续';
+  }
+
+  function tick() {
+    if (!running) return;
+    step();
+    if (!running) return;
+    var spd = parseInt(spdInput.value, 10);
+    var delay = 620 - spd * 55;
+    timer = setTimeout(tick, Math.max(60, delay));
+  }
+
+  /* ---- 绘制 ---- */
+
+  function fit() {
+    var rect = canvas.getBoundingClientRect();
+    var w = Math.max(280, Math.round(rect.width));
+    var h = Math.round(rect.height) || 320;
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    var pw = Math.round(w * ratio);
+    var ph = Math.round(h * ratio);
+    if (canvas.width === pw && canvas.height === ph) return;
+    cssW = w;
+    cssH = h;
+    dpr = ratio;
+    canvas.width = pw;
+    canvas.height = ph;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+
+  function readVar(name) {
+    return getComputedStyle(root).getPropertyValue(name).trim();
+  }
+
+  function render() {
+    fit();
+    var t = terrain();
+    var c = {
+      ink: readVar('--ink'),
+      ink2: readVar('--ink2'),
+      ink3: readVar('--ink3'),
+      rule: readVar('--rule'),
+      rule2: readVar('--rule2'),
+      panel: readVar('--panel'),
+      mark: readVar('--mark'),
+      fail: readVar('--fail'),
+      ok: readVar('--ok'),
+      accent: readVar('--accent'),
+      screen: readVar('--screen-bg') || readVar('--panel')
+    };
+
+    ctx.clearRect(0, 0, cssW, cssH);
+
+  // 纵向分区：损失曲线 / x 轴刻度 / 梯度面板
+  var padL = 50, padR = 40;
+  var aTop = 24;
+  var aBot = Math.round(cssH * 0.52);
+  var xLab = aBot + 15;
+  var gTitle = Math.round(cssH * 0.655);
+  var bTop = Math.round(cssH * 0.70);
+  var bBot = cssH - 26;
+  var plotW = cssW - padL - padR;
+
+  var xr = t.xr, yr = t.yr;
+  function X(w) { return padL + (w - xr[0]) / (xr[1] - xr[0]) * plotW; }
+  function Y(l) { return aBot - (l - yr[0]) / (yr[1] - yr[0]) * (aBot - aTop); }
+
+    /* --- 上半部分：损失曲线 --- */
+
+    // 网格与纵轴刻度先画，不放进裁剪区，否则左侧标签会被裁掉
+    ctx.strokeStyle = c.rule;
+    ctx.lineWidth = 1;
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = c.ink2;
+
+    yr.forEach(function (v) {
+      var y = Math.round(Y(v)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+    });
+
+    // 横轴画在曲线之前，避免线压在去重后的小球上
+    ctx.strokeStyle = c.rule2;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, Math.round(aBot) + 0.5);
+    ctx.lineTo(padL + plotW, Math.round(aBot) + 0.5);
+    ctx.stroke();
+
+    ctx.fillStyle = c.ink2;
+    ctx.textAlign = 'right';
+    ctx.font = '10px ui-monospace, monospace';
+    t.yticks.forEach(function (v) {
+      ctx.fillText(String(v), padL - 9, Y(v) + 3);
+    });
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, aTop - 6, plotW, aBot - aTop + 8);
+    ctx.clip();
+
+    // 曲线
+    ctx.strokeStyle = c.ink;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    var first = true;
+    for (var px = 0; px <= plotW; px += 1.5) {
+      var w = xr[0] + (px / plotW) * (xr[1] - xr[0]);
+      var l = t.L(w);
+      var y = Y(l);
+      if (y < aTop - 40 || y > aBot + 40) { first = true; continue; }
+      if (first) { ctx.moveTo(padL + px, y); first = false; }
+      else ctx.lineTo(padL + px, y);
+    }
+    ctx.stroke();
+
+    // 全局最低点标记
+    var minY = Y(t.L(t.minW));
+    if (minY > aTop && minY < aBot) {
+      ctx.strokeStyle = c.rule2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(X(t.minW), minY);
+      ctx.lineTo(X(t.minW), aBot);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 轨迹点（越早越淡）
+    var hist = state.hist;
+    var from = Math.max(0, hist.length - 40);
+    for (var i = from; i < hist.length - 1; i++) {
+      var h = hist[i];
+      var alpha = 0.06 + 0.34 * ((i - from) / Math.max(1, hist.length - 1 - from));
+      ctx.fillStyle = c.ink3;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(X(h.w), Y(h.L), 1.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 小球：发光的水滴
+    var bx = X(state.w), by = Y(state.L);
+    var out = bx < padL - 20 || bx > padL + plotW + 20 || by > aBot + 20 || by < aTop - 40;
+
+    if (!out) {
+      var ballColor = state.status === 'diverged' ? c.fail : c.accent;
+      ctx.shadowColor = ballColor;
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = ballColor;
+      ctx.beginPath();
+      ctx.arc(bx, by, 4.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    updateGoo(X, Y, out);
+
+    if (out) {
+      ctx.fillStyle = c.fail;
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('参数已越出显示范围', padL + plotW / 2, aTop + 18);
+    }
+
+    // x 轴刻度与标签
+    ctx.strokeStyle = c.rule2;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = c.ink2;
+    ctx.textAlign = 'center';
+    ctx.font = '10px ui-monospace, monospace';
+    var step = t.xticks.length > 8 ? 2 : 1;
+    t.xticks.forEach(function (v, idx) {
+      if (idx % step !== 0) return;
+      var x = X(v);
+      ctx.beginPath();
+      ctx.moveTo(x, aBot);
+      ctx.lineTo(x, aBot + 3);
+      ctx.stroke();
+      ctx.fillText(String(v), x, xLab);
+    });
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = c.ink3;
+    ctx.fillText('w', padL + plotW + 16, xLab);
+
+    /* --- 下半部分：梯度条形图 --- */
+    ctx.textAlign = 'left';
+    ctx.fillStyle = c.ink3;
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillText('每一步的梯度 ∂L/∂w', padL, gTitle);
+
+    var bars = hist.slice(-44);
+    var mid = (bTop + bBot) / 2;
+    var half = (bBot - bTop) / 2 - 2;
+
+    var maxAbs = 1e-6;
+    bars.forEach(function (h) { maxAbs = Math.max(maxAbs, Math.abs(h.g)); });
+    if (!isFinite(maxAbs)) maxAbs = 1;
+
+    // 零线
+    ctx.strokeStyle = c.rule2;
+    ctx.beginPath();
+    ctx.moveTo(padL, Math.round(mid) + 0.5);
+    ctx.lineTo(padL + plotW, Math.round(mid) + 0.5);
+    ctx.stroke();
+
+    var bw = Math.max(2, plotW / 48 - 2);
+    bars.forEach(function (h, i) {
+      var x = padL + i * (plotW / 48);
+      var g = h.g;
+      if (!isFinite(g)) g = 0;
+      var norm = Math.max(-1, Math.min(1, g / maxAbs));
+      var hgt = norm * half;
+      ctx.fillStyle = h.g >= 0 ? c.ink2 : c.ink3;
+      if (i === bars.length - 1) ctx.fillStyle = state.status === 'diverged' ? c.fail : c.ink;
+      ctx.fillRect(x, hgt >= 0 ? mid - hgt : mid, bw, Math.abs(hgt));
+    });
+
+    // 读数
+    ctx.textAlign = 'right';
+    ctx.fillStyle = c.ink3;
+    ctx.font = '9px ui-monospace, monospace';
+    ctx.fillText(maxAbs.toFixed(2), padL - 6, bTop + 8);
+    ctx.fillText('0', padL - 6, mid + 3);
+    ctx.fillText('−' + maxAbs.toFixed(2), padL - 6, bBot);
+
+    /* --- 读数区与提示 --- */
+    elW.textContent = fmt(state.w, 3);
+    elL.textContent = fmt(state.L, 4);
+    elG.textContent = fmt(state.g, 4);
+    elS.textContent = String(state.steps);
+
+    var statusText = { idle: '待启动', running: '下降中', unstable: '震荡放大', settled: '已收敛', diverged: '发散' };
+    elSt.textContent = statusText[state.status] || '待启动';
+    elStWrap.setAttribute('data-s', state.status);
+    if (ledEl) ledEl.setAttribute('data-s', state.status);
+  }
+
+  function fmt(v, digits) {
+    if (!isFinite(v)) return '溢出';
+    var s = v.toFixed(digits);
+    return s.replace('-', '−');
+  }
+
+  var lastAnnounce = 0;
+  function announce() {
+    var now = Date.now();
+    if (now - lastAnnounce < 400) return;
+    lastAnnounce = now;
+    var txt = '参数 w 等于 ' + fmt(state.w, 3) +
+      '，损失 ' + fmt(state.L, 4) +
+      '，梯度 ' + fmt(state.g, 4) +
+      '，第 ' + state.steps + ' 步';
+    if (state.status === 'diverged') txt += '，已发散，请调小学习率或重置';
+    else if (state.status === 'settled') txt += '，梯度已接近零，收敛';
+    live.textContent = txt;
+  }
+
+  function updateLrLabel() {
+    lrVal.textContent = (parseInt(lrInput.value, 10) / 100).toFixed(2);
+  }
+
+  function updateSpdLabel() {
+    var v = parseInt(spdInput.value, 10);
+    spdVal.textContent = v <= 3 ? '慢' : (v <= 7 ? '中' : '快');
+  }
+
+  lrInput.addEventListener('input', function () {
+    updateLrLabel();
+    if (state.status === 'diverged') reset();
+  });
+
+  spdInput.addEventListener('input', updateSpdLabel);
+
+  btnStep.addEventListener('click', function () {
+    stopRun();
+    if (state.status === 'settled' || state.status === 'diverged') reset();
+    step();
+  });
+
+  btnRun.addEventListener('click', function () {
+    if (running) stopRun();
+    else startRun();
+  });
+
+  btnReset.addEventListener('click', reset);
+
+  btnTerrain.addEventListener('click', function () {
+    terrainKey = terrainKey === 'convex' ? 'bumpy' : 'convex';
+    var t = terrain();
+    btnTerrain.textContent = '当前：' + t.label;
+    document.getElementById('rig-caption').textContent = t.caption;
+    reset();
+  });
+
+  btnTerrain.textContent = '当前：' + terrain().label;
+  updateLrLabel();
+  updateSpdLabel();
+
+  window.addEventListener('resize', function () { render(); });
+
+  // 布局真正稳定后重设画布内部分辨率，避免缩放导致的模糊。
+  if ('ResizeObserver' in window) {
+    var ro = new ResizeObserver(function () { render(); });
+    ro.observe(canvas);
+  }
+
+  // 同步初始化：不依赖 requestAnimationFrame，后台标签页里它可能一直被节流。
+  reset();
+
+  // 字体就绪后再画一次，确保等宽字体的度量已经生效。
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { render(); });
+  }
+  window.addEventListener('load', function () { render(); });
+
+  /* =============== 术语索引过滤 =============== */
+  var q = document.getElementById('q');
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.chip'));
+  var countEl = document.getElementById('count');
+  var emptyEl = document.getElementById('empty');
+  var groups = Array.prototype.slice.call(document.querySelectorAll('#index .grp'));
+  var activeCat = '';
+
+  function applyFilter() {
+    var needle = q.value.trim().toLowerCase();
+    var shown = 0;
+
+    groups.forEach(function (g) {
+      var catOk = !activeCat || g.getAttribute('data-cat') === activeCat;
+      var rows = g.querySelectorAll('dd');
+      var catShown = 0;
+
+      rows.forEach(function (dd) {
+        var text = dd.textContent.toLowerCase();
+        var hit = catOk && (!needle || text.indexOf(needle) !== -1);
+        dd.hidden = !hit;
+        if (hit) catShown++;
+      });
+
+      g.hidden = catShown === 0;
+      shown += catShown;
+    });
+
+    countEl.textContent = '显示 ' + shown + ' 条';
+    emptyEl.hidden = shown !== 0;
+  }
+
+  q.addEventListener('input', applyFilter);
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      activeCat = chip.getAttribute('data-cat');
+      chips.forEach(function (o) {
+        o.setAttribute('aria-pressed', o === chip ? 'true' : 'false');
+      });
+      applyFilter();
+    });
+  });
+
+  applyFilter();
+
+  // 主题切换后重绘 canvas，让颜色跟上
+  var mo = new MutationObserver(function () { render(); });
+  mo.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq.addEventListener) mq.addEventListener('change', render);
+  }
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGE2NDIwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI1IiBjeT0iNi41IiByPSIxLjciLz48Y2lyY2xlIGN4PSI1IiBjeT0iMTcuNSIgcj0iMS43Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMS43Ii8+PGNpcmNsZSBjeD0iMTkiIGN5PSI3IiByPSIxLjciLz48Y2lyY2xlIGN4PSIxOSIgY3k9IjE3IiByPSIxLjciLz48cGF0aCBkPSJNNi41IDcuMyAxMC42IDExLjJNNi41IDE2LjcgMTAuNiAxMi44TTEzLjQgMTEuNmw0LTMuMU0xMy40IDEyLjRsNCAzLjEiLz48L2c+PC9zdmc+";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI1IiBjeT0iNi41IiByPSIxLjciLz48Y2lyY2xlIGN4PSI1IiBjeT0iMTcuNSIgcj0iMS43Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMS43Ii8+PGNpcmNsZSBjeD0iMTkiIGN5PSI3IiByPSIxLjciLz48Y2lyY2xlIGN4PSIxOSIgY3k9IjE3IiByPSIxLjciLz48cGF0aCBkPSJNNi41IDcuMyAxMC42IDExLjJNNi41IDE2LjcgMTAuNiAxMi44TTEzLjQgMTEuNmw0LTMuMU0xMy40IDEyLjRsNCAzLjEiLz48L2c+PC9zdmc+";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

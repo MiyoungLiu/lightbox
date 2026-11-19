@@ -1,0 +1,2748 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灯箱 · 把结构照亮再下判断</title>
+<meta name="description" content="灯箱：把医学影像、体渲染、AI 工程与生活里的问题照亮，拆到能验算。推导可复核，引用可回查，演示现场计算。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="灯箱 · 把结构照亮再下判断">
+<meta property="og:description" content="灯箱：把医学影像、体渲染、AI 工程与生活里的问题照亮，拆到能验算。推导可复核，引用可回查，演示现场计算。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/">
+<meta name="twitter:card" content="summary">
+
+<style>
+/* ============================================================
+   灯箱 · LIGHTBOX — 首页
+   单文件 · 零外部依赖 · 可离线打开
+   首屏是编辑部式的排版主视觉：大标题、克制的留白，右侧悬一枚 canvas
+   能量球（炽白核心、等离子纹理、呼吸日冕、倾斜轨道与环行微粒）。
+   ============================================================ */
+
+:root {
+  --void: #04050a;
+  --void-2: #080b14;
+  --panel: rgba(5, 7, 14, .80);
+  --panel-2: rgba(9, 12, 22, .55);
+  --ink: #e8eaf5;
+  --ink-2: #b7bcdc;
+  --ink-3: #8a91ae;
+  --rule: #0e1428;
+  --rule-2: #1c2544;
+
+  /* 分类只保留三种低饱和强调：调研=蓝紫，教程=暖金，论文=鼠尾草 */
+  --cool: #93a7e0;
+  --cool-2: #9fbf9a;
+  --cool-dim: rgba(147, 167, 224, .09);
+  --warm: #d1a55e;
+  --warm-2: #e3c084;
+  --warm-dim: rgba(209, 165, 94, .10);
+  --paper: #a9b98e;
+  --paper-2: #c0caa2;
+  --paper-dim: rgba(169, 185, 142, .10);
+
+  --display: "Source Han Sans CN", "Source Han Sans SC", "Noto Sans SC", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  --sans: "Noto Sans SC", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --void: #f2f1ec; --void-2: #e9e7df; --panel: rgba(250,249,244,.82);
+    --panel-2: rgba(255,255,255,.55);
+    --ink: #15191b; --ink-2: #3f4748; --ink-3: #676c65;
+    --rule: #d9d7cd; --rule-2: #bfbdb1;
+    --cool: #3b5d78; --cool-2: #3f6b55; --cool-dim: rgba(59, 93, 120, .075);
+    --warm: #8a6420; --warm-2: #a1782e; --warm-dim: rgba(138, 100, 32, .075);
+    --paper: #4f6b4a; --paper-2: #6f7f51; --paper-dim: rgba(79, 107, 74, .075);
+  }
+}
+
+html[data-theme="light"] {
+  --void: #f2f1ec; --void-2: #e9e7df; --panel: rgba(250,249,244,.82);
+  --panel-2: rgba(255,255,255,.55);
+  --ink: #15191b; --ink-2: #3f4748; --ink-3: #676c65;
+  --rule: #d9d7cd; --rule-2: #bfbdb1;
+  --cool: #3b5d78; --cool-2: #3f6b55; --cool-dim: rgba(59, 93, 120, .075);
+  --warm: #8a6420; --warm-2: #a1782e; --warm-dim: rgba(138, 100, 32, .075);
+  --paper: #4f6b4a; --paper-2: #6f7f51; --paper-dim: rgba(79, 107, 74, .075);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+::selection { background: var(--cool); color: var(--void); }
+
+/* ---- 背景：微光与切片纹理 ---- */
+
+.glow {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--void);
+  background:
+    radial-gradient(44rem 30rem at 84% 14%, color-mix(in srgb, var(--warm) 7%, transparent), transparent 66%),
+    radial-gradient(46rem 34rem at 6% 104%, color-mix(in srgb, var(--paper) 6%, transparent), transparent 70%),
+    var(--void);
+}
+
+.glow::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 3px,
+    var(--rule) 3px 4px
+  );
+  opacity: .22;
+}
+
+/* ---- 顶栏 ---- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--void) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .topbar { background: var(--void); }
+}
+
+.topbar-in {
+  max-width: 1140px; margin: 0 auto;
+  padding: 14px 28px;
+  display: flex; align-items: center; gap: 22px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 9px;
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: block;
+  opacity: .95;
+  transition: opacity .18s;
+}
+
+.brand:hover .brand-mark { opacity: 1; }
+
+.brand-mark .bm-frame {
+  fill: none;
+  stroke: var(--cool-2, var(--cyan, var(--teal, #4fd1c5)));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.brand-mark .bm-slice {
+  stroke: var(--ice, var(--cool, var(--indigo, #8cc4ff)));
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  opacity: .8;
+}
+
+.brand-mark .bm-dot {
+  fill: var(--rose, var(--paper, #ff6f91));
+}
+
+
+.brand:hover { color: var(--ink-2); }
+
+.brand .zh { letter-spacing: .3em; }
+
+.topbar-in .spacer { flex: 1 1 auto; }
+
+.topnav { display: flex; gap: 20px; }
+
+.topnav a {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  text-decoration: none;
+  transition: color .18s;
+}
+
+.topnav a:hover { color: var(--ink); }
+
+.theme-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: color .18s, border-color .18s;
+}
+
+.theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+/* ---- 版心 ---- */
+
+.wrap {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 28px;
+  flex: 1 0 auto;
+}
+
+/* ---- Hero：左文右「仪器」的不对称分栏 ---- */
+
+/* ---- 首屏主视觉：左列编辑部式排版，右侧轨道索引。
+   首页的身份是一张星图：能量球是恒星，16 篇文章沿三条轨道运行，
+   悬停读数、点击进入；下方卡片列表是同一份索引的文字版 ---- */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: clamp(480px, 56vh, 620px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(24px, 4vw, 64px);
+  padding: 64px 0 48px;
+  overflow: hidden;
+}
+
+.hero-copy { flex: 0 1 auto; max-width: 640px; }
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 36px;
+}
+
+/* 纯色标题：渐变裁剪（background-clip:text）在部分 Chromium 上会把
+   逐字渲染成锯齿白块，且逐字 span 让 letter-spacing 失效，都不用。
+   空心字用整词 span + text-stroke（非渐变、非逐字），不踩同一个坑 */
+.hero h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(96px, 15vw, 210px);
+  line-height: 1.02;
+  letter-spacing: .06em;
+  margin: 0 0 30px -.04em;   /* 抵消字距留下的左缘空隙，视觉贴齐 */
+  color: var(--ink);
+  position: relative;
+  z-index: 2;
+  pointer-events: none;      /* 压住舞台的部分不挡星体点击与拖拽 */
+}
+
+.hero h1 .hollow {
+  color: transparent;
+  -webkit-text-stroke: .022em var(--ink-2);
+}
+
+@supports not (-webkit-text-stroke: 1px #000) {
+  .hero h1 .hollow { color: var(--ink-2); }
+}
+
+.hero-tag {
+  margin: -10px 0 22px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .18em;
+  color: var(--accent);
+}
+
+.hero .lede {
+  color: var(--ink-2);
+  font-size: 16.5px;
+  line-height: 1.88;
+  max-width: 34em;
+  margin: 0;
+}
+
+/* 首屏索引条：三组真实数字，替代原来的一行标签 */
+.hero-index {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 432px;
+  margin-top: 42px;
+  border-top: 1px solid var(--rule);
+}
+
+.hero-index div {
+  padding: 14px 16px 0 0;
+}
+
+.hero-index div + div {
+  padding-left: 18px;
+  border-left: 1px solid var(--rule);
+}
+
+.hero-index span {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 3px;
+}
+
+.hero-index b {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .05em;
+  color: var(--ink);
+}
+
+/* ---- 右侧轨道舞台：画布铺满（恒星与三道轨道环），星体是真实链接。
+   无 JS 时整块退场，版面落回单列排版 ---- */
+
+.orbit-stage {
+  position: relative;
+  flex: 0 1 clamp(380px, 42vw, 600px);
+  height: clamp(420px, 54vh, 580px);
+  user-select: none;
+  touch-action: pan-y;   /* 触屏纵向仍可滚页面，横向拖拽转星图 */
+  /* JS 建好星体后加 .ready 才显示；无 JS 时落回单列排版 */
+  display: none;
+}
+
+.orbit-stage.ready { display: block; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .orbit-stage.ready { cursor: grab; }
+  .orbit-stage.ready.grabbing { cursor: grabbing; }
+}
+
+.orbit-stage > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.obodies { position: absolute; inset: 0; }
+
+.obody {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  will-change: transform;
+}
+
+.obody .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--oc);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--oc) 20%, transparent),
+    0 0 12px color-mix(in srgb, var(--oc) 40%, transparent);
+  transition: transform .25s var(--ease), box-shadow .25s var(--ease);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .obody .dot { box-shadow: 0 0 10px var(--oc); }
+}
+
+.obody.tutorial { --oc: var(--warm); }
+.obody.survey { --oc: var(--cool); }
+.obody.paper, .obody.life { --oc: var(--paper); }
+
+.obody.lead .dot { width: 11px; height: 11px; }
+
+.obody:hover .dot, .obody:focus-visible .dot {
+  transform: scale(1.55);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--oc) 22%, transparent),
+    0 0 18px color-mix(in srgb, var(--oc) 55%, transparent);
+}
+
+.obody:focus-visible { outline: none; }
+
+/* ---- 星体悬停的光标跟随预览卡（桌面精确指针，JS 挂到 body 上） ---- */
+
+.peek {
+  position: fixed; left: 0; top: 0; z-index: 70;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.peek-in {
+  display: block;
+  max-width: 300px;
+  padding: 10px 13px 11px;
+  background: var(--panel);
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .30);
+  opacity: 0;
+  transform: translateY(5px) scale(.97);
+  transition: opacity .2s var(--ease), transform .2s var(--ease);
+}
+
+.peek.on .peek-in { opacity: 1; transform: none; }
+
+html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
+
+.pk-line {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 5px;
+}
+
+.pk-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--oc, var(--warm));
+  flex: 0 0 auto;
+}
+
+.pk-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.peek.tutorial { --oc: var(--warm); }
+.peek.survey { --oc: var(--cool); }
+.peek.paper, .peek.life { --oc: var(--paper); }
+
+/* 读数面板：悬停或聚焦哪颗星，这里就显示哪一篇；默认显示最新一篇 */
+.readout {
+  position: absolute;
+  left: 4px;
+  bottom: 0;
+  max-width: min(78%, 400px);
+  pointer-events: none;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+
+.readout .r-kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 5px;
+}
+
+.r-chip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--oc, var(--ink-3));
+  align-self: center;
+  flex: none;
+}
+
+.readout.tutorial { --oc: var(--warm); }
+.readout.survey { --oc: var(--cool); }
+.readout.paper, .readout.life { --oc: var(--paper); }
+
+#rMeta { letter-spacing: .08em; }
+
+.readout .r-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  margin: 0 0 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.readout .r-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stage-cap {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .16em;
+  color: var(--ink-3);
+  margin: 0;
+  pointer-events: none;
+}
+
+/* ---- 文章索引：固定索引头 + 页内单滚动 ---- */
+
+.posts { padding: 0 0 8px; scroll-margin-top: var(--stick-top, 49px); }
+
+.posts h2, .about h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: .01em;
+  margin-bottom: 10px;
+  display: flex; align-items: baseline; gap: 14px;
+}
+
+.posts h2 .count, .about h2 .count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+}
+
+/* ---- 文章库：可折叠的筛选侧栏 + 卡片网格 ---- */
+
+/* 索引头吸附在顶栏下方：标题不会滑到半截，卡片列表在其下连续滚动。
+   卡片都在版心内，吸附头用版心宽底色即可完整遮住从下方穿过的内容 */
+.posts-head {
+  position: sticky;
+  top: var(--stick-top, 49px);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0 14px;
+  margin-bottom: 20px;
+  background: var(--void);
+  border-bottom: 1px solid var(--rule);
+}
+
+.posts-head h2 { margin-bottom: 0; }
+
+.shelf-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.shelf-toggle svg { width: 12px; height: 12px; display: block; }
+
+.shelf-toggle:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.shelf-toggle[aria-expanded="false"] {
+  color: var(--warm);
+  border-color: color-mix(in srgb, var(--warm) 55%, var(--rule-2));
+  background: transparent;
+}
+
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .shelf-toggle[aria-expanded="false"] { border-color: var(--warm); }
+}
+
+.shelf {
+  display: grid;
+  grid-template-columns: 258px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.shelf.mini { grid-template-columns: minmax(0, 1fr); }
+
+.shelf.mini .side { display: none; }
+
+/* 卡片列是唯一显式滚动区（桌面端），侧栏不进入滚动流 */
+.main { min-width: 0; }
+
+/* ---- 侧栏：检索 + 分类（可折叠） ---- */
+
+.side {
+  position: static;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--panel);
+  padding: 20px 18px 18px;
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .side { background: var(--void-2); }
+}
+
+.side-block + .side-block {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.side-lab {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  --accent: var(--cool);
+  --accent-2: var(--cool-2);
+  --accent-dim: var(--cool-dim);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 224px;
+  padding: 20px 18px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--panel);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: transform .24s var(--ease), border-color .24s var(--ease), background .24s var(--ease);
+}
+
+/* 左沿一道强调线：悬停时自上而下拉开，替代原来的渐变顶光 */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 1;
+  z-index: 2;
+  pointer-events: none;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform .3s var(--ease);
+}
+
+.card.warm {
+  --accent: var(--warm);
+  --accent-2: var(--warm-2);
+  --accent-dim: var(--warm-dim);
+}
+
+.card.paper {
+  --accent: var(--paper);
+  --accent-2: var(--paper-2);
+  --accent-dim: var(--paper-dim);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--rule));
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+  box-shadow: none;
+}
+
+.card:hover::before { transform: scaleY(1); }
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .card:hover { border-color: var(--accent); }
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 13px;
+}
+
+.ic {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--rule));
+}
+
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .ic { border-color: var(--rule-2); }
+}
+
+.ic svg { width: 17px; height: 17px; display: block; }
+
+.card .no {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+
+.card .kicker {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 7px;
+}
+
+.card h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.5;
+  letter-spacing: .01em;
+  margin-bottom: 8px;
+  transition: color .2s;
+}
+
+.card:hover h3 { color: var(--accent); }
+
+.card .desc {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.75;
+  margin-bottom: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card .foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.card .meta {
+  display: flex;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.card .go {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  color: var(--ink-3);
+  padding: 0;
+  transition: color .2s;
+}
+
+.card .go svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+  transition: transform .25s var(--ease);
+}
+
+.card:hover .go { color: var(--accent); }
+
+.card:hover .go svg { transform: translateX(3px); }
+
+/* 首卡跨双列：最新的长文值得更大的版面 */
+.card.lead { grid-column: span 2; min-height: 248px; }
+
+.card.lead .ic { width: 42px; height: 42px; border-radius: 2px; }
+
+.card.lead .ic svg { width: 21px; height: 21px; }
+
+.card.lead h3 { font-size: 23.5px; line-height: 1.38; text-wrap: balance; }
+
+.card.lead .desc { font-size: 13.5px; max-width: 46ch; -webkit-line-clamp: 3; }
+.card h3 .nb { white-space: nowrap; }
+
+.card.hide { display: none; }
+
+/* ---- 检索框（侧栏） ---- */
+
+.search { position: relative; display: flex; align-items: center; }
+
+.search > svg {
+  position: absolute;
+  left: 11px;
+  width: 13px;
+  height: 13px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+.search input {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--void-2);
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  padding: 8px 52px 8px 32px;
+  outline: none;
+  transition: border-color .18s, background .18s;
+  appearance: none;
+}
+
+.search input::-webkit-search-cancel-button { display: none; }
+
+.search input:focus { border-color: var(--warm); background: var(--void); }
+
+.search input::placeholder { color: var(--ink-3); }
+
+.search .kbd {
+  position: absolute;
+  right: 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  padding: 3px 5px;
+  pointer-events: none;
+}
+
+.search .clear {
+  position: absolute;
+  right: 7px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search .clear:hover { color: var(--ink); background: var(--panel-2); }
+
+/* ---- 分类列表（侧栏纵向） ---- */
+
+.cats { display: flex; flex-direction: column; gap: 3px; }
+
+.cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: .02em;
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  padding: 8px 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: color .18s, background .18s;
+}
+
+.cat .n {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--ink-3);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  transition: color .18s, background .18s;
+}
+
+.cat:hover { color: var(--ink); background: var(--panel-2); }
+
+.cat.on {
+  color: var(--warm);
+  background: var(--warm-dim);
+}
+
+.cat.on .n { color: var(--warm); background: transparent; }
+
+.side-hint {
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 1.8;
+  letter-spacing: .05em;
+  color: var(--ink-3);
+  opacity: .85;
+}
+
+.empty {
+  padding: 56px 0 68px;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+.empty .paw { font-family: var(--mono); font-size: 24px; opacity: .55; }
+
+.empty p { margin: 12px 0 18px; font-size: 14px; }
+
+.empty button {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--warm);
+  background: var(--warm-dim);
+  border: 1px solid color-mix(in srgb, var(--warm) 45%, var(--rule-2));
+  border-radius: 2px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .empty button { border-color: var(--warm); }
+}
+
+/* ---- 关于 ---- */
+
+.about {
+  margin: 64px 0 0;
+  padding: 28px 0 80px;
+  border-top: 1px solid var(--rule);
+}
+
+.about .statement {
+  margin: 24px 0 0;
+  max-width: 38em;
+  font-size: 15px;
+  color: var(--ink-2);
+  line-height: 2;
+}
+
+/* ---- 页脚 ---- */
+
+.sitefoot {
+  border-top: 1px solid var(--rule);
+  padding: 24px 28px 32px;
+}
+
+.sitefoot-in {
+  max-width: 1084px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .05em;
+  color: var(--ink-3);
+}
+
+.sitefoot-in .dot { opacity: .5; }
+
+/* ---- 入场与滚动渐显 ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy > * { animation: rise .65s var(--ease) both; }
+  .hero-copy > *:nth-child(2) { animation-delay: .05s; }
+  .hero-copy > *:nth-child(3) { animation-delay: .1s; }
+  .hero-copy > *:nth-child(4) { animation-delay: .15s; }
+  .orbit-stage.ready { animation: stageIn 1.6s .2s var(--ease) both; }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity .6s var(--ease), transform .6s var(--ease);
+  }
+
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* 入场结束后交还给卡片自己的悬停过渡 */
+  .card.reveal.in {
+    transition: opacity .3s var(--ease), transform .3s var(--ease),
+                border-color .3s var(--ease), box-shadow .3s var(--ease);
+  }
+
+  /* .reveal.in 的 transform:none 与 .card:hover 同特异性且更靠后，这里补胜出规则 */
+  .card.reveal.in:hover { transform: translateY(-2px); }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes stageIn {
+    from { opacity: 0; transform: scale(.97); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* ---- 全局质感：胶片颗粒 + 顶部阅读进度 ---- */
+
+.grain {
+  position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: .04;
+}
+
+.progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px;
+  z-index: 30; pointer-events: none;
+}
+
+.progress i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--warm), var(--warm-2));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+/* ---- 主题按钮内的迷你轨道图标：日月位置随三态旋转 ---- */
+
+.tm { width: 14px; height: 14px; flex: 0 0 auto; display: block; }
+
+.tm .tm-core { fill: currentColor; opacity: .5; transition: opacity .4s var(--ease); }
+
+.tm .tm-orbit { stroke: currentColor; stroke-width: 1; fill: none; opacity: .85; }
+
+.tm .tm-dot { fill: var(--warm); }
+
+.tm .tm-arm {
+  transition: transform .55s var(--ease);
+  transform-origin: 7px 7px;
+}
+
+.theme-btn[data-mode="dark"] .tm-core { opacity: .26; }
+.theme-btn[data-mode="light"] .tm-core { opacity: 1; }
+
+.theme-btn[data-mode="auto"] .tm-arm { transform: rotate(0deg); }
+.theme-btn[data-mode="dark"] .tm-arm { transform: rotate(120deg); }
+.theme-btn[data-mode="light"] .tm-arm { transform: rotate(240deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tm .tm-arm { transition: none; }
+}
+
+/* ---- 轨道读数带：文章索引的横向 ticker，数据由卡片列表生成 ---- */
+
+.ticker {
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  overflow: hidden;
+  padding: 11px 0;
+  background: color-mix(in srgb, var(--void-2) 72%, transparent);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .ticker { background: var(--void-2); }
+}
+
+.ticker:empty { display: none; }
+
+.tk-track {
+  display: inline-flex;
+  align-items: baseline;
+  width: max-content;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.tk-item {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  padding: 0 18px;
+}
+
+.tk-item b { color: var(--warm); font-weight: 600; margin-right: 9px; }
+
+.tk-item .tk-cat { opacity: .72; margin-right: 9px; }
+
+.tk-sep { color: var(--warm); opacity: .55; font-size: 9px; align-self: center; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tk-track { animation: tk-scroll 40s linear infinite; }
+  .ticker:hover .tk-track { animation-play-state: paused; }
+  @keyframes tk-scroll { to { transform: translateX(-50%); } }
+}
+
+/* ---- 响应式 ---- */
+
+/* 桌面：索引头吸附，卡片列随页面滚动（不再嵌套内滚动）；
+   筛选侧栏在索引头下方吸附，翻卡片时始终可见 */
+@media (min-width: 1021px) {
+  .side {
+    position: sticky;
+    top: calc(var(--stick-top, 49px) + 88px);
+    z-index: 7;
+  }
+}
+
+/* 宽屏：版心随视口缓慢放宽，1080p 下两侧不再空出近 400px；
+   卡片列随多出的一列收紧，首卡仍跨双列 */
+@media (min-width: 1441px) {
+  .wrap, .topbar-in { max-width: clamp(1140px, 79vw, 1520px); }
+
+  .sitefoot-in { max-width: clamp(1084px, calc(79vw - 56px), 1464px); }
+
+  .shelf {
+    grid-template-columns: clamp(258px, 18vw, 280px) minmax(0, 1fr);
+    gap: clamp(32px, 2.6vw, 36px);
+  }
+
+  .orbit-stage { height: clamp(460px, 56vh, 620px); }
+}
+
+@media (max-width: 1020px) {
+  .shelf { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; }
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 48px 0 40px;
+  }
+  .orbit-stage.ready {
+    width: 100%;
+    max-width: 560px;
+    flex-basis: auto;
+    height: clamp(340px, 46vw, 440px);
+    align-self: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .orbit-stage.ready { display: none; }
+  .hero { min-height: 0; }
+}
+
+@media (max-width: 880px) {
+  .hero { min-height: 0; padding: 52px 0 44px; }
+  .hero-index { margin-top: 34px; }
+  .about { margin-top: 48px; padding-bottom: 56px; }
+}
+
+@media (max-width: 720px) {
+  .topbar-in, .wrap, .sitefoot { padding-left: 20px; padding-right: 20px; }
+  .topbar-in { gap: 14px; }
+  .topnav { display: none; }
+  .posts-head { margin-bottom: 16px; }
+  .cards { gap: 14px; }
+  .card { min-height: 0; padding: 16px 16px 14px; }
+}
+
+@media (max-width: 620px) {
+  .card.lead { grid-column: auto; min-height: 0; }
+  .card.lead h3 { font-size: 20px; }
+  .hero-index { max-width: none; }
+  .hero-index div { padding-right: 10px; }
+  .hero-index div + div { padding-left: 12px; }
+  .hero-index b { font-size: 12px; }
+}
+
+@media (max-width: 420px) {
+  .topbar-in { gap: 10px; }
+  .brand { letter-spacing: .1em; }
+  .brand .zh { letter-spacing: .12em; }
+  .theme-btn { padding: 5px 8px; letter-spacing: .04em; }
+  .theme-btn .tb-prefix { display: none; }
+}
+</style>
+
+
+
+
+
+
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQgNCkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzkzYTdlMCIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDIuNSAyMS41IDEyIDEyIDIxLjUgMi41IDEyWiIgc3Ryb2tlPSIjOTNhN2UwIi8+PHBhdGggZD0iTTQuNSAxMmgxNSIgc3Ryb2tlPSIjOTNhN2UwIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEuNSIgZmlsbD0iIzkzYTdlMCIgc3Ryb2tlPSJub25lIi8+PC9nPjwvc3ZnPg==">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX<span class="zh">灯箱</span>
+    </a>
+    <div class="spacer"></div>
+    <nav class="topnav" aria-label="站内导航">
+      <a href="#posts">文章</a>
+      <a href="#about">关于</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" type="button" data-mode="auto"><svg class="tm" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><circle class="tm-core" cx="7" cy="7" r="2.6"/><g class="tm-arm"><ellipse class="tm-orbit" cx="7" cy="7" rx="6" ry="2.4"/><circle class="tm-dot" cx="13" cy="7" r="1.4"/></g></svg><span class="tb-prefix">主题：</span><span id="themeLabel">跟随系统</span></button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="kicker">LIGHTBOX · Est. 2026</p>
+      <h1>灯<span class="hollow">箱</span></h1>
+      <p class="hero-tag">把结构照亮，再下判断。</p>
+      <p class="lede">
+        笛卡尔在《谈谈方法》里定过一条规矩：把问题尽可能地切成细小的部分，
+        直到足以逐一解决。这里写的每一篇，题目不同，做法相同：推导能逐步验算，
+        引用能回查出处，演示当场算出来。
+      </p>
+      <div class="hero-index" aria-label="站点概览">
+        <div><span>Articles</span><b>16</b></div>
+        <div title="教程 5 / 论文精读 6 / 调研 2 / 科普生活 3"><span>Fields</span><b>04</b></div>
+        <div><span>Updated</span><b>2026.11</b></div>
+      </div>
+    </div>
+    <div class="orbit-stage" role="group" aria-label="文章轨道图：悬停或聚焦查看文章，点击阅读">
+      <canvas id="luminaryCv" aria-hidden="true"></canvas>
+      <nav class="obodies" aria-label="轨道上的文章"></nav>
+      <p class="stage-cap" aria-hidden="true">轨道索引 · 悬停查看，点击阅读</p>
+      <div class="readout" aria-live="polite">
+        <p class="r-kicker"><i class="r-chip" aria-hidden="true"></i><span id="rCat"></span><span id="rMeta"></span></p>
+        <p class="r-title" id="rTitle"></p>
+        <p class="r-desc" id="rDesc"></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="ticker" aria-hidden="true"><div class="tk-track" id="tkTrack"></div></div>
+
+  <section class="posts" id="posts">
+    <div class="posts-head">
+      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 16 篇</span></h2>
+      <button class="shelf-toggle" id="shelfToggle" type="button" aria-expanded="true" aria-controls="side">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5v15" stroke="currentColor" stroke-width="1.7"/></svg>
+        <span>收起筛选</span>
+      </button>
+    </div>
+
+    <div class="shelf" id="shelf">
+      <aside class="side" id="side" aria-label="筛选与检索">
+        <div class="side-block">
+          <label class="side-lab" for="q">检索</label>
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.6 4.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="q" type="search" placeholder="搜标题、摘要或标签" aria-label="搜索文章" autocomplete="off">
+            <button class="clear" id="qClear" type="button" aria-label="清空搜索" hidden>×</button>
+            <kbd class="kbd" id="qKbd">/</kbd>
+          </div>
+        </div>
+        <div class="side-block">
+          <span class="side-lab">分类</span>
+          <div class="cats" role="group" aria-label="按文章类型筛选">
+            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">16</span></button>
+            <button class="cat" type="button" data-cat="survey" aria-pressed="false"><span>调研</span><span class="n">2</span></button>
+            <button class="cat" type="button" data-cat="tutorial" aria-pressed="false"><span>教程</span><span class="n">5</span></button>
+            <button class="cat" type="button" data-cat="paper" aria-pressed="false"><span>论文精读</span><span class="n">6</span></button>
+            <button class="cat" type="button" data-cat="life" aria-pressed="false"><span>科普生活</span><span class="n">3</span></button>
+          </div>
+        </div>
+        <p class="side-hint">按 / 聚焦检索；分类与关键词可叠加筛选，全部在本地完成。</p>
+      </aside>
+
+      <div class="main" role="region" aria-label="文章列表">
+        <div class="cards" id="cards">
+          <!-- 复制整张 <a class="card"> 即可新增一篇文章；色调三选一（cool / warm / paper） -->
+          <a class="card warm reveal lead" data-cat="life" data-keywords="哲学 西方哲学史 柏拉图 亚里士多德 康德 休谟 尼采 斯多亚 伊壁鸠鲁 中世纪 理性主义 经验主义 存在主义 分析哲学 思想实验 电车难题 忒修斯之船 洞穴寓言 笛卡尔 黑格尔 维特根斯坦" href="western-philosophy.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14"/><path d="M6.2 6.6h11.6"/><path d="M8.4 6.6V17M12 6.6V17M15.6 6.6V17"/><path d="M6.2 17h11.6"/><path d="M5 20h14"/></svg></span>
+              <span class="no">01</span>
+            </span>
+            <span class="kicker">科普 · Philosophy</span>
+            <h3>西方哲学两千六百年：<span class="nb">一场没有散场的对话</span></h3>
+            <span class="desc">四个问题的接力：世界由什么构成、人该如何生活、我如何知道、意义从哪来。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card cool reveal" data-cat="tutorial" data-keywords="大模型 基座模型 预训练 数据清洗 去重 BPE tokenizer 词表 scaling law Chinchilla 6ND MFU 算力 SFT 指令微调 loss mask RLHF PPO DPO 偏好对齐 RLVR GRPO reward hacking 对齐税 评测污染 蒸馏 医学影像" href="llm-pretraining-alignment.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.8" y="3.2" width="12.4" height="17.2" rx="2"/><path d="M6.8 7.6h6.4M6.8 11h6.4M6.8 14.4h3.6"/><circle cx="17" cy="17.2" r="3.9"/><path d="m15.4 17.3 1.1 1.1 2-2.3"/></svg></span>
+              <span class="no">02</span>
+            </span>
+            <span class="kicker">教程 · Tutorial</span>
+            <h3>大模型是怎么造出来的：<span class="nb">数据</span>、算力与对齐的<span class="nb">工程约束</span></h3>
+            <span class="desc">一张规格卡拆成七道工序：数据、预训练、SFT 与偏好对齐。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 38 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="tutorial" data-keywords="Agent 智能体 工具调用 工具契约 循环 预算 停机 幂等 检查点 权限 审批 沙箱 提示注入 轨迹评估 pass^k 可回滚 可审计 医学影像" href="agent-production-engineering.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.8 9.2a7.5 7.5 0 0 1 12.8-2.6"/><path d="M18.2 3.8v3.4h-3.4"/><path d="M19.2 14.8a7.5 7.5 0 0 1-12.8 2.6"/><path d="M5.8 20.2v-3.4h3.4"/><circle cx="12" cy="12" r="2.2"/></svg></span>
+              <span class="no">03</span>
+            </span>
+            <span class="kicker">教程 · Tutorial</span>
+            <h3>Agent 从 Demo 到生产：<span class="nb">工具</span>、循环与权限的<span class="nb">工程约束</span></h3>
+            <span class="desc">同一句目标，两次运行：工具契约、停机条件与权限边界。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 16 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="tutorial" data-keywords="RAG 检索增强 分块 chunk 向量检索 嵌入 BM25 混合检索 RRF 重排 交叉编码器 引用 拒答 幻觉 忠实度 faithfulness recall 评估 LLM-as-judge 知识治理 权限 医学影像" href="rag-production-engineering.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="17.5" r="2.4"/><circle cx="12" cy="6.5" r="2.4"/><circle cx="18.5" cy="17.5" r="2.4"/><path d="M7.4 15.8 10.5 8.9M13.5 8.9l3.1 6.9M8.1 17.5h7.8"/></svg></span>
+              <span class="no">04</span>
+            </span>
+            <span class="kicker">教程 · Tutorial</span>
+            <h3>RAG 从 Demo 到生产：<span class="nb">检索</span>增强系统的工程深潜</h3>
+            <span class="desc">诊断、管线、度量三幕拆解 RAG 生产化：知识治理、分块、混合检索、重排与评估闭环，收束到医学影像企业的三个落点。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card cool reveal" data-cat="survey" data-keywords="医学影像 三维可视化 体绘制 等值面 分割 产业 专利 CT MRI 渲染 管线" href="medical-imaging-3d-visualization.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 7.4v9.2L12 20.8 5 16.6V7.4Z"/><path d="M5 7.4 12 11.6 19 7.4M12 11.6v9.2"/></svg></span>
+              <span class="no">05</span>
+            </span>
+            <span class="kicker">调研 · Survey</span>
+            <h3>从断层到三维：医学影像三维可视化</h3>
+            <span class="desc">七级管线、四种三维输出与体绘制要点，兼看论文地图、产业价值链与产品竞争。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 38 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card cool reveal" data-cat="survey" data-keywords="AI 产品 大模型 RAG 微调 提示词 幻觉 向量检索 语义检索 多模态 Agent 伪需求 召回率 准确率 推理延迟 token 成本 上下文长度 指标 观测" href="ai-product-fundamentals.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="2"/><path d="M12 4.5v3.5M12 16v3.5M4.5 12H8M16 12h3.5"/></svg></span>
+              <span class="no">06</span>
+            </span>
+            <span class="kicker">调研 · Survey</span>
+            <h3>AI 产品基础认知：能力边界、需求真伪与指标体系</h3>
+            <span class="desc">大模型能力边界、需求真伪与指标体系：提示词、RAG、微调各被什么制约。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 35 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="tutorial" data-keywords="神经网络 深度学习 神经元 损失 梯度 反向传播 卷积 ResNet Transformer 学习率" href="neural-network-overview.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6.5" r="1.7"/><circle cx="5" cy="17.5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="7" r="1.7"/><circle cx="19" cy="17" r="1.7"/><path d="M6.5 7.3 10.6 11.2M6.5 16.7 10.6 12.8M13.4 11.6l4-3.1M13.4 12.4l4 3.1"/></svg></span>
+              <span class="no">07</span>
+            </span>
+            <span class="kicker">教程 · Tutorial</span>
+            <h3>神经网络全景：从单个神经元到 Transformer</h3>
+            <span class="desc">从单个神经元到 Transformer：损失、梯度与三代架构各自补上的短板。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-10</span><span>约 40 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="tutorial" data-keywords="训练 优化 优化器 Adam AdamW Muon 学习率调度 正则化 混合精度 bf16 fp8 ZeRO LoRA 量化 投机解码 vLLM 部署 推理" href="neural-network-training-optimization.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4v15.5h15"/><path d="M7 7.5c2.8.3 3.6 6.4 6 7.6 2 .9 3.6-.3 5-1.5"/></svg></span>
+              <span class="no">08</span>
+            </span>
+            <span class="kicker">教程 · Tutorial</span>
+            <h3>神经网络训练优化：从学习率到部署</h3>
+            <span class="desc">优化器、显存账与部署：从 AdamW 到 Muon，量化、编译与推理引擎。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 35 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card paper reveal" data-cat="paper" data-keywords="时序 超采样 时序损失 配准 PSNR 方差 QRISP 渲染 实时" href="paper-review-frozen-history.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="8.5" width="11" height="11" rx="1.8"/><path d="M8.5 4.5h9.2a1.8 1.8 0 0 1 1.8 1.8v9.2"/></svg></span>
+              <span class="no">09</span>
+            </span>
+            <span class="kicker">论文精读 · Paper Review</span>
+            <h3>论文精读——冻结的历史：时序损失如何让实时超采样停止累积</h3>
+            <span class="desc">时序损失为何奖励「抄历史」：拆 copy cost 推导、四类配准错误与 QRISP 实测。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 26 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card paper reveal" data-cat="paper" data-keywords="超分 MRI 高斯原型 各向异性 GSMR3D 医学影像 层厚 马氏" href="paper-review-gsmr3d.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="7.5" rx="7" ry="2.4"/><ellipse cx="12" cy="12" rx="7" ry="2.4"/><ellipse cx="12" cy="16.5" rx="7" ry="2.4"/></svg></span>
+              <span class="no">10</span>
+            </span>
+            <span class="kicker">论文精读 · Paper Review</span>
+            <h3>论文精读——任意各向异性尺度：高斯原型做 3D MRI 超分</h3>
+            <span class="desc">各向异性高斯原型做 3D MRI 超分：一个模型覆盖 1-6 mm 层厚差。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 32 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card paper reveal" data-cat="paper" data-keywords="3DGS 高斯 splat 体渲染 CT 烘焙 八叉树 光学参数 122 fps" href="paper-review-ctbakegs.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="9" r="2.1"/><circle cx="15" cy="13.5" r="3"/><circle cx="8.5" cy="17" r="1.5"/></svg></span>
+              <span class="no">11</span>
+            </span>
+            <span class="kicker">论文精读 · Paper Review</span>
+            <h3>论文精读——单遍 14 秒烘焙：把 CT 体渲染压成 3D Gaussian Splats</h3>
+            <span class="desc">把 CT 体渲染直接译成 3DGS：单遍 14 秒烘焙，边界与代价也写清楚。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card paper reveal" data-cat="paper" data-keywords="INR 4D Flow 坐标网络 Gabor 速度 MRI 无监督 谱偏差" href="paper-review-spectralinr.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9c2-3.2 4-3.2 6 0s4 3.2 6 0 3.2-2.8 5-2.4"/><path d="M3.5 15.5c2-3.2 4-3.2 6 0s4 3.2 6 0 3.2-2.8 5-2.4"/></svg></span>
+              <span class="no">12</span>
+            </span>
+            <span class="kicker">论文精读 · Paper Review</span>
+            <h3>论文精读——谱优化的 INR：无监督重建颅内 4D Flow</h3>
+            <span class="desc">Gabor 激活的坐标网络重建颅内 4D Flow：逐例 2 分钟，MAE 低于监督 CNN。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 24 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card paper reveal" data-cat="paper" data-keywords="高斯 传递函数 3DGS 显影 体渲染 低秩 编码器 条件" href="paper-review-factorsplat.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7.5" cy="17" r="2"/></svg></span>
+              <span class="no">13</span>
+            </span>
+            <span class="kicker">论文精读 · Paper Review</span>
+            <h3>论文精读——一套高斯，四十一套显影：传递函数变成推理时输入</h3>
+            <span class="desc">一套高斯对应四十一套显影：传递函数变成推理时输入，缓存构建 1.17 ms。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card paper reveal" data-cat="paper" data-keywords="稀疏视角 CT 3DGS Student-t 置信度 小波 厚尾 基元" href="paper-review-xiao-tr-gs-sparse-ct.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2.2v2.6M12 19.2v2.6M2.2 12h2.6M19.2 12h2.6"/></svg></span>
+              <span class="no">14</span>
+            </span>
+            <span class="kicker">论文精读 · Paper Review</span>
+            <h3>论文精读——厚尾基元与射线置信度：稀疏视角 CT 的 0.38 dB 与 0.09 dB</h3>
+            <span class="desc">厚尾基元与射线置信度：0.38 dB 的提升，对齐后只剩 0.09 dB。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 26 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="life" data-keywords="疫苗 老年 筛查 牛磺酸 精氨酸 体况 BCS 湿粮 干粮 饮水 猫砂 绝育 行为 慢眨眼 踩奶 呼噜 症状 就医红线 呼吸计数" href="scientific-cat-care.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5.2v4M6 5.2l3.8 3.2M18 5.2v4M18 5.2l-3.8 3.2"/><circle cx="12" cy="13.5" r="6.2"/><path d="M9.6 12.6h.01M14.4 12.6h.01M10.6 16.4c.9.8 1.9.8 2.8 0"/></svg></span>
+              <span class="no">15</span>
+            </span>
+            <span class="kicker">科普 · Evidence-Based Care</span>
+            <h3>科学养猫：把猫碗、水碗和体重秤都算明白</h3>
+            <span class="desc">六本账：吃、喝、胖瘦、家，再加团子讲行为与症状应对，配呼吸计数仪。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 28 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="life" data-keywords="家电 电器 插座 插线板 漏保 空开 回路 功率 220V 电线 取暖器 微波炉 浴室 锂电池 安全" href="appliance-safety.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3.2v4.6M15 3.2v4.6"/><path d="M7 7.8h10v2.6a5 5 0 0 1-10 0z"/><path d="M12 15.4v5.4"/></svg></span>
+              <span class="no">16</span>
+            </span>
+            <span class="kicker">指南 · Home Safety</span>
+            <h3>家电安全：把回路、插座和延长线算清楚</h3>
+            <span class="desc">回路、插座与延长线：220 V 下的功率账，与空开漏保的边界。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 24 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+        </div>
+
+        <div class="empty" id="empty" hidden>
+          <div class="paw" aria-hidden="true">∅</div>
+          <p>没有找到匹配的文章。换个关键词，或者回到「全部」。</p>
+          <button type="button" id="emptyReset">显示全部文章</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="about" id="about">
+    <h2>关于</h2>
+    <p class="statement reveal">
+      写给未来的自己，和同样喜欢把原理拆到底的人。约定只有三条：推导给到能逐步验算的数字，
+      引用给到可回查的出处，演示现场计算而非预录动画。
+    </p>
+  </section>
+
+</main>
+
+<footer class="sitefoot">
+  <div class="sitefoot-in">
+    <span>© 2026 灯箱 · LIGHTBOX</span>
+    <span class="dot">·</span>
+    <span>静态单文件站点</span>
+    <span class="dot">·</span>
+    <span>零依赖 · 可离线</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============ 主题：跟随系统 → 深色 → 浅色 循环 ============ */
+
+  var KEY = 'technotes-theme';
+  var btn = document.getElementById('themeBtn');
+  var root = document.documentElement;
+  var order = ['auto', 'dark', 'light'];
+  var labels = { auto: '跟随系统', dark: '深色', light: '浅色' };
+
+  function apply(mode) {
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    var light = mode === 'light' ||
+      (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    root.classList.toggle('is-light', !!light);
+    btn.setAttribute('data-mode', mode);
+    var lab = document.getElementById('themeLabel');
+    if (lab) lab.textContent = labels[mode];
+    if (window.__lumTheme) window.__lumTheme();
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  if (saved === 'dark' || saved === 'light' || saved === 'auto') apply(saved);
+  else { apply('auto'); }
+
+  btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') || 'auto';
+    var next = order[(order.indexOf(cur) + 1) % order.length];
+    apply(next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+  });
+
+  /* ============ 滚动渐显（IntersectionObserver） ============ */
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var ioFiredOnce = false;
+
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      ioFiredOnce = true;
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(function (el, i) {
+      el.style.transitionDelay = (i % 3) * 0.07 + 's';
+      io.observe(el);
+    });
+    // 看门狗：个别环境 IO 从不回调，届时直接显现全部内容，避免永远隐身
+    setTimeout(function () {
+      if (ioFiredOnce) return;
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+    }, 1500);
+  }
+
+  /* ============ 首屏轨道索引：恒星 + 三条轨道环 + 16 颗文章星体 ============
+     星体是真实链接，由下方卡片列表的数据生成（单一事实源）；
+     位置由本绘制循环驱动（rAF + 看门狗双通道），reduced-motion 时静态铺开 */
+
+  (function () {
+    var host = document.querySelector('.orbit-stage');
+    var cv = document.getElementById('luminaryCv');
+    var navEl = document.querySelector('.obodies');
+    var readoutEl = document.querySelector('.readout');
+    if (!host || !cv || !cv.getContext) return;
+
+    var ctx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var reduce = reduceMotion;
+    var light = isLightTheme();
+    var sprites = [];
+    var plasma = null;
+    var motes = [];
+    var stars = [];
+    var glintStars = [];
+    var starLayer = null;
+    var cw = 0, ch = 0;
+    var sw = 0, sh = 0;
+    var lastT = 0, t0 = 0;
+    var par = { x: 0, y: 0, tx: 0, ty: 0 };
+
+    /* 拖拽星图：所有环共享一个角偏移，松手带惯性衰减 */
+    var dragOff = 0, dragVel = 0, dragging = false, prevSec = 0;
+    var drag = { ang: 0, t: 0 };
+    /* 舞台滚出视口时停画并在回视口时冻结续播（t0 平移），滚动不再背着 30fps 画布跑 */
+    var stageVisible = true, hiddenAt = 0;
+    /* 光标跟随预览卡（桌面精确指针）：位置在 draw 循环里 lerp，复用看门狗 */
+    var peek = null, peekOn = false, peekW = 0, peekH = 0;
+    var peekPos = { x: 0, y: 0 }, peekTarget = { x: 0, y: 0 };
+
+    function clampPeek(x, y) {
+      return {
+        x: Math.min(Math.max(x, 8), window.innerWidth - peekW - 8),
+        y: Math.min(Math.max(y, 8), window.innerHeight - peekH - 8)
+      };
+    }
+
+    /* 三条轨道：内=教程（金，最快），中=论文精读，外=调研与生活（最慢）。
+       rx 按舞台宽度取比例，ry 是纵轴压扁比，tilt 是长轴倾角（弧度） */
+    var RINGS = [
+      { cats: ['tutorial'],        f: .330, ratio: .42, tilt: -.30, speed: .150, phase: 2.4 },
+      { cats: ['paper'],           f: .420, ratio: .37, tilt: .22,  speed: .092, phase: 5.1 },
+      { cats: ['survey', 'life'],  f: .465, ratio: .34, tilt: -.14, speed: .063, phase: .8 }
+    ];
+    var CAT_LABEL = { tutorial: '教程', survey: '调研', paper: '论文精读', life: '科普生活' };
+    var bodies = [];            // { el, o, u0, info }
+    var ringGeo = [null, null, null];
+    var defaultInfo = null;
+
+    function isLightTheme() {
+      var dt = document.documentElement.getAttribute('data-theme');
+      if (dt === 'light') return true;
+      if (dt === 'dark') return false;
+      return window.matchMedia('(prefers-color-scheme: light)').matches;
+    }
+
+    function mulberry(seed) {
+      return function () {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    /* 日冕纹理只生成一次：针状光条 + 长流束 + 底光雾；每帧只做旋转叠放 */
+    function makeCorona(seed) {
+      var S = 512;
+      var c = document.createElement('canvas');
+      c.width = c.height = S;
+      var g = c.getContext('2d');
+      var cx = S / 2, cy = S / 2, r0 = S * 0.265;
+      var rnd = mulberry(seed);
+      var col = light ? '198, 150, 74' : '255, 190, 128';
+      g.globalCompositeOperation = 'lighter';
+
+      var halo = g.createRadialGradient(cx, cy, r0 * 0.94, cx, cy, r0 * 1.70);
+      halo.addColorStop(0, 'rgba(' + col + ',' + (light ? .17 : .26) + ')');
+      halo.addColorStop(.30, 'rgba(' + col + ',' + (light ? .06 : .10) + ')');
+      halo.addColorStop(1, 'rgba(' + col + ',0)');
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(cx, cy, r0 * 1.70, 0, 6.2832); g.fill();
+
+      for (var i = 0; i < 180; i++) {
+        var a = rnd() * 6.2832;
+        var half = 0.004 + rnd() * 0.017;
+        var r1 = r0 * (0.99 + rnd() * 0.02);
+        var r2 = r0 * (1.08 + Math.pow(rnd(), 1.4) * 0.54);
+        var al = (0.04 + Math.pow(rnd(), 2.2) * 0.30) * (light ? 1.15 : 1);
+        var x1 = cx + Math.cos(a) * r1, y1 = cy + Math.sin(a) * r1;
+        var x2 = cx + Math.cos(a) * r2, y2 = cy + Math.sin(a) * r2;
+        var lg = g.createLinearGradient(x1, y1, x2, y2);
+        lg.addColorStop(0, 'rgba(' + col + ',' + al.toFixed(3) + ')');
+        lg.addColorStop(0.22, 'rgba(' + col + ',' + (al * 0.45).toFixed(3) + ')');
+        lg.addColorStop(1, 'rgba(' + col + ',0)');
+        g.fillStyle = lg;
+        g.beginPath();
+        g.moveTo(cx + Math.cos(a - half) * r1, cy + Math.sin(a - half) * r1);
+        g.lineTo(cx + Math.cos(a - half * 0.3) * r2, cy + Math.sin(a - half * 0.3) * r2);
+        g.lineTo(cx + Math.cos(a + half * 0.3) * r2, cy + Math.sin(a + half * 0.3) * r2);
+        g.lineTo(cx + Math.cos(a + half) * r1, cy + Math.sin(a + half) * r1);
+        g.closePath(); g.fill();
+      }
+
+      for (var j = 0; j < 7; j++) {
+        var b = rnd() * 6.2832;
+        var w = 0.002 + rnd() * 0.0035;
+        var s1 = r0 * (1.0 + rnd() * 0.05);
+        var s2 = r0 * (1.58 + rnd() * 0.10);
+        var a2 = 0.10 + rnd() * 0.15;
+        var lg2 = g.createLinearGradient(cx + Math.cos(b) * s1, cy + Math.sin(b) * s1,
+                                         cx + Math.cos(b) * s2, cy + Math.sin(b) * s2);
+        lg2.addColorStop(0, 'rgba(' + col + ',' + a2.toFixed(3) + ')');
+        lg2.addColorStop(1, 'rgba(' + col + ',0)');
+        g.fillStyle = lg2;
+        g.beginPath();
+        g.moveTo(cx + Math.cos(b - w) * s1, cy + Math.sin(b - w) * s1);
+        g.lineTo(cx + Math.cos(b - w * 0.25) * s2, cy + Math.sin(b - w * 0.25) * s2);
+        g.lineTo(cx + Math.cos(b + w * 0.25) * s2, cy + Math.sin(b + w * 0.25) * s2);
+        g.lineTo(cx + Math.cos(b + w) * s1, cy + Math.sin(b + w) * s1);
+        g.closePath(); g.fill();
+      }
+      return c;
+    }
+
+    /* 球体内部的等离子纹理：沿切线方向的短弧，旋转时像表面在流动 */
+    function makePlasma(seed) {
+      var S = 512;
+      var c = document.createElement('canvas');
+      c.width = c.height = S;
+      var g = c.getContext('2d');
+      var cx = S / 2, cy = S / 2, r0 = S * 0.265;
+      var rnd = mulberry(seed);
+      var col = light ? '148, 112, 52' : '255, 236, 202';
+      g.globalCompositeOperation = 'lighter';
+      g.lineCap = 'round';
+      for (var i = 0; i < 90; i++) {
+        var a = rnd() * 6.2832;
+        var rr = r0 * (0.14 + Math.pow(rnd(), .7) * 0.82);
+        var len = 0.10 + rnd() * 0.55;
+        var dir = rnd() < .5 ? -1 : 1;
+        g.strokeStyle = 'rgba(' + col + ',' + (0.020 + rnd() * 0.055).toFixed(3) + ')';
+        g.lineWidth = 4 + rnd() * 14;
+        g.beginPath();
+        g.arc(cx, cy, rr, a, a + len * dir, dir < 0);
+        g.stroke();
+      }
+
+      // 大块的软斑，给表面一点不均匀的亮度
+      for (var b = 0; b < 14; b++) {
+        var ba = rnd() * 6.2832;
+        var br = r0 * (0.10 + Math.pow(rnd(), .8) * 0.75);
+        var brad = r0 * (0.10 + rnd() * 0.26);
+        var bx = cx + Math.cos(ba) * br, by = cy + Math.sin(ba) * br;
+        var bg = g.createRadialGradient(bx, by, 0, bx, by, brad);
+        var ao = 0.03 + rnd() * 0.06;
+        bg.addColorStop(0, 'rgba(' + col + ',' + ao.toFixed(3) + ')');
+        bg.addColorStop(1, 'rgba(' + col + ',0)');
+        g.fillStyle = bg;
+        g.beginPath(); g.arc(bx, by, brad, 0, 6.2832); g.fill();
+      }
+      // 几条更亮的细丝
+      for (var j = 0; j < 9; j++) {
+        var b = rnd() * 6.2832;
+        var r1 = r0 * (0.10 + rnd() * 0.25);
+        var r2 = r0 * (0.55 + rnd() * 0.42);
+        var bend = (rnd() - .5) * 1.1;
+        g.strokeStyle = 'rgba(' + col + ',' + (0.08 + rnd() * 0.10).toFixed(3) + ')';
+        g.lineWidth = 0.8 + rnd() * 1.2;
+        g.beginPath();
+        g.moveTo(cx + Math.cos(b) * r1, cy + Math.sin(b) * r1);
+        g.quadraticCurveTo(cx + Math.cos(b + bend) * (r1 + r2) * .5,
+                           cy + Math.sin(b + bend) * (r1 + r2) * .5,
+                           cx + Math.cos(b + bend * .4) * r2,
+                           cy + Math.sin(b + bend * .4) * r2);
+        g.stroke();
+      }
+      return c;
+    }
+
+    function buildSprites() {
+      sprites = [makeCorona(7), makeCorona(31)];
+      plasma = makePlasma(53);
+    }
+
+    function resetParticles() {
+      var rnd = mulberry(2026);
+      motes = [];
+      for (var i = 0; i < 44; i++) {
+        motes.push({
+          a: rnd() * 6.2832,
+          r: 0.85 + rnd() * 0.15,
+          spin: (0.004 + rnd() * 0.010) * (rnd() < .5 ? -1 : 1),
+          drift: 0.010 + rnd() * 0.020,
+          ph: rnd(),
+          size: 0.5 + rnd() * 1.2
+        });
+      }
+    }
+
+    /* 星场：静态底图一次性预渲染（含全部星点），逐帧只剩一次 drawImage + 少量亮星十字芒，
+       避免滚动时百余次 arc 填充拖慢合成 */
+    function resetStars() {
+      var rnd = mulberry(311);
+      stars = [];
+      glintStars = [];
+      var n = Math.max(60, Math.min(170, Math.round(sw * sh / 9000)));
+      for (var i = 0; i < n; i++) {
+        var near = rnd() < .42;
+        var tint = rnd();
+        var s = {
+          x: rnd(), y: rnd(),
+          r: near ? 0.7 + rnd() * 0.9 : 0.35 + rnd() * 0.5,
+          a: near ? 0.5 + rnd() * 0.4 : 0.16 + rnd() * 0.26,
+          spd: 0.35 + rnd() * 1.1,
+          ph: rnd() * 6.2832,
+          col: tint < .72 ? '205, 215, 240' : (tint < .90 ? '168, 190, 236' : '209, 165, 94'),
+          glint: near && rnd() < .18
+        };
+        stars.push(s);
+        if (s.glint) glintStars.push(s);
+      }
+      var L = document.createElement('canvas');
+      L.width = Math.max(2, cw);
+      L.height = Math.max(2, ch);
+      var g = L.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.globalCompositeOperation = 'lighter';
+      for (var k = 0; k < stars.length; k++) {
+        var st = stars[k];
+        var x = st.x * sw, y = st.y * sh;
+        g.fillStyle = 'rgba(' + st.col + ',' + st.a.toFixed(3) + ')';
+        g.beginPath(); g.arc(x, y, st.r, 0, 6.2832); g.fill();
+        if (st.glint) {
+          var Lg = st.r * 4.2;
+          g.strokeStyle = 'rgba(' + st.col + ',' + (st.a * 0.45).toFixed(3) + ')';
+          g.lineWidth = 0.6;
+          g.beginPath();
+          g.moveTo(x - Lg, y); g.lineTo(x + Lg, y);
+          g.moveTo(x, y - Lg); g.lineTo(x, y + Lg);
+          g.stroke();
+        }
+      }
+      starLayer = L;
+    }
+
+    function drawGlints(sec) {
+      for (var i = 0; i < glintStars.length; i++) {
+        var s = glintStars[i];
+        var x = s.x * sw, y = s.y * sh;
+        var tw = 0.72 + 0.28 * Math.sin(sec * s.spd + s.ph);
+        ctx.fillStyle = 'rgba(' + s.col + ',' + (s.a * tw).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(x, y, s.r, 0, 6.2832); ctx.fill();
+        var L2 = s.r * 4.2 * (0.8 + 0.2 * tw);
+        ctx.strokeStyle = 'rgba(' + s.col + ',' + (s.a * tw * 0.45).toFixed(3) + ')';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(x - L2, y); ctx.lineTo(x + L2, y);
+        ctx.moveTo(x, y - L2); ctx.lineTo(x, y + L2);
+        ctx.stroke();
+      }
+    }
+
+    function sprite(img, rot, scale, cx, cy, u) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, -u / 2, -u / 2, u, u);
+      ctx.restore();
+    }
+
+    function dot(x, y, size, alpha) {
+      var rr = size * 4 + 3;
+      var g = ctx.createRadialGradient(x, y, 0, x, y, rr);
+      if (light) {
+        g.addColorStop(0, 'rgba(176, 134, 62,' + (0.55 * alpha).toFixed(3) + ')');
+        g.addColorStop(0.35, 'rgba(196, 154, 82,' + (0.22 * alpha).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(208, 168, 98, 0)');
+      } else {
+        g.addColorStop(0, 'rgba(255, 240, 214,' + (0.90 * alpha).toFixed(3) + ')');
+        g.addColorStop(0.35, 'rgba(255, 190, 120,' + (0.35 * alpha).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(255, 160, 90, 0)');
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.2832); ctx.fill();
+    }
+
+    /* ---- 星体与读数：从卡片列表取数据一次构建，卡片是唯一事实源 ---- */
+
+    function cardInfo(card) {
+      var h = card.querySelector('h3');
+      var d = card.querySelector('.desc');
+      var meta = card.querySelectorAll('.meta span');
+      return {
+        href: card.getAttribute('href'),
+        cat: card.getAttribute('data-cat') || 'paper',
+        title: h ? h.textContent.replace(/\s+/g, ' ').trim() : '未命名文章',
+        desc: d ? d.textContent.replace(/\s+/g, ' ').trim() : '',
+        meta: meta.length >= 2
+          ? meta[0].textContent.trim() + ' · ' + meta[1].textContent.trim()
+          : (meta[0] ? meta[0].textContent.trim() : '')
+      };
+    }
+
+    function setReadout(info) {
+      if (!readoutEl || !info) return;
+      readoutEl.className = 'readout ' + info.cat;
+      document.getElementById('rCat').textContent = CAT_LABEL[info.cat] || info.cat;
+      document.getElementById('rMeta').textContent = info.meta;
+      document.getElementById('rTitle').textContent = info.title;
+      document.getElementById('rDesc').textContent = info.desc;
+    }
+
+    function makeHover(info) {
+      return function (evt) {
+        setReadout(info);
+        showPeek(info, evt, this);
+      };
+    }
+
+    function resetReadout() {
+      setReadout(defaultInfo);
+      hidePeek();
+    }
+
+    /* ---- 光标跟随预览卡：populate 后贴着鼠标走；键盘聚焦时锚在星体旁 ---- */
+
+    function showPeek(info, evt, el) {
+      if (!peek || !info || dragging) return;
+      peek.className = 'peek on ' + info.cat;
+      peek.querySelector('.pk-cat').textContent = CAT_LABEL[info.cat] || info.cat;
+      peek.querySelector('.pk-meta').textContent = info.meta;
+      peek.querySelector('.pk-title').textContent = info.title;
+      var x, y;
+      if (evt && evt.type === 'mouseenter' && evt.clientX != null) {
+        x = evt.clientX + 18;
+        y = evt.clientY - 14;
+      } else if (el && el.getBoundingClientRect) {
+        var r = el.getBoundingClientRect();
+        x = r.right + 10;
+        y = r.top - 8;
+      } else { return; }
+      /* 先量后夹：不出视口；尺寸缓存给 pointermove 实时追踪复用 */
+      peekW = peek.offsetWidth;
+      peekH = peek.offsetHeight;
+      var c = clampPeek(x, y);
+      peekPos.x = c.x; peekPos.y = c.y;
+      peekTarget.x = c.x; peekTarget.y = c.y;
+      if (!peekOn) {
+        peekOn = true;
+      }
+      peek.style.transform = 'translate3d(' + peekPos.x.toFixed(1) + 'px,' +
+                             peekPos.y.toFixed(1) + 'px,0)';
+    }
+
+    function hidePeek() {
+      if (!peek || !peekOn) return;
+      peekOn = false;
+      peek.classList.remove('on');
+    }
+
+    function buildBodies() {
+      if (!navEl) return;
+      var cards = document.querySelectorAll('.cards .card');
+      if (!cards.length) return;
+      var buckets = [[], [], []];
+      var infos = [];
+      Array.prototype.forEach.call(cards, function (card) {
+        var info = cardInfo(card);
+        infos.push(info);
+        for (var i = 0; i < RINGS.length; i++) {
+          if (RINGS[i].cats.indexOf(info.cat) !== -1) { buckets[i].push(info); break; }
+        }
+      });
+      var rnd = mulberry(97);
+      for (var i = 0; i < RINGS.length; i++) {
+        var n = buckets[i].length;
+        for (var j = 0; j < n; j++) {
+          var info = buckets[i][j];
+          var a = document.createElement('a');
+          a.className = 'obody ' + info.cat;
+          a.href = info.href;
+          a.setAttribute('aria-label', info.title + '（' + (CAT_LABEL[info.cat] || info.cat) + '）');
+          a.innerHTML = '<i class="dot" aria-hidden="true"></i>';
+          var u0 = RINGS[i].phase + (j / n) * 6.2832 + (rnd() - .5) * .7;
+          if (info === infos[0]) {           // 最新一篇放大并安放在右前方
+            a.className += ' lead';
+            u0 = .55;
+          }
+          bodies.push({ el: a, o: i, u0: u0, info: info });
+          a.addEventListener('mouseenter', makeHover(info));
+          a.addEventListener('focus', makeHover(info));
+          a.addEventListener('mouseleave', resetReadout);
+          a.addEventListener('blur', resetReadout);
+          navEl.appendChild(a);
+        }
+      }
+      defaultInfo = infos[0] || null;
+      setReadout(defaultInfo);
+      host.classList.add('ready');
+    }
+
+    /* 每帧把星体放到轨道上：transform 只写 translate3d，悬停缩放交给内层 .dot */
+    function updateBodies(sec) {
+      if (!sw || !bodies.length) return;
+      var CX = sw / 2, CY = sh * .47;
+      for (var i = 0; i < bodies.length; i++) {
+        var b = bodies[i], R = RINGS[b.o], g = ringGeo[b.o];
+        if (!g) continue;
+        var u = b.u0 + R.speed * sec + dragOff;
+        var px = Math.cos(u) * g.rx, py = Math.sin(u) * g.ry;
+        var ct = Math.cos(R.tilt), st = Math.sin(R.tilt);
+        var x = CX + px * ct - py * st;
+        var y = CY + px * st + py * ct;
+        var depth = (Math.sin(u) + 1) / 2;   // 近侧 1，远侧 0
+        b.el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
+        b.el.style.opacity = (0.55 + 0.45 * depth).toFixed(3);
+      }
+    }
+
+    function draw(sec) {
+      if (!cw) return;
+
+      /* 惯性：松手后 dragVel 按帧摩擦衰减，基础自转始终在底层继续 */
+      var dt = Math.min(Math.max(sec - prevSec, 0), .1);
+      prevSec = sec;
+      if (!dragging && dragVel !== 0) {
+        dragOff += dragVel * dt;
+        dragVel *= Math.pow(.92, dt * 60);
+        if (Math.abs(dragVel) < .0004) dragVel = 0;
+      }
+      var W = cw / dpr, H = ch / dpr;
+      var CX = W / 2, CY = H * .47, U = Math.min(W, H);
+      var R0 = U * 0.265;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      var breath = 1 + 0.016 * Math.sin(sec * 0.52) + 0.009 * Math.sin(sec * 0.23 + 1.7);
+      var pulse = 0.88 + 0.12 * Math.sin(sec * 0.40 + 0.7);
+
+      /* 星场垫底：只存在于深空（暗色）分支，浅色仍是瓷白日间。
+         静态底图一次 drawImage，仅亮星十字芒逐帧闪烁 */
+      if (!light) {
+        ctx.globalCompositeOperation = 'lighter';
+        if (starLayer) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(starLayer, 0, 0);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        drawGlints(sec);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      ctx.globalCompositeOperation = light ? 'source-over' : 'lighter';
+      ctx.globalAlpha = 0.95 * pulse;
+      sprite(sprites[0], sec * 0.010, breath, CX, CY, U);
+      ctx.globalAlpha = 0.55 * pulse;
+      sprite(sprites[1], -sec * 0.0068 + 1.9, breath * 1.035, CX, CY, U);
+      ctx.globalAlpha = 1;
+
+      // 三条轨道的后半（远侧）：中性墨色细线，让彩色的星体自己说话
+      ctx.save();
+      ctx.translate(CX, CY);
+      ctx.strokeStyle = light ? 'rgba(58, 64, 62, .22)' : 'rgba(200, 210, 245, .17)';
+      ctx.lineWidth = 0.8;
+      for (var ri = 0; ri < RINGS.length; ri++) {
+        var g = ringGeo[ri];
+        if (!g) continue;
+        ctx.save();
+        ctx.rotate(RINGS[ri].tilt);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, g.rx, g.ry, 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 球体：没有硬壳，只有一团由内向外衰减的等离子光
+      ctx.globalCompositeOperation = 'source-over';
+      var body = ctx.createRadialGradient(CX, CY, 0, CX, CY, R0);
+      if (light) {
+        body.addColorStop(0, 'rgba(255, 253, 246, 1)');
+        body.addColorStop(.16, 'rgba(250, 231, 178, .97)');
+        body.addColorStop(.36, 'rgba(240, 178, 92, .90)');
+        body.addColorStop(.58, 'rgba(212, 134, 56, .62)');
+        body.addColorStop(.80, 'rgba(188, 112, 46, .24)');
+      } else {
+        body.addColorStop(0, 'rgba(255, 255, 251, 1)');
+        body.addColorStop(.14, 'rgba(255, 241, 204, .98)');
+        body.addColorStop(.34, 'rgba(255, 196, 122, .85)');
+        body.addColorStop(.56, 'rgba(255, 143, 74, .55)');
+        body.addColorStop(.78, 'rgba(220, 88, 40, .20)');
+      }
+      body.addColorStop(1, 'rgba(192, 104, 44, 0)');
+      ctx.fillStyle = body;
+      ctx.beginPath(); ctx.arc(CX, CY, R0, 0, 6.2832); ctx.fill();
+
+      if (plasma) {
+        ctx.save();
+        ctx.globalCompositeOperation = light ? 'source-over' : 'lighter';
+        ctx.globalAlpha = light ? .45 : .55;
+        ctx.translate(CX, CY);
+        ctx.rotate(sec * 0.045);
+        ctx.drawImage(plasma, -U / 2, -U / 2, U, U);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      // 核心的呼吸高光
+      var coreR = R0 * .40;
+      var core = ctx.createRadialGradient(CX, CY, 0, CX, CY, coreR);
+      var hot = 0.48 + 0.22 * Math.sin(sec * 0.9 + 0.4);
+      if (light) {
+        core.addColorStop(0, 'rgba(255, 252, 240,' + hot.toFixed(3) + ')');
+        core.addColorStop(.55, 'rgba(255, 232, 186,' + (hot * .45).toFixed(3) + ')');
+      } else {
+        core.addColorStop(0, 'rgba(255, 255, 250,' + Math.min(1, hot + .30).toFixed(3) + ')');
+        core.addColorStop(.55, 'rgba(255, 226, 170,' + (hot * .55).toFixed(3) + ')');
+      }
+      core.addColorStop(1, 'rgba(255, 200, 130, 0)');
+      ctx.fillStyle = core;
+      ctx.beginPath(); ctx.arc(CX, CY, coreR, 0, 6.2832); ctx.fill();
+
+      // 日珥：贴着光球边缘的等离子环，打破完美圆形
+      for (var pi = 0; pi < 5; pi++) {
+        var pa = pi * 1.2566 + 0.35 + sec * (0.010 + pi * 0.004);
+        var ps = 0.045 + 0.030 * Math.sin(sec * 0.6 + pi * 1.7);
+        var lift = R0 * (0.09 + 0.08 * Math.sin(sec * 0.5 + pi * 2.1));
+        var ax = CX + Math.cos(pa - ps) * R0, ay = CY + Math.sin(pa - ps) * R0;
+        var bx2 = CX + Math.cos(pa + ps) * R0, by2 = CY + Math.sin(pa + ps) * R0;
+        var mx = CX + Math.cos(pa) * (R0 + lift), my = CY + Math.sin(pa) * (R0 + lift);
+        var pa2 = 0.28 + 0.16 * Math.sin(sec * 0.9 + pi);
+        ctx.strokeStyle = light
+          ? 'rgba(184, 130, 58,' + (pa2 * 0.62).toFixed(3) + ')'
+          : 'rgba(255, 214, 160,' + pa2.toFixed(3) + ')';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo(mx, my, bx2, by2);
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+
+      // 沿边缘游走的高亮耀斑
+      var beadA = 2.25 + sec * 0.045;
+      var bx = CX + Math.cos(beadA) * R0 * .86, by = CY + Math.sin(beadA) * R0 * .86;
+      var br = R0 * .20;
+      var bloom = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+      if (light) {
+        bloom.addColorStop(0, 'rgba(255, 250, 238, .85)');
+        bloom.addColorStop(.22, 'rgba(255, 222, 172, .45)');
+        bloom.addColorStop(1, 'rgba(255, 200, 140, 0)');
+      } else {
+        bloom.addColorStop(0, 'rgba(255, 250, 238, .95)');
+        bloom.addColorStop(.20, 'rgba(255, 206, 140, .50)');
+        bloom.addColorStop(1, 'rgba(255, 160, 90, 0)');
+      }
+      ctx.fillStyle = bloom;
+      ctx.beginPath(); ctx.arc(bx, by, br, 0, 6.2832); ctx.fill();
+
+      // 轨道前半（近侧）：略亮一线，压在光球前面
+      ctx.save();
+      ctx.translate(CX, CY);
+      ctx.strokeStyle = light ? 'rgba(58, 64, 62, .30)' : 'rgba(206, 216, 250, .25)';
+      ctx.lineWidth = 0.9;
+      for (var rk = 0; rk < RINGS.length; rk++) {
+        var g2 = ringGeo[rk];
+        if (!g2) continue;
+        ctx.save();
+        ctx.rotate(RINGS[rk].tilt);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, g2.rx, g2.ry, 0, 0, Math.PI);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 向外漂散的微尘
+      ctx.globalCompositeOperation = light ? 'source-over' : 'lighter';
+      for (var m = 0; m < motes.length; m++) {
+        var p = motes[m];
+        var life = (sec * p.drift + p.ph) % 1;
+        var ang = p.a + p.spin * sec + life * 0.6;
+        var rad = R0 * (p.r + life * 0.75);
+        var mx = CX + Math.cos(ang) * rad;
+        var my = CY + Math.sin(ang) * rad * 0.94;
+        var fade = Math.sin(life * Math.PI);
+        fade *= fade;
+        ctx.fillStyle = light
+          ? 'rgba(190, 142, 74,' + (0.34 * fade).toFixed(3) + ')'
+          : 'rgba(255, 214, 170,' + (0.42 * fade).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(mx, my, p.size, 0, 6.2832); ctx.fill();
+      }
+
+      // 星体落位与画布同源：环画在哪，星就在哪
+      updateBodies(sec);
+
+      // 预览卡跟随光标（lerp 追踪，看门狗帧也能驱动）
+      if (peek && peekOn) {
+        peekPos.x += (peekTarget.x - peekPos.x) * .22;
+        peekPos.y += (peekTarget.y - peekPos.y) * .22;
+        peek.style.transform = 'translate3d(' + peekPos.x.toFixed(1) + 'px,' +
+                               peekPos.y.toFixed(1) + 'px,0)';
+      }
+
+      // 鼠标轻微视差（画布与星体层同步位移，制造一点景深）
+      if (!reduce) {
+        par.x += (par.tx - par.x) * 0.06;
+        par.y += (par.ty - par.y) * 0.06;
+        var px2 = 'translate3d(' + (par.x * 7).toFixed(2) + 'px,' +
+                  (par.y * 7).toFixed(2) + 'px,0)';
+        cv.style.transform = px2;
+        if (navEl) navEl.style.transform = px2;
+      }
+      lastDraw = performance.now();
+    }
+
+    function resize() {
+      var rect = host.getBoundingClientRect();
+      if (!rect.width) return;
+      sw = rect.width;
+      sh = rect.height;
+      for (var i = 0; i < RINGS.length; i++) {
+        var rx = sw * RINGS[i].f;
+        ringGeo[i] = { rx: rx, ry: rx * RINGS[i].ratio };
+      }
+      var w = Math.max(2, Math.round(rect.width * dpr));
+      var h = Math.max(2, Math.round(rect.height * dpr));
+      if (w === cw && h === ch) return;
+      cw = cv.width = w;
+      ch = cv.height = h;
+      resetParticles();
+      resetStars();
+      // 改背板尺寸会清空画布，立刻补一帧，别等下一帧回调
+      draw(t0 ? (performance.now() - t0) / 1000 : 6.2);
+    }
+
+    function tick(now) {
+      requestAnimationFrame(tick);
+      if (document.hidden || !stageVisible) return;
+      if (now - lastT < 33) return;      // 约 30fps，省电
+      lastT = now;
+      draw((now - t0) / 1000);
+    }
+
+    var lastDraw = 0;
+
+    buildSprites();
+    resetParticles();
+    buildBodies();
+    resize();
+    if (!reduce) draw(0);               // 先同步画一帧，rAF 不回调也不留白
+    lastDraw = performance.now();
+    if ('ResizeObserver' in window) new ResizeObserver(resize).observe(host);
+    else window.addEventListener('resize', resize);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) {
+        var v = !!es[0].isIntersecting;
+        if (v !== stageVisible) {
+          if (v) { if (hiddenAt) { t0 += performance.now() - hiddenAt; } hiddenAt = 0; lastDraw = 0; }
+          else hiddenAt = performance.now();
+          stageVisible = v;
+        }
+      }, { rootMargin: '60px' }).observe(host);
+    }
+
+    if (!reduce) {
+      t0 = performance.now();
+      window.addEventListener('pointermove', function (e) {
+        par.tx = (e.clientX / window.innerWidth - 0.5) * 2;
+        par.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+        if (peekOn && !dragging) {                 /* 预览卡实时咬住光标 */
+          var c = clampPeek(e.clientX + 18, e.clientY - 14);
+          peekTarget.x = c.x;
+          peekTarget.y = c.y;
+        }
+      }, { passive: true });
+
+      /* ---- 拖拽星图：按住空白处绕中心甩动，三环一起转；松手快甩带惯性 ---- */
+
+      function stageAngle(e) {
+        var r = host.getBoundingClientRect();
+        return Math.atan2(e.clientY - (r.top + r.height * .47),
+                          e.clientX - (r.left + r.width / 2));
+      }
+
+      host.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target.closest('.obody, .readout')) return;   // 星体是链接，不抢
+        dragging = true;
+        dragVel = 0;
+        drag.ang = stageAngle(e);
+        drag.t = performance.now();
+        host.classList.add('grabbing');
+        try { host.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+
+      host.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var a = stageAngle(e), now = performance.now();
+        var d = a - drag.ang;
+        while (d > Math.PI) d -= 6.2832;
+        while (d < -Math.PI) d += 6.2832;
+        dragOff += d;
+        var ms = Math.max((now - drag.t) / 1000, .008);
+        dragVel = dragVel * .5 + (d / ms) * .5;             // 平滑估速
+        drag.ang = a;
+        drag.t = now;
+      });
+
+      function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        host.classList.remove('grabbing');
+        if (Math.abs(dragVel) < .35) dragVel = 0;           // 慢拖松手直接停
+      }
+      host.addEventListener('pointerup', endDrag);
+      host.addEventListener('pointercancel', endDrag);
+
+      /* ---- 光标跟随预览卡：只在桌面精确指针环境挂载 ---- */
+
+      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        peek = document.createElement('div');
+        peek.className = 'peek';
+        peek.setAttribute('aria-hidden', 'true');
+        peek.innerHTML = '<span class="peek-in"><span class="pk-line">' +
+                         '<i class="pk-dot"></i><span class="pk-cat"></span>' +
+                         '<span class="pk-meta"></span></span>' +
+                         '<strong class="pk-title"></strong></span>';
+        document.body.appendChild(peek);
+      }
+
+      requestAnimationFrame(tick);
+      // 从后台切回时立刻补一帧（后台期间 rAF 与看门狗都不画）
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && stageVisible) draw((performance.now() - t0) / 1000);
+      });
+      // 看门狗：个别内嵌 WebView 不派发 rAF，用定时器兜底驱动
+      setInterval(function () {
+        if (document.hidden || !stageVisible) return;
+        if (performance.now() - lastDraw < 90) return;
+        draw((performance.now() - t0) / 1000);
+      }, 33);
+    } else {
+      draw(6.2);
+    }
+
+    window.__lumTheme = function () {
+      var nl = isLightTheme();
+      if (nl === light) return;
+      light = nl;
+      buildSprites();
+      if (reduce) draw(6.2);
+    };
+
+    // 调试入口：?lum=test 时可在页面里强制画一帧（内嵌 WebView 自报 hidden 时用）
+    if (/[?&]lum=test(&|$)/.test(location.search)) {
+      window.__lumPoke = function (s) { draw(s == null ? 6.2 : s); };
+    }
+
+    // 调试只读口：QA 断言拖拽偏移与惯性速度用
+    window.__lumDrag = function () {
+      return { off: dragOff, vel: dragVel, dragging: dragging };
+    };
+
+    var mq = window.matchMedia('(prefers-color-scheme: light)');
+    var onScheme = function () { if (window.__lumTheme) window.__lumTheme(); };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  })();
+
+  /* ============ 首页统计数字 count-up：rAF 确认存活后才启动，失败保持原值 ============ */
+
+  (function () {
+    var nums = Array.prototype.slice.call(document.querySelectorAll('.hero-index b'));
+    nums = nums.filter(function (b) { return /^\d+$/.test(b.textContent); });
+    if (!nums.length || reduceMotion || !window.requestAnimationFrame) return;
+    nums.forEach(function (b) { b.setAttribute('data-n', b.textContent); });
+    var started = false;
+    function finish() {
+      nums.forEach(function (b) { b.textContent = b.getAttribute('data-n'); });
+    }
+    requestAnimationFrame(function () {
+      if (started) return;
+      started = true;
+      var t0 = null, DUR = 900;
+      function step(ts) {
+        if (t0 === null) t0 = ts;
+        var k = Math.min((ts - t0) / DUR, 1);
+        var e = 1 - Math.pow(1 - k, 3);
+        nums.forEach(function (b) {
+          var target = b.getAttribute('data-n');
+          var v = String(Math.round(parseInt(target, 10) * e));
+          while (v.length < target.length) v = '0' + v;
+          b.textContent = v;
+        });
+        if (k < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+      setTimeout(finish, DUR + 800); /* 收尾保险 */
+    });
+  })();
+
+  /* ============ 轨道读数带：从卡片列表生成 ticker 内容（单一事实源） ============ */
+
+  (function () {
+    var track = document.getElementById('tkTrack');
+    if (!track) return;
+    var CAT = { tutorial: '教程', survey: '调研', paper: '论文精读', life: '科普生活' };
+    var seq = '';
+    document.querySelectorAll('.cards .card').forEach(function (card) {
+      var no = card.querySelector('.no');
+      var h3 = card.querySelector('h3');
+      if (!h3) return;
+      var cat = CAT[card.getAttribute('data-cat')] || '';
+      var title = (h3.textContent || '').replace(/\s+/g, ' ');
+      seq += '<span class="tk-item"><b>' + (no ? no.textContent : '') + '</b>' +
+             (cat ? '<span class="tk-cat">' + cat + '</span>' : '') +
+             title + '</span><span class="tk-sep">✦</span>';
+    });
+    if (!seq) return;
+    track.innerHTML = seq + seq; /* 两份内容各占一半，-50% 位移即可无缝循环 */
+    if (!reduceMotion && window.requestAnimationFrame) {
+      requestAnimationFrame(function () {
+        var half = track.scrollWidth / 2;
+        if (half > 0) {
+          track.style.animationDuration = Math.max(24, Math.min(75, half / 80)) + 's';
+        }
+      });
+    }
+  })();
+
+  /* ============ 顶部阅读进度条 ============ */
+
+  (function () {
+    var bar = document.getElementById('progressBar');
+    if (!bar) return;
+    var max = 0, queued = false;
+    function render() {
+      queued = false;
+      var p = max > 0 ? Math.min(Math.max(window.pageYOffset / max, 0), 1) : 0;
+      bar.style.transform = 'scaleX(' + p + ')';
+    }
+    function measure() {                      /* scrollHeight 只在载入/缩放时读，滚动帧不碰布局 */
+      max = document.documentElement.scrollHeight - window.innerHeight;
+      render();
+    }
+    window.addEventListener('scroll', function () {
+      if (!queued) { queued = true; requestAnimationFrame(render); }
+    }, { passive: true });
+    window.addEventListener('resize', measure);
+    window.addEventListener('techblog:layout', measure);   /* 筛选增删卡片后页面高度会变 */
+    measure();
+  })();
+
+})();
+</script>
+<script>
+/* 首页分类与搜索：纯客户端，无依赖，断网可用 */
+(function () {
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.cards .card'));
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.cat'));
+  var q = document.getElementById('q');
+  var clearBtn = document.getElementById('qClear');
+  var kbd = document.getElementById('qKbd');
+  var count = document.getElementById('postCount');
+  var empty = document.getElementById('empty');
+  var shelf = document.getElementById('shelf');
+  var sideToggle = document.getElementById('shelfToggle');
+  var SIDE_KEY = 'technotes-side';
+  var total = cards.length;
+  var active = 'all';
+
+  /* 侧栏开合：记住用户选择；没选过时桌面展开、窄屏收起 */
+  function setSide(open, persist) {
+    if (!shelf) return;
+    shelf.classList.toggle('mini', !open);
+    if (sideToggle) {
+      sideToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      var lab = sideToggle.querySelector('span');
+      if (lab) lab.textContent = open ? '收起筛选' : '筛选与检索';
+    }
+    if (persist) {
+      try { localStorage.setItem(SIDE_KEY, open ? 'open' : 'mini'); } catch (e) {}
+    }
+  }
+
+  var sidePref = null;
+  try { sidePref = localStorage.getItem(SIDE_KEY); } catch (e) {}
+  if (sidePref === 'mini' || sidePref === 'open') setSide(sidePref === 'open', false);
+  else setSide(!(window.matchMedia && window.matchMedia('(max-width: 1020px)').matches), false);
+
+  if (sideToggle) {
+    sideToggle.addEventListener('click', function () {
+      setSide(shelf.classList.contains('mini'), true);
+    });
+  }
+
+  function norm(s) {
+    return (s || '').toLowerCase().replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+  }
+
+  function countFor(cat) {
+    if (cat === 'all') return total;
+    var n = 0;
+    cards.forEach(function (r) { if (r.getAttribute('data-cat') === cat) n++; });
+    return n;
+  }
+
+  chips.forEach(function (chip) {
+    var badge = chip.querySelector('.n');
+    if (badge) badge.textContent = countFor(chip.getAttribute('data-cat'));
+  });
+
+  function apply() {
+    var terms = norm(q.value).split(' ').filter(Boolean);
+    var shown = 0;
+    cards.forEach(function (row) {
+      var okCat = active === 'all' || row.getAttribute('data-cat') === active;
+      var text = norm(row.textContent + ' ' + (row.getAttribute('data-keywords') || ''));
+      var okQ = terms.every(function (t) { return text.indexOf(t) !== -1; });
+      var ok = okCat && okQ;
+      row.classList.toggle('hide', !ok);
+      if (ok) shown++;
+    });
+    empty.hidden = shown !== 0;
+    count.textContent = shown === total ? '/ 共 ' + total + ' 篇' : '/ 显示 ' + shown + ' / ' + total + ' 篇';
+    var hasQ = norm(q.value) !== '';
+    if (clearBtn) clearBtn.hidden = !hasQ;
+    if (kbd) kbd.hidden = hasQ;
+    /* 筛选后把列表首行带回索引头下方；页面未滚过列表时不动 */
+    var stage = document.querySelector('.main');
+    var head = document.querySelector('.posts-head');
+    if (stage && head) {
+      var limit = head.getBoundingClientRect().bottom;
+      var top = stage.getBoundingClientRect().top;
+      if (top < limit - 2) {
+        try { window.scrollBy({ top: top - limit, left: 0, behavior: 'instant' }); }
+        catch (e) { window.scrollBy(0, top - limit); }
+      }
+    }
+    window.dispatchEvent(new Event('techblog:layout'));
+  }
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      active = chip.getAttribute('data-cat');
+      chips.forEach(function (c) {
+        var on = c === chip;
+        c.classList.toggle('on', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      apply();
+    });
+  });
+
+  if (q) {
+    q.addEventListener('input', apply);
+    q.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        q.value = '';
+        apply();
+        q.blur();
+      }
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      q.value = '';
+      apply();
+      q.focus();
+    });
+  }
+
+  var reset = document.getElementById('emptyReset');
+  if (reset) {
+    reset.addEventListener('click', function () {
+      q.value = '';
+      active = 'all';
+      chips.forEach(function (c) {
+        var on = c.getAttribute('data-cat') === 'all';
+        c.classList.toggle('on', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      apply();
+      q.focus();
+    });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== '/' && e.keyCode !== 191) return;
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    e.preventDefault();
+    if (shelf && shelf.classList.contains('mini')) setSide(true, true);
+    if (q) q.focus();
+  });
+
+  function setStickTop() {
+    var tb = document.querySelector('.topbar');
+    if (tb) document.documentElement.style.setProperty('--stick-top', tb.offsetHeight + 'px');
+  }
+  setStickTop();
+  window.addEventListener('resize', setStickTop);
+
+  apply();
+})();
+</script>
+<script id="index-scroll-memory">
+/* 记住首页滚动位置：进入文章再「返回首页」时回到离开时的位置（本标签页内有效） */
+(() => {
+  const KEY = "technotes-index-scroll";
+  let saved = 0;
+  try { saved = parseInt(sessionStorage.getItem(KEY) || "0", 10) || 0; } catch (e) {}
+  history.scrollRestoration = "manual";
+  /* 恢复窗口内不保存：防止程序性瞬时滚动（如自动化把卡片滚进视口）污染已存位置 */
+  const quietUntil = saved > 0 ? performance.now() + 700 : 0;
+  if (saved > 0) {
+    let userMoved = false;
+    const mark = () => { userMoved = true; };
+    addEventListener("wheel", mark, { passive: true, once: true });
+    addEventListener("touchstart", mark, { passive: true, once: true });
+    addEventListener("keydown", mark, { once: true });
+    const apply = () => {
+      if (userMoved) return;
+      const max = document.documentElement.scrollHeight - innerHeight;
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, Math.min(saved, Math.max(0, max)));
+      document.documentElement.style.scrollBehavior = "";
+    };
+    apply();
+    addEventListener("load", apply);
+    setTimeout(apply, 350);
+    setTimeout(apply, 1200);
+  }
+  let ticking = false;
+  const save = () => {
+    if (performance.now() < quietUntil) return;
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      try { sessionStorage.setItem(KEY, String(Math.round(scrollY))); } catch (e) {}
+    });
+  };
+  addEventListener("scroll", save, { passive: true });
+  addEventListener("pagehide", save);
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQgNCkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzNiNWQ3OCIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDIuNSAyMS41IDEyIDEyIDIxLjUgMi41IDEyWiIgc3Ryb2tlPSIjM2I1ZDc4Ii8+PHBhdGggZD0iTTQuNSAxMmgxNSIgc3Ryb2tlPSIjM2I1ZDc4IiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEuNSIgZmlsbD0iIzNiNWQ3OCIgc3Ryb2tlPSJub25lIi8+PC9nPjwvc3ZnPg==";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQgNCkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzkzYTdlMCIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDIuNSAyMS41IDEyIDEyIDIxLjUgMi41IDEyWiIgc3Ryb2tlPSIjOTNhN2UwIi8+PHBhdGggZD0iTTQuNSAxMmgxNSIgc3Ryb2tlPSIjOTNhN2UwIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEuNSIgZmlsbD0iIzkzYTdlMCIgc3Ryb2tlPSJub25lIi8+PC9nPjwvc3ZnPg==";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

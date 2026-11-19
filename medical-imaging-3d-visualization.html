@@ -1,0 +1,3277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>医学影像三维可视化 · 从断层到三维</title>
+<meta name="description" content="把医学影像三维可视化拆成七级管线、四种三维输出、等值面与体绘制、分割误差、电影级渲染，并考察论文地图、产业结构、专利边界与产品竞争。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="医学影像三维可视化 · 从断层到三维">
+<meta property="og:description" content="把医学影像三维可视化拆成七级管线、四种三维输出、等值面与体绘制、分割误差、电影级渲染，并考察论文地图、产业结构、专利边界与产品竞争。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/medical-imaging-3d-visualization.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/medical-imaging-3d-visualization.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+/* ============================================================
+   0. 令牌
+   ============================================================ */
+
+:root {
+  --void: #0d1218;
+  --void-2: #121a22;
+  --panel: rgba(20, 28, 37, .78);
+  --ink: #e9eff5;
+  --ink-2: #a9b8c6;
+  --ink-3: #70808f;
+  --rule: #1f2a35;
+  --rule-2: #2b3a47;
+  --ice: #8bb8ff;
+  --teal: #4d8fe6;
+  --amber: #e0a34a;
+  --rose: #e36a83;
+  --bone: #d9cbb8;
+  --viewer: #05080c;
+  --viewer-ink: #dbe7f2;
+  --viewer-rule: #22303c;
+  --measure: 880px;
+  --note: 236px;
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 3px;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --void: #eef1f4; --void-2: #f7f9fb; --panel: rgba(255,255,255,.88);
+    --ink: #12181f; --ink-2: #3f4d59; --ink-3: #5b6a78;
+    --rule: #d7dfe6; --rule-2: #c3cfd9;
+    --ice: #1f5fd0; --teal: #1b56bd; --amber: #8a5a00; --rose: #a3233b; --bone: #6b5a45;
+  }
+}
+
+[data-theme="light"] {
+  --void: #eef1f4;
+  --void-2: #f7f9fb;
+  --panel: rgba(255, 255, 255, .88);
+  --ink: #12181f;
+  --ink-2: #3f4d59;
+  --ink-3: #5b6a78;
+  --rule: #d7dfe6;
+  --rule-2: #c3cfd9;
+  --ice: #1f5fd0;
+  --teal: #1b56bd;
+  --amber: #8a5a00;
+  --rose: #a3233b;
+  --bone: #6b5a45;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================
+   1. 底纹
+   ============================================================ */
+
+.glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 520px at 12% -10%, rgba(110, 168, 255, .10), transparent 62%),
+    radial-gradient(760px 460px at 92% 4%, rgba(110, 168, 255, .06), transparent 60%);
+}
+
+.glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .glow {
+    background:
+      radial-gradient(900px 520px at 12% -10%, rgba(31, 95, 208, .07), transparent 62%),
+      radial-gradient(760px 460px at 92% 4%, rgba(31, 95, 208, .04), transparent 60%);
+  }
+}
+
+[data-theme="light"] .glow {
+  background:
+    radial-gradient(900px 520px at 12% -10%, rgba(31, 95, 208, .07), transparent 62%),
+    radial-gradient(760px 460px at 92% 4%, rgba(31, 95, 208, .04), transparent 60%);
+}
+
+/* 图框与图内配色跟随主题；影像内容仍由画布单独处理 */
+:is([data-theme="light"], .is-light) .fig-frame {
+  background: #f7f9fc;
+  border-color: #c9d4e0;
+}
+
+/* 图内硬编码配色的浅色映射：底、字、线、四类强调色 */
+:is([data-theme="light"], .is-light) figure svg [fill="#20293a"] { fill: #e3eaf3; }
+:is([data-theme="light"], .is-light) figure svg [fill="#101a2a"] { fill: #cbd8e7; }
+:is([data-theme="light"], .is-light) figure svg [fill="#2b2a33"] { fill: #d6d0dc; }
+:is([data-theme="light"], .is-light) figure svg [fill="#7c8497"] { fill: #8994a2; }
+:is([data-theme="light"], .is-light) figure svg [fill="#131b28"] { fill: #ffffff; }
+:is([data-theme="light"], .is-light) figure svg [fill="#0f1622"] { fill: #eef2f8; }
+:is([data-theme="light"], .is-light) figure svg [fill="#1a2334"] { fill: #e7edf6; }
+:is([data-theme="light"], .is-light) figure svg [fill="#0f1724"] { fill: #ffffff; }
+:is([data-theme="light"], .is-light) figure svg [fill="#1e2a38"] { fill: #c9d4e0; }
+:is([data-theme="light"], .is-light) figure svg [fill="#eaf2fb"] { fill: #7aa7e8; }
+:is([data-theme="light"], .is-light) figure svg [fill="#e8f0fa"] { fill: #1b5fc9; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#e8f0fa"] { stroke: #1b5fc9; }
+:is([data-theme="light"], .is-light) figure svg [fill="#e6edf4"] { fill: #0f1722; }
+:is([data-theme="light"], .is-light) figure svg [fill="#a9b8c8"] { fill: #3d4e60; }
+:is([data-theme="light"], .is-light) figure svg [fill="#8fa3b8"] { fill: #5d7084; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#8fa3b8"] { stroke: #5d7084; }
+:is([data-theme="light"], .is-light) figure svg [fill="#6f8093"] { fill: #5d7084; }
+:is([data-theme="light"], .is-light) figure svg [fill="#cfe0f5"] { fill: #1b5fc9; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#cfe0f5"] { stroke: #1b5fc9; }
+:is([data-theme="light"], .is-light) figure svg [fill="#4fd1c5"] { fill: #0b7d75; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#4fd1c5"] { stroke: #0b7d75; }
+:is([data-theme="light"], .is-light) figure svg [fill="#ffb454"] { fill: #9a5c00; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#ffb454"] { stroke: #9a5c00; }
+:is([data-theme="light"], .is-light) figure svg [fill="#ff6b8a"] { fill: #b51f45; }
+:is([data-theme="light"], .is-light) figure svg [fill="#e8788a"] { fill: #b51f45; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#e8788a"] { stroke: #b51f45; }
+:is([data-theme="light"], .is-light) figure svg [fill="#7fb8ff"] { fill: #1b5fc9; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#ffe2b8"] { stroke: #b45309; }
+:is([data-theme="light"], .is-light) figure svg [fill="#c9d4e2"] { fill: #5d7084; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#c9d4e2"] { stroke: #5d7084; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#5d6b7d"] { stroke: #9aa8b7; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#3d4c62"] { stroke: #c9d4e0; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#2a3340"] { stroke: #c9d4e0; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#2a3444"] { stroke: #c9d4e0; }
+:is([data-theme="light"], .is-light) figure svg [stroke="#4a5a70"] { stroke: #b9c6d4; }
+:is([data-theme="light"], .is-light) figure svg [stop-color="#ffe9c9"] { stop-color: #ffd9a3; }
+:is([data-theme="light"], .is-light) figure svg [stop-color="#ffb454"] { stop-color: #c2760a; }
+:is([data-theme="light"], .is-light) figure svg [stop-color="#c2603a"] { stop-color: #b45309; }
+:is([data-theme="light"], .is-light) figure svg [stop-color="#2a3550"] { stop-color: #f7f9fc; }
+:is([data-theme="light"], .is-light) figure svg [stop-color="#cfe0f5"] { stop-color: #1b5fc9; }
+:is([data-theme="light"], .is-light) figure svg [stop-color="#6f8093"] { stop-color: #5d7084; }
+:is([data-theme="light"], .is-light) #s7 figure svg [fill="#cfe0f5"] { fill: #3d4e60; }
+
+/* 浅色下提高示意图主体的边界对比，避免白底上的浅灰形状发虚 */
+:is([data-theme="light"], .is-light) #s2 figure svg [fill="#20293a"] { fill: #d8e3ef; }
+:is([data-theme="light"], .is-light) #s2 figure svg [fill="#101a2a"] { fill: #b7c9dd; }
+:is([data-theme="light"], .is-light) #s2 figure svg [fill="#2b2a33"] { fill: #c6bccb; }
+:is([data-theme="light"], .is-light) #s2 figure svg [fill="#7c8497"] { fill: #5d7084; }
+:is([data-theme="light"], .is-light) #s2 figure svg [stroke="#3d4c62"] { stroke: #7d8b9c; }
+:is([data-theme="light"], .is-light) #s2 figure svg [stroke="#5d6b7d"] { stroke: #7d8b9c; }
+:is([data-theme="light"], .is-light) #s3 figure svg [stroke="#3d4c62"] { stroke: #7d8b9c; }
+:is([data-theme="light"], .is-light) #s7 figure svg [stroke="#2a3444"] { stroke: #b9c6d4; }
+:is([data-theme="light"], .is-light) #s13 figure svg [stroke="#2a3340"] { stroke: #7d8b9c; }
+
+/* ============================================================
+   2. 顶栏
+   ============================================================ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: color-mix(in srgb, var(--void) 82%, transparent);
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar-in {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: block;
+  opacity: .95;
+  transition: opacity .18s;
+}
+
+.brand:hover .brand-mark { opacity: 1; }
+
+.brand-mark .bm-frame {
+  fill: none;
+  stroke: var(--cool-2, var(--cyan, var(--teal, #4fd1c5)));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.brand-mark .bm-slice {
+  stroke: var(--ice, var(--cool, var(--indigo, #8cc4ff)));
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  opacity: .8;
+}
+
+.brand-mark .bm-dot {
+  fill: var(--rose, var(--paper, #ff6f91));
+}
+
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
+a.brand { text-decoration: none; }
+a.brand:hover { color: var(--ink-2); }
+
+.nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .03em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 5px 9px;
+  border-radius: var(--r);
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+}
+
+.nav a:hover { color: var(--ink); background: var(--void-2); }
+
+.nav a.on { color: var(--teal); background: rgba(31, 95, 208, .10); }
+
+.theme-btn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .18s, border-color .18s;
+}
+
+.theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.progress {
+  position: absolute;
+  left: 0; bottom: -1px;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, var(--ice), var(--teal));
+  transition: width .12s linear;
+}
+
+/* ============================================================
+   3. 版面：论文式，正文 + 右侧边注
+   ============================================================ */
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 24px 120px;
+}
+
+.hero {
+  padding: 48px 0 32px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.hero-copy { max-width: var(--measure); }
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0 0 16px;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(34px, 4.6vw, 54px);
+  line-height: 1.18;
+  letter-spacing: -.01em;
+  margin: 0 0 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 2px;
+  background: var(--teal);
+  margin-top: 20px;
+}
+
+.hero .sub {
+  font-size: 18px;
+  line-height: 1.6;
+  font-weight: 500;
+  color: var(--ink-2);
+  max-width: var(--measure);
+  margin: 0 0 16px;
+}
+
+.lede {
+  font-size: 16.5px;
+  line-height: 1.9;
+  color: var(--ink-3);
+  max-width: var(--measure);
+  margin: 0 0 8px;
+}
+
+.byline {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+/* 首屏观片窗：三平面 MPR */
+.viewer {
+  margin-top: 24px;
+  border: 1px solid var(--viewer-rule);
+  background: var(--viewer);
+  color: var(--viewer-ink);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.viewer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--viewer-rule);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #8ea4b7;
+}
+
+.viewer-head b { color: var(--ice); font-weight: 500; }
+
+.viewer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 248px;
+  gap: 1px;
+  background: var(--viewer-rule);
+}
+
+.vp {
+  margin: 0;
+  min-width: 0;
+  background: #070b10;
+  padding: 10px 10px 8px;
+}
+
+.vp canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #05080c;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.vp figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: #8ea4b7;
+}
+
+.vp figcaption b { color: var(--viewer-ink); font-weight: 500; }
+
+.viewer-read {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+  padding: 14px;
+  background: #070b10;
+}
+
+.vr-k {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #8ea4b7;
+}
+
+.vr-hu {
+  font-family: var(--mono);
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -.02em;
+  color: #f0f6fb;
+}
+
+.vr-hu small {
+  margin-left: 4px;
+  font-size: 13.5px;
+  letter-spacing: .04em;
+  color: #8ea4b7;
+}
+
+.vr-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--viewer-rule);
+  padding-top: 8px;
+  font-size: 10.5px;
+  color: #b9c8d6;
+}
+
+.vr-row span { white-space: nowrap; }
+
+.vr-row span:last-child {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: #f0f6fb;
+}
+
+.viewer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--viewer-rule);
+  background: #0a0f15;
+}
+
+.mpr-range {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: #8ea4b7;
+}
+
+.mpr-range input { flex: 1; accent-color: var(--ice); }
+
+.mpr-presets { display: flex; gap: 6px; }
+
+.mpr-presets button {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: #b9c8d6;
+  background: transparent;
+  border: 1px solid var(--viewer-rule);
+  border-radius: 2px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+.mpr-presets button[aria-pressed="true"] {
+  color: #05080c;
+  background: var(--ice);
+  border-color: var(--ice);
+}
+
+.viewer-note {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+/* 章节 */
+
+section { padding: 62px 0 8px; border-bottom: 1px solid var(--rule); scroll-margin-top: 72px; }
+section:last-of-type { border-bottom: 0; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  letter-spacing: .12em;
+  flex: none;
+  padding-top: 6px;
+}
+
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(24px, 2.5vw, 30px);
+  line-height: 1.28;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+
+.dek {
+  color: var(--ink-3);
+  font-size: 16.5px;
+  line-height: 1.75;
+  margin: 0 0 28px;
+}
+
+.paper {
+  display: grid;
+  grid-template-columns: minmax(0, var(--measure)) var(--note);
+  column-gap: 44px;
+  align-items: start;
+}
+
+.paper > * { grid-column: 1; }
+
+.paper > .mnote { grid-column: 1; }
+
+.paper > .wide { grid-column: 1 / -1; }
+
+h3 {
+  font-size: 18px;
+  letter-spacing: .01em;
+  line-height: 1.5;
+  margin: 30px 0 12px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.paper > p { margin: 0 0 18px; color: var(--ink-2); }
+
+.paper p b, .paper p strong { color: var(--ink); font-weight: 600; }
+
+a.inline {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(31, 95, 208, .28);
+}
+
+a.inline:hover { border-bottom-color: var(--ice); }
+
+/* 边注 */
+
+.mnote {
+  font-size: 13.5px;
+  line-height: 1.72;
+  color: var(--ink-3);
+  border-left: 1px solid var(--rule-2);
+  padding: 2px 0 2px 14px;
+  margin: 6px 0 18px;
+}
+
+.mnote b { color: var(--ink-2); font-weight: 600; }
+
+
+
+.mnote .tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 5px;
+}
+
+/* 上标引用 */
+
+sup.cite {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 1px;
+  cursor: pointer;
+}
+
+sup.cite a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+}
+
+sup.cite a:hover { border-bottom-color: currentColor; }
+
+/* ============================================================
+   4. 组件
+   ============================================================ */
+
+.callout {
+  border: 1px solid var(--rule-2);
+  border-left: 2px solid var(--teal);
+  background: var(--panel);
+  border-radius: var(--r);
+  padding: 16px 20px;
+  margin: 22px 0;
+}
+
+.callout .tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.callout p { margin: 0; font-size: 16.5px; }
+
+.callout.warn { border-left-color: var(--amber); }
+.callout.warn .tag { color: var(--amber); }
+
+/* 数据条 */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 26px 0;
+}
+
+.stat {
+  background: var(--void-2);
+  padding: 16px 18px;
+}
+
+.stat .n {
+  font-family: var(--mono);
+  font-size: 24px;
+  color: var(--ink);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+
+.stat .n small { font-size: 13.5px; color: var(--ink-3); margin-left: 2px; }
+
+.stat .l {
+  font-size: 13.5px;
+  color: var(--ink-3);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+/* 表 */
+
+.tbl-wrap { overflow-x: auto; margin: 22px 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 520px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 14px 10px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  color: var(--ink-2);
+}
+
+th {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 400;
+  border-bottom-color: var(--rule-2);
+}
+
+td b { color: var(--ink); }
+
+/* 编号清单 */
+
+ol.quick {
+  list-style: none;
+  counter-reset: q;
+  margin: 22px 0 26px;
+  padding: 0;
+}
+
+ol.quick > li {
+  counter-increment: q;
+  position: relative;
+  padding: 2px 0 2px 38px;
+  margin-bottom: 14px;
+  font-size: 16.5px;
+  line-height: 1.78;
+  color: var(--ink-2);
+  text-align: justify;
+  text-justify: inter-ideograph;
+}
+
+ol.quick > li::before {
+  content: counter(q, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  letter-spacing: .06em;
+}
+
+ol.quick > li b { color: var(--ink); font-weight: 600; }
+
+ul.dot {
+  list-style: none;
+  margin: 18px 0 22px;
+  padding: 0;
+}
+
+ul.dot li {
+  position: relative;
+  padding-left: 17px;
+  margin-bottom: 9px;
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+
+ul.dot li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: .74em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--teal);
+  opacity: .75;
+}
+
+/* 公式 */
+
+.eq {
+  border-left: 2px solid var(--teal);
+  background: var(--panel);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 18px 22px;
+  margin: 24px 0;
+  font-size: 16.5px;
+  color: var(--ink);
+  line-height: 1.9;
+  overflow-x: auto;
+}
+
+.eq .lbl {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.eq i { font-family: var(--serif); font-style: italic; letter-spacing: .01em; }
+
+.eq small {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  line-height: 1.72;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule-2);
+}
+
+/* 窗宽窗位演示 */
+
+.wl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  gap: 22px;
+  align-items: start;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--void-2);
+  padding: 18px;
+  margin: 24px 0;
+  max-width: 900px;
+}
+
+.wl canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: #05070b;
+}
+
+.wl-ctl {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+.wl-ctl label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink-2);
+  letter-spacing: .04em;
+}
+
+.wl-ctl input[type="range"] {
+  width: 100%;
+  margin: 0 0 15px;
+  accent-color: var(--teal);
+}
+
+.wl-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 15px;
+}
+
+.wl-presets button {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 40px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.wl-presets button:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.wl-presets button[aria-pressed="true"] {
+  color: var(--void);
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.wl-read {
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.8;
+  border-top: 1px dashed var(--rule-2);
+  padding-top: 10px;
+}
+
+.wl-read span { color: var(--teal); }
+
+/* 专利四层 */
+.layers {
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 22px 0;
+}
+
+.layers .row {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--void-2);
+}
+
+.layers .row:last-child { border-bottom: 0; }
+
+.layers .k {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  letter-spacing: .04em;
+  line-height: 1.7;
+}
+
+.layers .v {
+  font-size: 16.5px;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+.layers .n {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+
+/* 图 */
+
+figure { margin: 26px 0; }
+
+.fig-frame {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--void-2);
+  padding: 18px;
+  overflow-x: auto;
+}
+
+figure svg { display: block; width: 100%; height: auto; min-width: 460px; }
+figure svg.quad { min-width: 720px; }
+
+figcaption {
+  font-size: 13.5px;
+  color: var(--ink-3);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+/* 管线 */
+
+.pipe {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 26px 0 0;
+}
+
+.pipe button {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  background: var(--void-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 12px 6px;
+  cursor: pointer;
+  position: relative;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.pipe button:hover { color: var(--ink); border-color: var(--rule-2); }
+
+.pipe button[aria-selected="true"] {
+  color: var(--void);
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.pipe button span {
+  display: block;
+  font-size: 10.5px;
+  opacity: .62;
+  margin-top: 4px;
+  letter-spacing: .06em;
+}
+
+.pipe-panel {
+  border: 1px solid var(--rule-2);
+  border-top: 0;
+  border-radius: 0 0 var(--r) var(--r);
+  background: var(--panel);
+  padding: 18px 20px;
+  min-height: 108px;
+}
+
+.pipe-panel h4 {
+  margin: 0 0 6px;
+  font-size: 16.5px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pipe-panel p { margin: 0 0 6px; font-size: 16.5px; }
+
+.pipe-panel .fail {
+  font-size: 13.5px;
+  color: var(--amber);
+}
+
+/* 选型器 */
+
+.picker { margin: 26px 0; }
+
+.pick-q {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pick-q button {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 40px;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.pick-q button:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.pick-q button[aria-pressed="true"] {
+  color: var(--void);
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.pick-out {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--panel);
+  padding: 18px 20px;
+}
+
+.chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.chain span {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: rgba(31, 95, 208, .10);
+  border: 1px solid rgba(31, 95, 208, .28);
+  border-radius: var(--r);
+  padding: 4px 9px;
+}
+
+.chain i { color: var(--ink-3); font-style: normal; font-size: 13.5px; }
+
+.pick-out p { font-size: 16.5px; margin: 0 0 8px; }
+
+.pick-out .why { color: var(--ink-3); font-size: 13.5px; }
+
+/* 文献卡 */
+
+.papers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+
+
+@media (max-width: 780px) {
+  .papers { grid-template-columns: 1fr; }
+}
+
+.paper-card {
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: var(--void-2);
+  padding: 14px 16px;
+  transition: border-color .18s;
+}
+
+.paper-card:hover { border-color: var(--rule-2); }
+
+.paper-card .yr {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  letter-spacing: .08em;
+}
+
+.paper-card .tt {
+  font-size: 16.5px;
+  color: var(--ink);
+  margin: 3px 0 5px;
+  line-height: 1.5;
+}
+
+.paper-card .meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.paper-card .why {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--rule-2);
+}
+
+.paper-card .why ul {
+  margin: 0;
+  padding-left: 15px;
+}
+
+.paper-card .why li {
+  margin-bottom: 5px;
+  line-height: 1.64;
+}
+
+.paper-card .why li:last-child { margin-bottom: 0; }
+
+.paper-card .why b { color: var(--ink); font-weight: 600; }
+
+/* 参考表 */
+
+.refs { margin-top: 26px; }
+
+.ref {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+  line-height: 1.66;
+  scroll-margin-top: 80px;
+}
+
+.ref:target {
+  background: var(--panel);
+  box-shadow: inset 2px 0 0 var(--teal);
+}
+
+.ref .i {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  padding-top: 3px;
+}
+
+.ref .b { color: var(--ink-2); }
+
+.ref .b a.src {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color .15s;
+}
+
+.ref .b a.src:hover { border-bottom-color: var(--teal); }
+
+.ref .b a.src::after {
+  content: " ↗";
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--teal);
+}
+
+.ref .b em { color: var(--ink); font-style: normal; }
+
+.ref .id {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  display: block;
+  margin-top: 2px;
+}
+
+/* 页脚 */
+
+footer {
+  padding: 48px 0 0;
+  color: var(--ink-3);
+  font-size: 13.5px;
+}
+
+footer p { color: var(--ink-3); font-size: 13.5px; }
+
+/* ============================================================
+   5. 响应式
+   ============================================================ */
+
+@media (max-width: 1080px) {
+  .paper { grid-template-columns: minmax(0, 1fr); column-gap: 0; }
+  .lede { max-width: none; }
+  .paper > .mnote {
+    grid-column: 1;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding: 12px 0 0;
+    margin: 4px 0 24px;
+  }
+  .pipe { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .nav { display: none; }
+  .viewer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .viewer-read {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 22px;
+  }
+  .viewer-read .vr-row { flex: 1 1 130px; border-top: 0; padding-top: 0; }
+}
+
+@media (max-width: 720px) {
+  body { font-size: 16.5px; }
+  .topbar-in { padding: 0 16px; gap: 10px; }
+  .brand { font-size: 10.5px; letter-spacing: .08em; }
+  .theme-btn { font-size: 10.5px; padding: 5px 8px; letter-spacing: .02em; }
+  .wrap { padding: 0 16px 90px; }
+  .hero { padding: 46px 0 30px; }
+  .paper > .wide { grid-column: 1; }
+  .pipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wl { grid-template-columns: minmax(0, 1fr); }
+  .figure, figcaption { font-size: 13.5px; }
+  .viewer-head { flex-direction: column; gap: 3px; }
+  .viewer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vp { padding: 6px 6px 5px; }
+  .vp figcaption { font-size: 10.5px; letter-spacing: .02em; }
+  .viewer-read { padding: 12px; }
+  .vr-hu { font-size: 24px; }
+  .mpr-presets { width: 100%; }
+  .mpr-presets button { flex: 1; }
+}
+</style>
+<style id="layout-contract">
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+  --mnote-rule: var(--line-2, var(--rule-2, var(--line, var(--rule, currentColor))));
+}
+
+.wrap { max-width:1180px; }
+.paper { grid-template-columns:minmax(0,1fr); max-width:1132px; }
+.paper > :not(.wide):not(.mrow) { max-width:852px; }
+.paper > .wide { max-width:1132px; }
+.paper > .mnote { grid-column:1; max-width:852px; }
+.paper > .mnote.wide-note {
+  max-width:852px; margin:0 0 24px; padding:10px 0 0;
+  border-left:0; border-top:1px solid var(--rule);
+}
+.wide-note + p { margin-top:32px; }
+.mrow--cardtext { --card-lift:14px; }
+
+/* ---- margin-note contract: target in .mrow-main, note pinned right/bottom ---- */
+.mrow { position:relative; display:flow-root; min-width:0; margin:22px 0; }
+.mrow > .mrow-main { max-width:852px; }
+.mrow > .mrow-main > :first-child { margin-top:0; }
+.mrow > .mrow-main > :last-child { margin-bottom:0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom:0; }
+.mrow > .mnote {
+  position:absolute; right:0; bottom:0; width:236px; margin:0;
+  padding:0 0 0 16px; border:0; border-left:1.6px dashed var(--mnote-rule);
+  border-radius:0; background:transparent; display:block;
+}
+.mrow--cardtext > .mnote { bottom:var(--card-lift, 14px); }
+@media (max-width:1179px) {
+  .mrow > .mnote {
+    position:static; width:auto; max-width:852px; margin:18px 0 0;
+    padding:11px 0 0; border-left:0; border-top:1.6px dashed var(--mnote-rule);
+  }
+}
+
+figure.wide > figcaption, .wide > figcaption,
+.wide figure > figcaption { max-width:852px; }
+
+.paper > .stats + p,
+.paper > .cards + p,
+.paper > .papers + p,
+.paper > .err-grid + p,
+.paper > .metric-dash + p,
+.paper > .factor-grid + p,
+.paper > .zones + p,
+.paper > .appliance-grid + p,
+.paper > .meter-grid + p { margin-top:32px; }
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTNhN2UwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMy4yIDE5IDcuNHY5LjJMMTIgMjAuOCA1IDE2LjZWNy40WiIvPjxwYXRoIGQ9Ik01IDcuNCAxMiAxMS42IDE5IDcuNE0xMiAxMS42djkuMiIvPjwvZz48L3N2Zz4=">
+</head>
+<body>
+<div class="glow"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav"></nav>
+    <button class="theme-btn" id="themeBtn" type="button">主题：深色</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-copy">
+      <p class="kicker">Survey · 2026</p>
+      <h1>医学影像三维可视化</h1>
+      <p class="sub">从断层到三维：七级管线、四种输出与临床边界</p>
+      <p class="lede">
+        把这条链路拆成七级，逐级说明其技术内容与误差传播方式；
+        再讨论四种三维输出的数学差异、等值面与体绘制的实现要点、分割环节的现状，
+        以及电影级渲染在临床证据、专利布局与产品竞争中的实际位置。
+      </p>
+      <div class="byline">
+        <span>阅读时间约 38 分钟</span>
+        <span>引用文献 15 篇 · 专利 2 件 · 均已注明出处</span>
+        <span>数据截至 2026-11</span>
+      </div>
+    </div>
+
+    <div class="viewer" id="mpr" aria-label="三平面 MPR 体模演示">
+      <div class="viewer-head">
+        <span><b>MPR</b> · 三平面重建</span>
+        <span id="mprPresetName">软组织 W 400 / L 40</span>
+      </div>
+      <div class="viewer-grid">
+        <figure class="vp">
+          <canvas id="mprAx" width="320" height="320" aria-label="轴位切面，可拖动十字线"></canvas>
+          <figcaption><span>AXIAL · z</span><b id="mprZ">48</b></figcaption>
+        </figure>
+        <figure class="vp">
+          <canvas id="mprCo" width="320" height="320" aria-label="冠状位切面，可拖动十字线"></canvas>
+          <figcaption><span>CORONAL · y</span><b id="mprY">48</b></figcaption>
+        </figure>
+        <figure class="vp">
+          <canvas id="mprSa" width="320" height="320" aria-label="矢状位切面，可拖动十字线"></canvas>
+          <figcaption><span>SAGITTAL · x</span><b id="mprX">48</b></figcaption>
+        </figure>
+        <div class="viewer-read">
+          <div>
+            <div class="vr-k">Cursor HU</div>
+            <div class="vr-hu"><span id="mprHU">-1000</span><small>HU</small></div>
+          </div>
+          <div class="vr-row"><span>体素间距</span><span>0.70 × 0.70 × 1.00 mm</span></div>
+          <div class="vr-row"><span>矩阵</span><span>96³</span></div>
+          <div class="vr-row"><span>窗宽 / 窗位</span><span id="mprWL">400 / 40</span></div>
+          <div class="vr-row"><span>当前体素</span><span id="mprVox">48, 48, 48</span></div>
+        </div>
+      </div>
+      <div class="viewer-foot">
+        <label class="mpr-range" for="mprSlice">Z 轴层面
+          <input id="mprSlice" type="range" min="0" max="95" value="48" step="1">
+        </label>
+        <div class="mpr-presets" role="group" aria-label="窗宽窗位预设">
+          <button type="button" data-w="400" data-l="40" aria-pressed="true">软组织</button>
+          <button type="button" data-w="1500" data-l="-600" aria-pressed="false">肺窗</button>
+          <button type="button" data-w="2000" data-l="400" aria-pressed="false">骨窗</button>
+        </div>
+      </div>
+    </div>
+    <p class="viewer-note">程序化胸部体模（非临床数据）：拖动任一视图的十字线，三个平面同步到同一体素；Z 轴滑块只改变轴位层面。窗宽窗位按 HU 线性映射到 8 位灰度。</p>
+  </div>
+
+  <section id="s0">
+    <div class="sec-head"><span class="sec-num">00</span><h2>范围与主要结论</h2></div>
+    <div class="paper">
+      <p class="dek">本文讨论 CT / MR 体数据从采集到可交互模型的完整链路，以及各环节的技术内容、证据强度与产业化位置。</p>
+
+      <ol class="quick">
+        <li><b>误差是单向传播的。</b>重建、配准、分割三级串联，每一级的偏差被下一级继承而不被修正。
+          5 mm 层厚造成的轴向分辨率损失无法由渲染环节补偿；分割偏差 2 mm 则直接进入测量与打印结果。</li>
+        <li><b>「三维」是四种输出，评价标准互不通用。</b>MPR 是可测量的二维重采样，
+          SSD 是等值面的网格化，MIP 是沿视线的归约，VRT 是沿视线的积分合成。
+          临床工作量的主体是 MPR，因为只有它提供可回溯到原始层面的测量基准。</li>
+        <li><b>渲染的算法门槛在 2001 年前后已经跨过。</b>GPU 体绘制、预积分分类、多维传递函数
+          均在此期定型。当前差异集中在交互、工作流集成与临床证据，而非成像模型本身。</li>
+        <li><b>瓶颈在分割，且失败是静默的。</b>深度分割把单例处理从小时级压到秒级，
+          但输出不做自检——缺一块、少一支血管，渲染结果依然自洽，非专业用户无法察觉。</li>
+        <li><b>专利保护的对象不是数学。</b>体渲染积分与 Marching Cubes 属公知技术；
+          仍在授权的是硬件映射、工作流闭环与交互方式。2024 年仍有以「每像素一个 CUDA 线程」
+          为主题的体绘制专利公开。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>七级链路：从扫描架到可交付模型</h2></div>
+    <div class="paper">
+      <p class="dek">七级串联，误差只向下游继承、不被修正。点选任一环节，查看它做什么，以及它出错时下游看到什么。</p>
+
+      <div class="wide">
+        <div class="pipe" id="pipe" role="tablist" aria-label="影像管线">
+          <button role="tab" data-step="0" aria-selected="true">采集<span>acquire</span></button>
+          <button role="tab" data-step="1" aria-selected="false">重建<span>reconstruct</span></button>
+          <button role="tab" data-step="2" aria-selected="false">配准<span>register</span></button>
+          <button role="tab" data-step="3" aria-selected="false">分割<span>segment</span></button>
+          <button role="tab" data-step="4" aria-selected="false">渲染<span>render</span></button>
+          <button role="tab" data-step="5" aria-selected="false">交互<span>explore</span></button>
+          <button role="tab" data-step="6" aria-selected="false">落地<span>deliver</span></button>
+        </div>
+        <div class="pipe-panel" id="pipePanel" role="tabpanel"></div>
+      </div>
+
+      <h3>误差的单向传播</h3>
+
+      <p>
+        影像设备输出的是二维投影序列与几何参数，三维是由这些投影反算出来的。
+        因此每一环都继承前一环的误差：重建算法决定噪声与伪影的功率谱，
+        配准决定多序列能否在同一坐标系下叠加，分割决定哪些体素参与后续的几何运算。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<p>
+        这条链不存在下游修复上游的机制。5 mm 层厚的扫描无法通过更好的渲染器
+        恢复 0.5 mm 的轴向细节；分割漏掉的一段血管也不会被传递函数补回来。
+        反过来，质量合格的数据用最朴素的体绘制同样能读出结构——
+        这也解释了为什么该领域的工程问题大多落在采集与分割两端，中间环节的改进往往收益有限。
+      </p></div><aside class="mnote">
+        <span class="tag">一个数字</span>
+        常规胸部 CT 的层厚是 0.5–1 mm，腹部 1–5 mm。层厚直接决定了三维重建在
+        <b>头脚方向</b>上的分辨率，而这个方向恰恰是轴位切片上看不见的那个方向。
+      </aside></div>
+
+      <h3>各向异性体素</h3>
+
+      <p>
+        CT 体素不是立方体。横断面采样可以做到 0.6 × 0.6 mm，层间距则常为 1 mm 甚至 5 mm。
+        三个方向的 <span class="mono">spacing</span> 不等时，体数据在各向异性空间里定义，
+        而多数算法与文件格式默认各向同性。
+      </p>
+
+      <p>
+        若重采样时沿用单位 spacing，几何会在轴向被压缩或拉长，比例失真但不报错，
+        直到测量或打印阶段才暴露。正确做法是按真实 spacing 插值到各向同性网格，
+        常见取 1 mm 或 0.5 mm 立方，代价是体素数按 (s_z/1)³ 增长。
+      </p>
+
+      <div class="callout warn">
+        <span class="tag">典型失效</span>
+        <p>
+          一个比例异常的颅骨模型，通常源于 spacing 未被读取。
+          这类错误不会触发任何异常，只会在后续测量中变成系统性偏差。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>四种「三维」输出及其不可替代性</h2></div>
+    <div class="paper">
+      <p class="dek">四种输出常并列于同一菜单之下，其数学定义、可测量性与适用边界并不相同。</p>
+
+      <h3>MPR：任意平面重采样</h3>
+
+      <p>
+        多平面重建（multiplanar reconstruction）在体数据中取任意平面，沿该平面重采样后
+        输出二维图像。轴位、冠状、矢状是三个特例；临床真正有用的是斜位——
+        沿血管走行或沿骨折线取平面，使目标结构在一个层面上完整展开。
+      </p>
+
+      <p>
+        它不具备三维观感，但它是唯一可以直接测量的输出：长度、角度、面积、CT 值，
+        全部可以在原始体素网格上回溯。放射科医生的绝大部分阅片时间花在 MPR 上，
+        原因不是习惯，而是三维模型没有可溯源的标尺。
+      </p>
+
+      <h3>SSD：等值面的网格化</h3>
+
+      <p>
+        表面遮盖显示（shaded surface display）先给定一个阈值把体数据二值化，
+        再用 Marching Cubes 一类算法提取等值面，得到三角网格，之后按常规图形学渲染。
+      </p>
+
+      <p>
+        它的优势是成本低、输出可直接进入下游几何流程；骨骼、气道这类高对比结构最适合。
+        代价在于阈值同时定义了「这个物体的全部」：阈值上移，松质骨消失；
+        下移，软组织与骨粘连成一体。此外内部信息在二值化时即已丢弃，
+        得到的只有一张外壳。
+      </p>
+
+      <h3>MIP：沿视线的归约</h3>
+
+      <p>
+        最大密度投影（maximum intensity projection）不做合成，只做归约：
+        一条视线上的全部采样点取最大值作为像素。它天然保留最亮结构，
+        因此是 CTA 与 MRA 阅片的标准后处理选项。
+      </p>
+
+      <p>
+        优点是实现简单、无需传递函数、结果稳定；缺点是没有深度编码。
+        前后两个结构在视线方向重叠时不可区分，通常需要绕轴旋转一组角度，
+        由阅片者在时间维度上重建深度。骨与造影剂密度接近时还需先做骨剔除。
+      </p>
+
+      <h3>VRT：参与介质的积分合成</h3>
+
+      <p>
+        体绘制技术（volume rendering technique）沿视线累积：每个采样点按传递函数取颜色与
+        不透明度，以 <span class="mono">α = 1 − exp(−σδ)</span> 合成。
+        它是四种输出里唯一能表达半透明与内部层次的方式，也是电影级渲染（第 7 节）的基础。
+      </p>
+
+      <div class="callout">
+        <span class="tag">判别依据</span>
+        <p>
+          MPR 的像素值可回溯到一个原始体素；SSD 的像素对应一个三角形；
+          MIP 的像素对应一个采样点；VRT 的像素对应一条线段上的积分。
+          四者的可测量性与可复现性依次下降，表达力依次上升。
+        </p>
+      </div>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 600 152" role="img" aria-label="同一份胸部体数据的四种呈现，从左到右依次是多平面重建的一张切面、只保留表面的等值面、最大密度投影、带层次的体绘制。">
+            <defs>
+              <radialGradient id="vr" cx="50%" cy="46%" r="58%">
+                <stop offset="0%" stop-color="#ffe9c9" stop-opacity=".95"/>
+                <stop offset="34%" stop-color="#ffb454" stop-opacity=".55"/>
+                <stop offset="64%" stop-color="#c2603a" stop-opacity=".3"/>
+                <stop offset="100%" stop-color="#2a3550" stop-opacity=".06"/>
+              </radialGradient>
+              <linearGradient id="mipg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#cfe0f5" stop-opacity=".95"/>
+                <stop offset="100%" stop-color="#6f8093" stop-opacity=".55"/>
+              </linearGradient>
+              <clipPath id="bodyClip"><ellipse cx="0" cy="0" rx="52" ry="66"/></clipPath>
+            </defs>
+
+            <!-- MPR -->
+            <g transform="translate(78,28)">
+              <ellipse cx="0" cy="0" rx="52" ry="66" fill="#20293a" stroke="#3d4c62" stroke-width="1"/>
+              <ellipse cx="-19" cy="-4" rx="16" ry="30" fill="#101a2a"/>
+              <ellipse cx="19" cy="-4" rx="16" ry="30" fill="#101a2a"/>
+              <ellipse cx="0" cy="4" rx="13" ry="16" fill="#2b2a33"/>
+              <circle cx="0" cy="40" r="8" fill="#7c8497"/>
+              <line x1="-56" y1="18" x2="56" y2="18" stroke="#4fd1c5" stroke-width="1" stroke-dasharray="3 3"/>
+              <text x="0" y="94" fill="#6f8093" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">MPR · 能测量</text>
+            </g>
+
+            <!-- SSD -->
+            <g transform="translate(228,28)">
+              <ellipse cx="0" cy="0" rx="52" ry="66" fill="none" stroke="#8fa3b8" stroke-width="2.4"/>
+              <ellipse cx="-19" cy="-4" rx="16" ry="30" fill="none" stroke="#5d6b7d" stroke-width="1.4"/>
+              <ellipse cx="19" cy="-4" rx="16" ry="30" fill="none" stroke="#5d6b7d" stroke-width="1.4"/>
+              <path d="M-44 -34 Q0 -46 44 -34" fill="none" stroke="#c9d4e2" stroke-width="1.2" opacity=".7"/>
+              <path d="M-44 0 Q0 -12 44 0" fill="none" stroke="#c9d4e2" stroke-width="1.2" opacity=".5"/>
+              <path d="M-44 34 Q0 22 44 34" fill="none" stroke="#c9d4e2" stroke-width="1.2" opacity=".3"/>
+              <text x="0" y="94" fill="#6f8093" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">SSD · 只有一层壳</text>
+            </g>
+
+            <!-- MIP -->
+            <g transform="translate(378,28)">
+              <ellipse cx="0" cy="0" rx="52" ry="66" fill="url(#mipg)" opacity=".45"/>
+              <g stroke="#e8f0fa" stroke-width="1.6" opacity=".9" fill="none">
+                <path d="M-40 -30 Q0 -40 40 -30"/>
+                <path d="M-44 -12 Q0 -22 44 -12"/>
+                <path d="M-44 6 Q0 -4 44 6"/>
+                <path d="M-42 24 Q0 14 42 24"/>
+              </g>
+              <rect x="-6" y="-34" width="12" height="70" fill="#eaf2fb" opacity=".55"/>
+              <text x="0" y="94" fill="#6f8093" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">MIP · 没有深度</text>
+            </g>
+
+            <!-- VRT -->
+            <g transform="translate(528,28)">
+              <ellipse cx="0" cy="0" rx="54" ry="68" fill="url(#vr)"/>
+              <g stroke="#ffe2b8" stroke-width="1.1" opacity=".55" fill="none">
+                <path d="M-34 -34 Q0 -44 34 -34"/>
+                <path d="M-40 -14 Q0 -24 40 -14"/>
+                <path d="M-40 8 Q0 -2 40 8"/>
+                <path d="M-34 30 Q0 20 34 30"/>
+              </g>
+              <text x="0" y="94" fill="#6f8093" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">VRT · 有层次</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          同一份体数据的四种输出。SSD 一栏中肺与心脏只剩轮廓线：
+          二值化之后，内部结构在数据层面已不存在，而非仅仅未被显示。
+        </figcaption>
+      </figure>
+
+      <div class="mrow"><div class="mrow-main">
+<div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>输入</th><th>典型用途</th><th>主要缺点</th></tr></thead>
+          <tbody>
+            <tr><td><b>MPR</b></td><td>体数据 + 一个平面</td><td>读片、测量、活检路径</td><td>没有整体感，要靠脑内重建</td></tr>
+            <tr><td><b>SSD</b></td><td>体数据 + 一个阈值</td><td>骨骼、气道、术前示意</td><td>阈值敏感，内部全丢</td></tr>
+            <tr><td><b>MIP</b></td><td>体数据</td><td>CTA / MRA、肺结节</td><td>无深度，重叠结构糊在一起</td></tr>
+            <tr><td><b>VRT</b></td><td>体数据 + 传递函数</td><td>复杂解剖、术前规划、教学</td><td>计算贵，参数主观，不能测</td></tr>
+          </tbody>
+        </table>
+      </div></div><aside class="mnote">
+        <span class="tag">术语</span>
+        VRT 在西门子的产品线中称 Volume Rendering Technique，在 GE 的文档中常直接写作
+        Volume Rendering。命名不构成技术区分，判断依据应是其背后的合成方式
+        与传递函数定义域的维度，而非菜单项名称。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>等值面提取：Marching Cubes</h2></div>
+    <div class="paper">
+      <p class="dek">1987 年提出的查表算法，至今仍是多数三维重建功能背后的实现。</p>
+
+      <p>
+        体数据里没有表面，只有标量场。要让「骨头的表面」这个概念成立，
+        须先把它定义出来：标量值等于给定阈值的等值面。问题于是变成
+        如何从三维数组里提取该等值面的三角网格表示。
+      </p>
+
+      <p>
+        Lorensen 与 Cline 在 1987 年给出的答案是<b>Marching Cubes</b><sup class="cite"><a href="#ref-1">1</a></sup>：
+        以体素为单元，取八角点，每点按阈值判定内或外，八个二值得到一个 8 位编码，
+        共 2<sup>8</sup> = 256 种情形。
+      </p>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 620 200" role="img" aria-label="Marching Cubes 的四步：八个体素角点各自判断内外，组合成 256 种编码，考虑旋转与镜像后只剩下 15 种本质不同的构型，每个立方体生成 0 到 4 个三角形。">
+            <!-- 立方体 -->
+            <g transform="translate(60,44)">
+              <polygon points="0,-24 30,-9 0,6 -30,-9" fill="#1a2334" stroke="#4fd1c5" stroke-width="1.2"/>
+              <polygon points="-30,-9 0,6 0,44 -30,29" fill="#131b28" stroke="#3d4c62" stroke-width="1.2"/>
+              <polygon points="30,-9 0,6 0,44 30,29" fill="#0f1622" stroke="#3d4c62" stroke-width="1.2"/>
+              <circle cx="0" cy="-24" r="3" fill="#ffb454"/>
+              <circle cx="30" cy="-9" r="3" fill="#ffb454"/>
+              <circle cx="0" cy="6" r="3" fill="#ffb454"/>
+              <circle cx="-30" cy="-9" r="3" fill="#4fd1c5"/>
+              <circle cx="0" cy="44" r="3" fill="#4fd1c5"/>
+              <circle cx="30" cy="29" r="3" fill="#4fd1c5"/>
+              <circle cx="-30" cy="29" r="3" fill="#4fd1c5"/>
+              <circle cx="0" cy="6" r="3" fill="#ffb454"/>
+            </g>
+            <text x="60" y="116" fill="#8fa3b8" font-family="ui-monospace,monospace" font-size="10.5" text-anchor="middle">8 个角点判内外</text>
+            <text x="60" y="134" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">1 0 1 0 0 0 1 1</text>
+
+            <path d="M118 74 L146 74" stroke="#3d4c62" stroke-width="1" marker-end="url(#ar)"/>
+
+            <g transform="translate(160,66)">
+              <rect x="0" y="0" width="86" height="34" fill="#131b28" stroke="#3d4c62"/>
+              <text x="43" y="22" fill="#cfe0f5" font-family="ui-monospace,monospace" font-size="13" text-anchor="middle">256 种</text>
+              <text x="43" y="52" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">2⁸ 种编码</text>
+            </g>
+
+            <path d="M252 74 L280 74" stroke="#3d4c62" stroke-width="1"/>
+
+            <g transform="translate(292,66)">
+              <rect x="0" y="0" width="86" height="34" fill="#131b28" stroke="#3d4c62"/>
+              <text x="43" y="22" fill="#4fd1c5" font-family="ui-monospace,monospace" font-size="13" text-anchor="middle">15 种</text>
+              <text x="43" y="52" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">去掉旋转与镜像</text>
+            </g>
+
+            <path d="M384 74 L412 74" stroke="#3d4c62" stroke-width="1"/>
+
+            <g transform="translate(424,66)">
+              <rect x="0" y="0" width="96" height="34" fill="#131b28" stroke="#3d4c62"/>
+              <text x="48" y="22" fill="#ffb454" font-family="ui-monospace,monospace" font-size="13" text-anchor="middle">0–4 个三角形</text>
+              <text x="48" y="52" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">每个立方体</text>
+            </g>
+
+            <text x="310" y="166" fill="#6f8093" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">顶点位置 = 两端点按标量值线性插值 → 网格比体素细</text>
+            <text x="310" y="186" fill="#6f8093" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">三角形顶点焊接成连续曲面 → 可直接进 GPU，也可直接 3D 打印</text>
+          </svg>
+        </div>
+        <figcaption>
+          关键在于第三步：15 种构型使查表成为可能，单个立方体只需一次索引即可确定
+          三角形连接方式。这是该算法能在 1987 年的硬件上运行、并在今天继续被使用的原因。
+        </figcaption>
+      </figure>
+
+      <h3>两个实现层面的约束</h3>
+
+      <p>
+        <b>顶点插值。</b>三角形顶点不取体素中心，而取等值面与立方体棱的交点，
+        位置由两端的标量值线性插值确定。这使提取出的表面分辨率高于体素分辨率，
+        也是其外观平滑的来源；代价是插值假设了棱上标量单调变化，
+        在强梯度区会引入位置误差。
+      </p>
+
+      <p>
+        <b>构型歧义。</b>15 种基本构型中有一类，同一编码存在两种拓扑上不等价的连接方式，
+        选择错误会在表面留下孔洞或冗余面片。工程实现通常用 asymptotic decider
+        一类规则消歧，否则网格在放大后可见不闭合，且无法通过 3D 打印的水密性检查。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<div class="callout">
+        <span class="tag">仍在使用的原因</span>
+        <p>
+          它输出的是最通用的中间表示：三角网格。GPU 可渲染、有限元可求解、
+          打印机可直接消费。只要下游需要的是几何而非光，Marching Cubes 仍是默认选择。
+        </p>
+      </div></div><aside class="mnote">
+        <span class="tag">专利状态</span>
+        该算法由 GE 于 1985 年 6 月申请美国专利（US 4,710,876）。按当时的规则，
+        保护期取「授权日起 17 年」与「申请日起 20 年」中的较长者，于 2005 年 6 月届满。
+        这也是所有开源实现可以自由使用它的原因：
+        <b>基础算法会过期，工程实现不会</b>。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>体绘制：沿视线的积分与合成</h2></div>
+    <div class="paper">
+      <p class="dek">此处只给出模型、离散形式与关键工程手段；完整推导见体渲染专题（暂未上线）。</p>
+
+      <p>
+        体渲染不提取表面，它让每个像素发出一条射线，穿过整个体数据，
+        沿途按密度累积颜色。<b>发射—吸收模型</b>给出的积分是：
+      </p>
+
+      <div class="eq">
+        <span class="lbl">体渲染积分</span>
+        <i>C</i> = ∫ <i>T</i>(<i>t</i>) · <i>σ</i>(<i>t</i>) · <i>c</i>(<i>t</i>) d<i>t</i>
+        &nbsp;&nbsp;，&nbsp;&nbsp;
+        <i>T</i>(<i>t</i>) = exp( −∫<sub>0</sub><sup>t</sup> <i>σ</i>(<i>s</i>) d<i>s</i> )
+        <small>
+          每一段的光要乘上「它前面还剩多少能穿过来」。这个衰减是指数的，
+          所以远处的结构天然变淡——层次感不是调出来的，是算出来的。
+        </small>
+      </div>
+
+      <p>
+        工程上用离散形式：把视线切成 N 段，每段的贡献是
+        <span class="mono">T · (1 − e<sup>−σδ</sup>) · c</span>，
+        <span class="mono">T</span> 每步乘一次透过率。切成多少段，直接决定画质和帧率。
+      </p>
+
+      <div class="callout">
+        <span class="tag">和前一节的区别</span>
+        <p>
+          SSD 把体数据变成几何，之后走的是图形学老路；VRT 不变成几何，
+          它直接对密度积分。前者能进打印机，后者能表达半透明——两边不能互相替代。
+        </p>
+      </div>
+
+      <h3>四项使其可行的工程手段</h3>
+
+      <p>
+        <b>三维纹理与硬件三线性插值。</b>体数据以标量三维纹理驻留显存，采样插值由固定功能单元完成，
+        每次采样等价于八个相邻体素的加权平均。这一项把插值成本从指令流转移到纹理单元。
+      </p>
+
+      <p>
+        <b>预积分分类。</b>步长增大后，采样点之间的密度变化被忽略，出现同心环带。
+        Engel 等人以「一段起止两点的标量值」为索引预计算该段的积分颜色，
+        运行时以一次查表替代段内数值积分<sup class="cite"><a href="#ref-5">5</a></sup>。
+      </p>
+
+      <p>
+        <b>空域跳过。</b>体数据中大部分体素为空气。建立粗粒度层次结构（八叉树或 brick），
+        整块为空即整段跳过。在胸腹部 CT 上这一项通常省去一半以上的采样。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<p>
+        <b>提前终止。</b>透射率低于阈值后终止步进，后续贡献在输出精度内不可见。
+      </p></div><aside class="mnote">
+        <span class="tag">尺度感</span>
+        512×512 的一帧、每条视线 400 个采样点，就是 <b>1 亿次</b>体素求值。
+        这就是为什么这一行高度依赖 GPU，也是为什么「空域跳过」不是优化而是必需。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>传递函数：从标量到场量的映射</h2></div>
+    <div class="paper">
+      <p class="dek">体素值本身没有颜色；传递函数决定每个 HU 映射成什么颜色与不透明度，窗宽窗位只是它的一条线性特例。</p>
+
+      <p>
+        体渲染需要知道每个密度值对应什么颜色、什么不透明度。这张映射表叫
+        <b>传递函数</b>（transfer function，TF）。CT 里最常用的那条斜坡有专门的名字：
+        <b>窗宽窗位</b>——把 <span class="mono">[L − W/2, L + W/2]</span> 这段 HU 线性映射到 0–1。
+      </p>
+
+      <p>
+        软组织窗（W 400 / L 40）看内脏，骨窗（W 2000 / L 400）看骨小梁，
+        肺窗看肺纹理。数据一个比特都没变，变的只是这条曲线。
+      </p>
+
+      <div class="wide">
+        <div class="wl">
+          <canvas id="wlCv" width="1208" height="1208" aria-label="同一层面在不同窗宽窗位下的显示效果"></canvas>
+          <div class="wl-ctl">
+            <div class="wl-presets" id="wlPresets">
+              <button type="button" data-w="1500" data-l="-600">肺窗</button>
+              <button type="button" data-w="400" data-l="40">纵隔窗</button>
+              <button type="button" data-w="2000" data-l="400">骨窗</button>
+            </div>
+            <label for="wlW">窗宽 W <span id="wlWv">400</span> HU</label>
+            <input id="wlW" type="range" min="50" max="2400" step="10" value="400">
+            <label for="wlL">窗位 L <span id="wlLv">40</span> HU</label>
+            <input id="wlL" type="range" min="-800" max="800" step="10" value="40">
+            <div class="wl-read" id="wlRead"></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        下方演示为同一层面在四个参数下的显示结果。窗宽窗位改变的是映射曲线，
+        数据本身未做任何改动——这既是它的灵活性来源，也是「同一份数据可以得出不同结论」
+        这一问题的技术根源。
+      </p>
+
+      <h3>一维不够用</h3>
+
+      <p>
+        只按密度分类会遇到一个死结：<b>密度相同的两种东西分不开</b>。
+        比如肝脏和血管在平扫 CT 上 HU 值很接近，但它们一个是「均匀的块」，
+        一个是「有边界的管」。
+      </p>
+
+      <p>
+        Kindlmann 与 Durkin 在 1998 年提出以<b>梯度幅值</b>作为第二个维度<sup class="cite"><a href="#ref-4">4</a></sup>：
+        密度平坦处梯度小，界面处梯度大。传递函数的定义域由一条线扩展为一张平面，
+        可使「值落在某区间且梯度足够大」的体素不透明，即只显示界面。
+        Kniss 等人随后将其实现为可直接拖拽的控件<sup class="cite"><a href="#ref-6">6</a></sup>。
+      </p>
+
+      <h3>为什么它不能自动化</h3>
+
+      <p>
+        有不少论文试图自动生成传递函数（基于直方图、基于可见性、基于用户示例），
+        但没有一个成为默认。原因不是算法不够好，而是<b>「想看什么」是临床问题，不是数学问题</b>。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<p>
+        同一个肝脏，外科医生想看血管和胆管的关系，影像科医生想看占位的边界，
+        教学时想让学生看清肝段划分。三者的最优传递函数不一样，
+        而数据、算法、硬件完全一样。
+      </p></div><aside class="mnote">
+        <span class="tag">成本结构</span>
+        在一套三维后处理里，调传递函数的时间常常超过所有计算时间之和。
+        这也是为什么厂商拼命做「预设」和「一键模板」——它省的是人力，不是算力。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>分割：链路上的主要误差源</h2></div>
+    <div class="paper">
+      <p class="dek">分割误差会直接进入测量、打印与导航；渲染既不能修正它，也不会报警。</p>
+
+      <p>
+        要把肝脏单独染成一种颜色、要只显示血管、要把肿瘤的体积算出来，
+        都得先知道「哪些体素属于它」。这件事叫分割。
+      </p>
+
+      <h3>经典方法：可用，但需人工干预</h3>
+
+      <p>
+        <b>阈值 + 连通域</b>代价最低：选一个 HU 范围，取最大连通块。
+        骨、肺这类高对比结构足够；遇到软组织粘连时通常失效。
+        <b>区域生长</b>相对稳健：从种子点向外扩展，直到梯度突变处，
+        但种子点与阈值仍需人工给定。<b>水平集</b>和<b>图割</b>把边界当成能量最小化问题，
+        对弱边界更稳，代价是慢、参数多。
+      </p>
+
+      <h3>深度学习把这一步推了一大截</h3>
+
+      <p>
+        U-Net（2015）用编码器—解码器加跳跃连接，在小样本医学图像上就能训出可用的分割<sup class="cite"><a href="#ref-7">7</a></sup>。
+        nnU-Net（2021）更进一步：它不发明新结构，而是把预处理、网络配置、
+        训练策略全部按数据集自动配好<sup class="cite"><a href="#ref-8">8</a></sup>，结果在多个公开竞赛上超过了专门设计的方案。
+        这个思路的影响很大——原来调参的功夫，被一个「会自己调参的框架」吃掉了。
+      </p>
+
+      <div class="stats wide">
+        <div class="stat">
+          <div class="n">104</div>
+          <div class="l">TotalSegmentator 能自动分割的解剖结构数：27 个器官、59 块骨、10 组肌肉、8 条血管</div>
+        </div>
+        <div class="stat">
+          <div class="n">0.943</div>
+          <div class="l">在包含明显病变的真实临床数据上的平均 Dice 系数</div>
+        </div>
+        <div class="stat">
+          <div class="n">1204</div>
+          <div class="l">标注的 CT 检查数（1082 训练 / 57 验证 / 65 测试），来自 2012 / 2016 / 2020 三个年份</div>
+        </div>
+        <div class="stat">
+          <div class="n">4004</div>
+          <div class="l">随后用于分析年龄相关体积变化的全身 CT 数</div>
+        </div>
+      </div>
+
+      <aside class="mnote wide-note">
+        <span class="tag">Dice 是什么</span>
+        两个集合的重叠度：<span class="mono">2|A∩B| / (|A|+|B|)</span>，1 表示完全一致。
+        0.94 听上去很高，但对小而细的结构（血管、神经）单看平均值会骗人，
+        要按结构分别看。
+      </aside>
+
+      <p>
+        这组数字来自 TotalSegmentator 的原始论文<sup class="cite"><a href="#ref-9">9</a></sup>。它的意义不只是「准」，
+        而是<b>把分割从项目变成基础设施</b>：装一个包，任意 CT 进去，104 个结构出来，
+        每个结构带名字。2025 年同一团队又把范围扩到 MRI（80 个结构）<sup class="cite"><a href="#ref-10">10</a></sup>。
+      </p>
+
+      <h3>误差怎么往下传</h3>
+
+      <p>
+        分割差 2 mm，血管的三维模型就粗 2 mm，支架尺寸就可能选错；
+        肝脏体积算错 5%，术前评估的剩余肝体积就不成立；
+        3D 打印出来的模型多一块，手术台上就多一次意外。
+      </p>
+
+      <p>
+        更麻烦的是<b>它不报错</b>。算法给出一个看起来合理的肝脏，缺了一角，
+        色彩、光照、旋转全都正常。没有经验的用户看不出来。
+        所以真正落地的系统一定会配一个「人工修」的入口——这也是 3D Slicer
+        这类开源工具至今仍有大量临床研究用户的原因<sup class="cite"><a href="#ref-13">13</a></sup>。
+      </p>
+
+      <div class="callout warn">
+        <span class="tag">评估上的陷阱</span>
+        <p>
+          论文里的 Dice 是在<b>它的测试集</b>上算的。换一家医院、换一台机器、
+          换一个扫描协议，性能会掉，而且掉多少没人提前知道。
+          这也是监管把「AI 分割」按医疗器械管、要求做本地验证的原因。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>电影级渲染：从局部光照到路径追踪</h2></div>
+    <div class="paper">
+      <p class="dek">差异不在数据，也不在传递函数，而在光照模型：局部光照只算视线方向，全局光照才让光在场景里传播。</p>
+
+      <h3>传统体渲染的光是假的</h3>
+
+      <p>
+        第 4 节的积分里，颜色 <span class="mono">c(t)</span> 从哪来？
+        传统做法是传递函数直接给一个 RGB，再配一个简单的高光项。
+        换句话说：<b>光线只和视线方向有关，和周围有什么无关</b>。
+      </p>
+
+      <p>
+        这叫局部光照（local illumination）。它的后果是：所有表面看起来都像同一种
+        半透明塑料，因为阴影、遮蔽、环境反射全都没有。
+      </p>
+
+      <h3>全局光照：让光真的在场景里传播</h3>
+
+      <p>
+        电影级渲染（cinematic rendering，CR）把离线渲染那套搬了过来：
+        在体数据里做<b>路径追踪</b>——光线打到某个体素后，按该处的密度和颜色
+        向各个方向散射，继续追。多次弹射之后，遮蔽（哪里被挡住了）、
+        间接光（旁边的东西反过来的光）、景深都自然出现。
+      </p>
+
+      <p>
+        这项技术由西门子推上商用工作站。2016 年的一篇综述给出了它的定位：
+        CR 提供「更接近照片的真实光照」，而和传统体渲染一样，
+        它<b>最擅长显示高密度、高对比的结构</b>——骨和增强后的血管<sup class="cite"><a href="#ref-11">11</a></sup>。
+      </p>
+
+      <div class="callout">
+        <span class="tag">这句话很关键</span>
+        <p>
+          CR 不是「什么都能看清」。它改变的是<b>看起来有多真</b>，
+          不是<b>能看到多少信息</b>。低对比的软组织在 CR 里依然是低对比。
+          宣传图和论文里的差别，往往就在这里。
+        </p>
+      </div>
+
+      <h3>它到底有没有用：一个交叉实验</h3>
+
+      <p>
+        2019 年 JAMA Surgery 上有一项研究，设计得挺干净：40 例病人的 CT，
+        18 名住院医师和主治医师，随机分成两组，一组先看 CR 再看传统 CT，
+        另一组反过来。测两件事——对手术解剖判断的<b>正确率变化</b>，和<b>作答时间变化</b><sup class="cite"><a href="#ref-12">12</a></sup>。
+      </p>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 600 210" role="img" aria-label="交叉实验结果：先看电影级渲染的一组正确率提升 8.5 个百分点、用时减少 18.3 秒；先看传统 CT 的一组正确率下降 13.1 个百分点、用时增加 52.4 秒。">
+            <line x1="120" y1="24" x2="120" y2="188" stroke="#2a3444" stroke-width="1"/>
+            <text x="112" y="72" fill="#cfe0f5" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">正确率</text>
+            <text x="112" y="142" fill="#cfe0f5" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">作答时间</text>
+
+            <line x1="320" y1="30" x2="320" y2="76" stroke="#4a5a70" stroke-width="1" stroke-dasharray="2 3"/>
+            <line x1="320" y1="112" x2="320" y2="170" stroke="#4a5a70" stroke-width="1" stroke-dasharray="2 3"/>
+            <text x="320" y="196" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">0</text>
+
+            <line x1="320" y1="53" x2="405" y2="53" stroke="#4fd1c5" stroke-width="2"/>
+            <circle cx="405" cy="53" r="5" fill="#4fd1c5"/>
+            <text x="414" y="50" fill="#4fd1c5" font-family="ui-monospace,monospace" font-size="11">+8.5%</text>
+            <text x="414" y="63" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9">先 CR 后 CT</text>
+
+            <line x1="189" y1="53" x2="320" y2="53" stroke="#e8788a" stroke-width="2"/>
+            <circle cx="189" cy="53" r="5" fill="#e8788a"/>
+            <text x="180" y="50" fill="#e8788a" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">−13.1%</text>
+            <text x="180" y="63" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9" text-anchor="end">先 CT 后 CR</text>
+
+            <line x1="287" y1="140" x2="320" y2="140" stroke="#4fd1c5" stroke-width="2"/>
+            <circle cx="287" cy="140" r="5" fill="#4fd1c5"/>
+            <text x="278" y="137" fill="#4fd1c5" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">−18.3 s</text>
+
+            <line x1="320" y1="140" x2="414" y2="140" stroke="#e8788a" stroke-width="2"/>
+            <circle cx="414" cy="140" r="5" fill="#e8788a"/>
+            <text x="423" y="137" fill="#e8788a" font-family="ui-monospace,monospace" font-size="11">+52.4 s</text>
+
+            <text x="320" y="180" fill="#6f8093" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">40 例 · 18 名医师 · 二序列交叉设计</text>
+            <text x="320" y="16" fill="#8fa3b8" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">同一批人，换个顺序，结果反号</text>
+          </svg>
+        </div>
+        <figcaption>
+          顺序效应本身就是结论的一半：先看到 CR 的那一组，后面看普通 CT 也判得更准。
+          说明 CR 给的不是「更漂亮」，而是<b>一个更好的三维心智模型</b>。
+          但样本只有 40 例、18 人，不能直接推广成「CR 应该全面替代 CT」。
+          另外两行各自独立缩放（上行 1 个百分点 ≈ 10 px，下行 1 秒 ≈ 1.8 px），
+          只能横向读方向，不要跨行比长度。
+        </figcaption>
+      </figure>
+
+      <p>
+        这项研究的价值在于<b>它测的是理解，不是观感</b>。在此之前，关于 CR 的文献
+        大量是病例报告加「图像很震撼」，而这一篇给了数字。它的局限也很清楚：
+        样本小、单中心、用的是单一厂商的工作站、评估的是解剖识别而不是诊断结论。
+      </p>
+
+      <h3>代价</h3>
+
+      <div class="mrow"><div class="mrow-main">
+<p>
+        路径追踪每像素要追几十到几百条次级光线，计算量比传统体渲染高两三个数量级。
+        商用方案靠预计算光照和 GPU 集群把它压到可接受的交互速度，
+        但「实时」和「电影级」在多数场景下仍然只能二选一。
+      </p></div><aside class="mnote">
+        <span class="tag">怎么识别</span>
+        看边缘。CR 的物体边缘会有<b>柔和的明暗过渡和接触阴影</b>，
+        传统 VRT 的边缘是干净的高光边。再看血管分叉处——CR 会在凹陷处自然变暗，
+        这是遮蔽，不是调色。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>论文地图：四个方向，四套评价标准</h2></div>
+    <div class="paper">
+      <p class="dek">四支文献几乎互不引用，指标也不通用：算法比帧率与相似度，几何比拓扑与误差，分割比 Dice 与泛化，临床比结局。</p>
+
+      <p>
+        这个领域的论文分成四支，彼此几乎不互相引用。混着读会觉得「怎么说什么的都有」，
+        分开看就很清楚：<b>每一支只回答自己那一类问题</b>。
+      </p>
+
+      <div class="mrow mrow--cardtext"><div class="mrow-main">
+<div class="papers">
+        <div class="paper-card">
+          <div class="yr">算法 · ALGORITHM</div>
+          <div class="tt">怎么算得更快、更像</div>
+          <div class="meta">评价标准：帧率、内存、图像相似度。不涉及临床。</div>
+          <div class="why">
+            <ul>
+              <li><b>Levoy 1988</b> — 把体数据直接当对象显示，奠定「沿视线采样」这条路<sup class="cite"><a href="#ref-2">2</a></sup></li>
+              <li><b>Drebin 1988</b> — 引入传递函数与概率化合成，第一次让「半透明」有物理依据<sup class="cite"><a href="#ref-3">3</a></sup></li>
+              <li><b>Engel 2001</b> — 预积分分类，解决大步长下的环带<sup class="cite"><a href="#ref-5">5</a></sup></li>
+              <li><b>Kniss 2001</b> — 多维传递函数 + 可直接拖的控件<sup class="cite"><a href="#ref-6">6</a></sup></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="paper-card">
+          <div class="yr">几何 · GEOMETRY</div>
+          <div class="tt">怎么把标量场变成网格</div>
+          <div class="meta">评价标准：拓扑正确性、三角形数量、几何误差。</div>
+          <div class="why">
+            <ul>
+              <li><b>Lorensen &amp; Cline 1987</b> — Marching Cubes，256 编码 / 15 构型<sup class="cite"><a href="#ref-1">1</a></sup></li>
+              <li>后续大量工作在做消歧、自适应细分、保拓扑简化——因为 3D 打印要求网格封闭且不自交</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="paper-card">
+          <div class="yr">分割 · SEGMENTATION</div>
+          <div class="tt">怎么知道哪块是哪块</div>
+          <div class="meta">评价标准：Dice、HD95、跨中心泛化。这一支现在最活跃。</div>
+          <div class="why">
+            <ul>
+              <li><b>U-Net 2015</b> — 编码器/解码器 + 跳跃连接，小样本医学图像的标准骨架<sup class="cite"><a href="#ref-7">7</a></sup></li>
+              <li><b>nnU-Net 2021</b> — 不设计网络，只自动配置流程，反而赢了大多数比赛<sup class="cite"><a href="#ref-8">8</a></sup></li>
+              <li><b>TotalSegmentator 2023</b> — 104 个结构、Dice 0.943、开箱即用<sup class="cite"><a href="#ref-9">9</a></sup></li>
+              <li><b>TotalSegmentator MRI 2025</b> — 同一套思路扩到磁共振<sup class="cite"><a href="#ref-10">10</a></sup></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="paper-card">
+          <div class="yr">临床 · CLINICAL</div>
+          <div class="tt">它到底有没有改变结局</div>
+          <div class="meta">评价标准：诊断准确性、手术时间、并发症率、读者间一致性。这一支最缺，也最值钱。</div>
+          <div class="why">
+            <ul>
+              <li><b>Dappa 2016</b> — CR 的技术定位与适用边界<sup class="cite"><a href="#ref-11">11</a></sup></li>
+              <li><b>Elshafei 2019, JAMA Surg</b> — 交叉实验，量化 CR 对解剖理解的影响<sup class="cite"><a href="#ref-12">12</a></sup></li>
+              <li><b>BMJ Open 2017</b> — 3D 打印临床效用系统综述：证据多为病例系列，缺对照<sup class="cite"><a href="#ref-14">14</a></sup></li>
+              <li><b>Eur Urol Focus 2021</b> — 前列腺手术中三维可视化的系统综述<sup class="cite"><a href="#ref-15">15</a></sup></li>
+            </ul>
+          </div>
+        </div>
+      </div></div><aside class="mnote">
+        <span class="tag">阅读顺序</span>
+        若以了解领域全貌为目的，建议先读<b>临床一支的系统综述</b>，
+        它对使用场景、效果与证据强度有汇总；若以动手为目标，直接进入第 11 节。
+      </aside></div>
+
+      <div class="callout warn">
+        <span class="tag">一个反复出现的结论</span>
+        <p>
+          3D 打印和三维可视化的系统综述，几乎都落到同一句话上：
+          <b>技术可行性证据充分，临床效用证据不足</b><sup class="cite"><a href="#ref-14">14</a></sup>。
+          病例报告太多，随机对照太少。这不是这个领域独有的问题，
+          但它解释了为什么这类技术的报销和定价一直很难。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>产业结构与价值分布</h2></div>
+    <div class="paper">
+      <p class="dek">产业链各层的可替代性与定价权差异显著，利润并不与算法复杂度相关。</p>
+
+      <p>
+        医学影像三维可视化是一条较长的产业链，按「与患者的距离」排列，
+        各环节的进入壁垒与议价能力呈现明显的梯度。
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>层</th><th>谁在做</th><th>卖什么</th><th>护城河</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>设备</b></td>
+              <td>西门子、GE、飞利浦、佳能、联影</td>
+              <td>扫描架本身</td>
+              <td>硬件 + 装机量 + 服务合同，最厚的一层</td>
+            </tr>
+            <tr>
+              <td><b>工作站 / 后处理</b></td>
+              <td>上面几家 + TeraRecon 等独立厂商</td>
+              <td>随机器卖的软件许可，或按席位</td>
+              <td>和 PACS 的集成、医生的使用习惯</td>
+            </tr>
+            <tr>
+              <td><b>专科应用</b></td>
+              <td>Materialise（Mimics / 手术导板）、各类专科规划软件</td>
+              <td>按病例或按项目收费的服务</td>
+              <td>监管许可 + 临床流程嵌入 + 责任承担</td>
+            </tr>
+            <tr>
+              <td><b>算法 / 组件</b></td>
+              <td>大量创业公司、开源项目</td>
+              <td>SDK、云 API、按次调用</td>
+              <td>最薄。容易被上游内置、被开源替代</td>
+            </tr>
+            <tr>
+              <td><b>开源</b></td>
+              <td>3D Slicer、VTK、ITK、MONAI</td>
+              <td>不卖</td>
+              <td>—（但它是所有人的地基）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>算法层为何定价能力最弱</h3>
+
+      <p>
+        算法可以被复现，责任不能被复现。一篇论文足以让同行重建同类分割器；
+        但要把结果用于临床决策，还需要医疗器械注册、与 PACS 的接口、
+        以及在出现偏差时的责任主体。这些要素不写在论文里，也无法通过开源仓库获得。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<p>
+        因此该领域的商业路径几乎都向下游延伸：算法公司或被设备厂商并购，
+        或转为「算法 + 服务 + 责任」的打包方案（例如按例计费的手术规划），
+        或直接切进专科工作流。仅出售 SDK 的商业模式在该市场难以规模化——
+        买方真正支付的不是推理能力，而是合规与责任。
+      </p></div><aside class="mnote">
+        <span class="tag">开源的位置</span>
+        3D Slicer 是一个研究平台，不是一个产品<sup class="cite"><a href="#ref-13">13</a></sup>。
+        它没有注册证，不能直接用于临床诊断，但它是几乎所有算法论文的
+        实验台，也是很多商业产品早期的原型。这个位置很特殊：
+        <b>它定义了「基线」，但不参与竞争</b>。
+      </aside></div>
+
+      <h3>设备厂商持续投入可视化的动机</h3>
+
+      <p>
+        因为它是整机销售的一部分。当扫描质量本身难以拉开差距时，
+        「肝段自动分析更好用」这类功能进入标书评审。该软件的定价通常不独立，
+        而是折入整机合同：在财务上计入成本，在销售上构成差异化。
+      </p>
+
+      <div class="callout">
+        <span class="tag">判断标准</span>
+        <p>
+          评估一个该方向的产品时，关键问题不是「算得更准多少」，
+          而是「是否承担了别人不愿承担的责任」。前者随竞争持续降价，
+          后者具备定价空间。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s10">
+    <div class="sec-head"><span class="sec-num">10</span><h2>专利：什么能保护，什么早就过期了</h2></div>
+    <div class="paper">
+      <p class="dek">本节的判断是：体渲染本身不构成可专利主题。</p>
+
+      <h3>四层结构</h3>
+
+      <p>
+        把一件医学三维可视化产品拆开，能申请专利的东西分四层。
+        这个排序不是按技术难度，而是按离数学的距离：越往下越接近具体产品形态，
+        越不容易被「只是数学方法」驳回。但写清楚的难度也越大——不是代码难写，
+        而是要把「步骤顺序、触发条件、交互方式」写成审查员认可的技术特征。
+        第四层交互尤其如此：做出演示容易，写成可检索、可判定的权利要求很难。
+      </p>
+
+      <div class="layers">
+          <div class="row"><span class="k">第一层 · 数学</span>
+            <span class="v">体渲染积分、Marching Cubes、插值公式
+              <span class="n">基本不可专利；即使授过权也早已过期</span></span></div>
+          <div class="row"><span class="k">第二层 · 工程实现</span>
+            <span class="v">把它映射到具体硬件、内存布局、并行划分
+              <span class="n">大量存量专利，但通常可以用「换个实现」绕开</span></span></div>
+          <div class="row"><span class="k">第三层 · 工作流</span>
+            <span class="v">把若干步骤串成一条自动化流程，并解决其中某个具体的不确定性
+              <span class="n">最有价值：权利要求落在「步骤顺序 + 触发条件」上</span></span></div>
+          <div class="row"><span class="k">第四层 · 交互</span>
+            <span class="v">医生怎么用手势 / 控件操纵体数据
+              <span class="n">近十年增长最快，尤其和 AR / 手术导航结合</span></span></div>
+      </div>
+
+      <h3>两个真实的例子</h3>
+
+      <div class="papers">
+        <div class="paper-card">
+          <div class="yr">CN118799475A</div>
+          <div class="tt">一种医学影像的体绘制处理方法和装置</div>
+          <div class="meta">北京安德医智科技有限公司 · 申请 2024-08 · 公开 2024-10-18</div>
+          <div class="why">
+            权利要求落在「怎么把这件事放到 GPU 上」：接收图像序列、视点、成像尺寸；
+            建三维纹理数据空间；建投影平面并栅格化成像素点；每个像素发一条射线；
+            把纹理空间和射线集合<b>存进 GPU 显存</b>；分配 RGB 像素组缓冲；
+            <b>一个像素对应一个 CUDA 内核线程</b>。
+            <br><br>
+            注意它申请的是 2024 年。体渲染积分是 1988 年的东西，
+            但「每像素一线程 + 纹理与射线常驻显存」这个具体编排仍然被写成了一件专利。
+            这就是第二层的典型形态：<b>数学是公知的，编排可以是新的</b>。
+          </div>
+        </div>
+
+        <div class="paper-card">
+          <div class="yr">CN119816865A</div>
+          <div class="tt">在模拟 X 射线中优化 CT 图像形成</div>
+          <div class="meta">皇家飞利浦有限公司 · 申请 2023-08 · 公开 2025-04-11</div>
+          <div class="why">
+            这条走的是第三层：取投影数据 → 重建三维 → <b>从三维生成一张二维图像</b> →
+            在这张二维图像上<b>识别疾病或识别的不确定性</b> →
+            根据识别结果<b>回头重处理</b>投影数据或三维图像。
+            <br><br>
+            它的核心不是任何一个算法，而是那个<b>闭环</b>：
+            先用低代价的近似结果筛查，发现问题再回到高代价重建。
+            这种「条件触发的迭代」是工作流专利最喜欢的形式，
+            因为它描述的是一个<b>决策</b>，而不是一个公式。
+          </div>
+        </div>
+      </div>
+
+      <h3>检索方法</h3>
+
+      <p>
+        中国专利公布公告网可以按公开号、申请人、关键词检索。国际检索用
+        Espacenet 或 Google Patents。几个实用的检索式：
+      </p>
+
+      <ul class="dot">
+        <li>体绘制 / 体渲染 / volume rendering + 医学 / 医用</li>
+        <li>传递函数 + 组织 / 器官（找分类相关的）</li>
+        <li>医学影像 + 三维 + 手术规划（找工作流类的）</li>
+        <li>按申请人查：西门子、飞利浦、GE、联影、迈瑞——看它们近三年在布什么</li>
+      </ul>
+
+      <div class="callout">
+        <span class="tag">权利要求评估</span>
+        <p>
+          读取独立权利要求，检验一个问题：将其中任一技术特征删除后，产品是否仍可实现？
+          若仍可实现，该专利在实务中的价值主要限于交叉许可与诉讼对抗；
+          若不可实现，它才构成实质性障碍。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s11">
+    <div class="sec-head"><span class="sec-num">11</span><h2>实现路径：三种技术栈的取舍</h2></div>
+    <div class="paper">
+      <p class="dek">从一组 DICOM 文件到可交互模型，最短可用路径约需一天。</p>
+
+      <div class="wide">
+        <div class="picker" id="picker">
+          <div class="pick-q">
+            <button type="button" data-k="a" aria-pressed="false">快速验证 · Slicer 扩展</button>
+            <button type="button" data-k="b" aria-pressed="false">算法实验 · Python 栈</button>
+            <button type="button" data-k="c" aria-pressed="false">Web 交付 · vtk.js</button>
+          </div>
+          <div class="pick-out" id="pickOut"></div>
+        </div>
+      </div>
+
+      <h3>数据来源</h3>
+
+      <p>
+        公开数据以 <b>TCIA</b>（The Cancer Imaging Archive）最为适用：按病种组织，
+        提供原始 DICOM 序列。肺、肝、脑的公开分割数据集通常附带专家标注，
+        可直接用于分割结果的定量验证。
+      </p>
+
+      <p>
+        原始序列是一组 <span class="mono">.dcm</span> 文件，每层一个。解析时须处理三件事：
+        <b>像素值到 HU 的换算</b>（<span class="mono">HU = pixel × slope + intercept</span>，
+        两个参数位于文件头）、<b>层间距</b>（由 Image Position Patient 计算）、
+        <b>方向</b>（不同设备的坐标系不同，须用方向余弦完成变换）。
+      </p>
+
+      <div class="callout warn">
+        <span class="tag">常见错误</span>
+        <p>
+          直接读取像素数组并按 0–255 灰度处理。CT 原始数据常为 12 或 16 位有符号整数，
+          且带 slope / intercept；不做换算时，骨窗与肺窗的映射关系会整体反转。
+        </p>
+      </div>
+
+      <h3>最小的可用流程</h3>
+
+      <div class="mrow"><div class="mrow-main">
+<ol class="quick">
+        <li><b>读</b>：把 DICOM 序列读成三维数组 + 三个方向的 spacing。</li>
+        <li><b>重采样</b>：按真实 spacing 插值到各向同性，比如 1 mm 立方。</li>
+        <li><b>裁</b>：去掉无关区域，降到能放进显存的大小。</li>
+        <li><b>分割</b>：先用阈值 + 连通域跑通，再换模型。</li>
+        <li><b>渲染或提取</b>：要网格就用 Marching Cubes，要图就用体绘制。</li>
+        <li><b>测量 / 导出</b>：STL 给打印，截图给汇报，数值给临床。</li>
+      </ol></div><aside class="mnote">
+        <span class="tag">分阶段验证</span>
+        第 4 步用阈值即可，不必一开始就引入 nnU-Net。
+        先打通 1–3 步与 5–6 步，才能定位瓶颈所在——在多数实际项目中，
+        瓶颈在数据一致性与几何处理，而非分割模型。
+      </aside></div>
+
+      <h3>三条路线的取舍</h3>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>路线</th><th>优点</th><th>代价</th><th>适合</th></tr></thead>
+          <tbody>
+            <tr><td><b>3D Slicer + 扩展</b></td><td>一天能出结果，分割/配准/渲染全都有，社区大</td><td>界面重，脚本化要靠 Python 控制台</td><td>临床研究、快速验证想法</td></tr>
+            <tr><td><b>VTK + Python</b></td><td>完全可控，能嵌进自己的流程，性能好</td><td>要自己搭交互和 UI，文档陡</td><td>做算法、做批处理、做产品原型</td></tr>
+            <tr><td><b>Web（vtk.js / three.js）</b></td><td>零安装，能分享，适合会诊和教学</td><td>大体积数据要压缩和分块，浏览器内存有限</td><td>对外展示、远程讨论</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        若目标只是产出一幅可用于汇报的图，成本最低的方案恰恰是最朴素的两个：
+        多角度 MIP，或等值面提取配一个稳定的光照模型。
+        该领域真正困难的部分是把结果做对，而不是做得好看。
+      </p>
+    </div>
+  </section>
+
+  <section id="s12">
+    <div class="sec-head"><span class="sec-num">12</span><h2>术语与失效模式</h2></div>
+    <div class="paper">
+      <p class="dek">同一批术语在论文、产品文档与厂商资料里含义并不一致；下表按本文用法统一，并给出对应的失效模式。</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>词</th><th>定义</th><th>影响</th></tr></thead>
+          <tbody>
+            <tr><td><b>HU</b></td><td>Hounsfield 单位。水 0，空气 −1000，松质骨约 300–400，骨皮质最高约 1900</td><td>所有阈值、窗宽窗位都以它为基准</td></tr>
+            <tr><td><b>窗宽 / 窗位</b></td><td>把一段 HU 线性映射到显示范围的两个参数</td><td>它是最简单的一维传递函数</td></tr>
+            <tr><td><b>各向同性</b></td><td>三个方向的体素间距相等</td><td>不做这一步，模型会被压扁</td></tr>
+            <tr><td><b>MPR</b></td><td>多平面重建，任意平面重采样</td><td>临床上真正用来测量的是它</td></tr>
+            <tr><td><b>MIP</b></td><td>沿视线取最大值</td><td>血管成像的标准选项，但没有深度</td></tr>
+            <tr><td><b>VRT</b></td><td>体绘制技术，按传递函数累积</td><td>唯一能表达半透明层次的方法</td></tr>
+            <tr><td><b>TF</b></td><td>传递函数，值 → 颜色 + 不透明度</td><td>整个流程里唯一主观的环节</td></tr>
+            <tr><td><b>Dice</b></td><td>两个分割的重叠度，1 为完全一致</td><td>报告分割性能的标准指标</td></tr>
+            <tr><td><b>CR</b></td><td>电影级渲染，用全局光照做体渲染</td><td>观感提升明显，信息量不一定增加</td></tr>
+            <tr><td><b>PACS</b></td><td>医院的影像归档与传输系统</td><td>任何产品要进医院都得和它对接</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>常见失效模式</h3>
+
+      <ol class="quick">
+        <li><b>spacing 按单位值处理。</b>几何比例失真，无异常抛出，在测量与打印阶段才暴露。</li>
+        <li><b>忽略 slope / intercept。</b>像素值未被换算为 HU，后续所有阈值与窗宽窗位失去意义。</li>
+        <li><b>对软组织使用 SSD。</b>阈值微调即改变器官形态，且结果不可回溯。</li>
+        <li><b>用 MIP 判断空间关系。</b>该算子不编码深度，重叠结构不可区分。</li>
+        <li><b>以外推的 Dice 值作为性能预期。</b>该指标在作者测试集上计算，跨中心性能下降幅度不可预知。</li>
+        <li><b>把电影级渲染当作信息增量。</b>它改变的是成像模型中的间接光照项，不改变数据的信息含量。</li>
+        <li><b>认为专利保护算法。</b>保护对象是实现、流程与交互；数学方法本身通常不可专利。</li>
+      </ol>
+
+      <div class="callout">
+        <span class="tag">总结</span>
+        <p>
+          这条链的精度上限由采集决定，下限由分割决定，渲染只决定可读性。
+          数据质量不足时，更精细的成像模型只会把噪声呈现得更清晰。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s13">
+    <div class="sec-head"><span class="sec-num">13</span><h2>产品判断：渲染与交互的竞争力</h2></div>
+    <div class="paper">
+      <p class="dek">渲染算法本身已不是壁垒；厂商能拉开差距的，是让不可靠可见、让交互产出可复核的证据、让产品长进临床流程。</p>
+
+      <p>
+        前面的分析都指向同一个结论：把画面做得更像照片，不再是竞争壁垒。
+        GPU 体绘制、预积分分类、多维传递函数在 2001 年前后定型，基础专利早已过期；
+        电影级渲染改善的是沟通效率，不是信息量。厂商真正能拉开差距的，
+        是三件更难被复制的事：<b>让不可靠变得可见、让交互产出可复核的证据、让产品长进临床流程</b>。
+      </p>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg class="quad" viewBox="0 0 1000 500" role="img" aria-label="医学三维可视化的产品竞争力四象限：横轴是价值落点，左列数据可信、右列流程效率；纵轴是能力载体，上排渲染、下排交互。置信度渲染、可复现任务态、测量优先、快速修正与协作分别落在四个象限。">
+            <text x="315" y="30" fill="#4fd1c5" font-family="ui-monospace,monospace" font-size="16" font-weight="600" text-anchor="middle">数据可信</text>
+            <text x="315" y="51" fill="#6f8093" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11.5" text-anchor="middle">误差、置信度、配准偏差可见</text>
+            <text x="755" y="30" fill="#ffb454" font-family="ui-monospace,monospace" font-size="16" font-weight="600" text-anchor="middle">流程效率</text>
+            <text x="755" y="51" fill="#6f8093" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11.5" text-anchor="middle">更快、更可复现、更少返工</text>
+
+            <text x="52" y="166" fill="#7fb8ff" font-family="ui-monospace,monospace" font-size="16" font-weight="600" text-anchor="middle">渲染</text>
+            <text x="52" y="185" fill="#6f8093" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9.5" text-anchor="middle">像素与光照</text>
+            <text x="52" y="374" fill="#ff6b8a" font-family="ui-monospace,monospace" font-size="16" font-weight="600" text-anchor="middle">交互</text>
+            <text x="52" y="393" fill="#6f8093" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9.5" text-anchor="middle">手势与流程</text>
+
+            <g>
+              <rect x="105" y="78" width="420" height="176" rx="8" fill="#0f1724" stroke="#2a3340"/>
+              <rect x="105" y="78" width="4" height="176" rx="2" fill="#4fd1c5"/>
+              <text x="497" y="122" fill="#1e2a38" font-family="ui-monospace,monospace" font-size="28" text-anchor="end">01</text>
+              <text x="129" y="114" fill="#e6edf4" font-family="'Source Han Serif SC','Noto Serif CJK SC',Georgia,serif" font-size="18" font-weight="600">置信度渲染</text>
+              <text x="129" y="144" fill="#a9b8c8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">分割概率 / 配准误差 / 噪声</text>
+              <text x="129" y="168" fill="#8fa3b8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">低置信区显示幽灵表面或剖面</text>
+              <text x="129" y="214" fill="#4fd1c5" font-family="ui-monospace,monospace" font-size="10.5">壁垒 · 标注数据 + 临床验证</text>
+            </g>
+
+            <g>
+              <rect x="545" y="78" width="420" height="176" rx="8" fill="#0f1724" stroke="#2a3340"/>
+              <rect x="545" y="78" width="4" height="176" rx="2" fill="#ffb454"/>
+              <text x="937" y="122" fill="#1e2a38" font-family="ui-monospace,monospace" font-size="28" text-anchor="end">02</text>
+              <text x="569" y="114" fill="#e6edf4" font-family="'Source Han Serif SC','Noto Serif CJK SC',Georgia,serif" font-size="18" font-weight="600">可复现任务态</text>
+              <text x="569" y="144" fill="#a9b8c8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">相机 + TF + 分割版本 + 测量</text>
+              <text x="569" y="168" fill="#8fa3b8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">随报告与会诊走，第二意见同图</text>
+              <text x="569" y="214" fill="#ffb454" font-family="ui-monospace,monospace" font-size="10.5">壁垒 · PACS 集成 + 装机习惯</text>
+            </g>
+
+            <g>
+              <rect x="105" y="286" width="420" height="176" rx="8" fill="#0f1724" stroke="#2a3340"/>
+              <rect x="105" y="286" width="4" height="176" rx="2" fill="#4fd1c5"/>
+              <text x="497" y="330" fill="#1e2a38" font-family="ui-monospace,monospace" font-size="28" text-anchor="end">03</text>
+              <text x="129" y="322" fill="#e6edf4" font-family="'Source Han Serif SC','Noto Serif CJK SC',Georgia,serif" font-size="18" font-weight="600">测量优先</text>
+              <text x="129" y="352" fill="#a9b8c8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">每个手势产出测量与误差条</text>
+              <text x="129" y="376" fill="#8fa3b8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">点解剖标志，操作留审计轨迹</text>
+              <text x="129" y="422" fill="#4fd1c5" font-family="ui-monospace,monospace" font-size="10.5">壁垒 · 解剖标志库 + 审计链</text>
+            </g>
+
+            <g>
+              <rect x="545" y="286" width="420" height="176" rx="8" fill="#0f1724" stroke="#2a3340"/>
+              <rect x="545" y="286" width="4" height="176" rx="2" fill="#ffb454"/>
+              <text x="937" y="330" fill="#1e2a38" font-family="ui-monospace,monospace" font-size="28" text-anchor="end">04</text>
+              <text x="569" y="322" fill="#e6edf4" font-family="'Source Han Serif SC','Noto Serif CJK SC',Georgia,serif" font-size="18" font-weight="600">快速修正 + 协作</text>
+              <text x="569" y="352" fill="#a9b8c8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">3D 笔刷 / 血管追踪 / 一键对比</text>
+              <text x="569" y="376" fill="#8fa3b8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">无菌手势、共享相机、异步批注</text>
+              <text x="569" y="422" fill="#ffb454" font-family="ui-monospace,monospace" font-size="10.5">壁垒 · 交互延迟 + 无菌工作流</text>
+            </g>
+
+            <path d="M520 270 H550 M535 255 V285" stroke="#3d4c62" stroke-width="1"/>
+          </svg>
+        </div>
+        <figcaption>
+          四象限不是分类学，而是筛选器：先看设想落在哪一格，再问这一格是不是厂商的结构优势。
+          渲染侧的优势在数据与校准，交互侧的优势在流程与装机；纯画面效果的格子最容易复制。
+        </figcaption>
+      </figure>
+
+      <h3>渲染侧：从「好看」转向「可信」</h3>
+
+      <p>
+        <b>置信度渲染。</b>分割概率、配准误差、噪声水平目前大多被藏在结果背后。
+        把它们编码进颜色、透明度或轮廓抖动，低置信区显示幽灵表面或剖面，
+        医生才知道哪里不能信。这直接回应第 6 节的判断：<b>分割失败是静默的</b>。
+        让失败可见，比把表面磨得更亮更有价值；壁垒在标注数据与临床验证，不在着色器代码。
+      </p>
+
+      <p>
+        <b>可复现的任务态。</b>把相机、传递函数、窗宽窗位、分割版本、测量集合打包成一个
+        可分享状态，随报告和会诊链接走。电影级渲染负责沟通，VRT / MPR 负责判断；
+        状态可复现，第二意见和多学科会诊（MDT）才看到同一幅图。这类「步骤顺序 + 触发条件」的编排，
+        正好落在第 10 节的第三层。
+      </p>
+
+      <p>
+        <b>多模态与时序融合。</b>PET / CT、MR / CT、4D Flow 共配准后同屏，误差直接可视化。
+        设备厂商的结构优势在扫描端校准和原始数据，不在后处理 UI。
+        别把电影级当诊断增量：第 8 节引的 Elshafei 2019 测到的是理解速度与偏好，
+        不是信息量。
+      </p>
+
+      <h3>交互侧：从「操作」转向「证据」</h3>
+
+      <p>
+        <b>测量优先。</b>每个手势都产出可回溯的测量和误差条；点选解剖标志而不是像素；
+        操作留审计轨迹。医生要的不是能旋转的模型，而是能签字的结果。
+      </p>
+
+      <p>
+        <b>快速修正分割。</b>3D 笔刷 / 擦除、血管追踪、一键显示改动前后差异。
+        分割的瓶颈不是算得多准，而是医生改得多快；谁把单例人工修压到 30 秒级，
+        谁更容易进装机。
+      </p>
+
+      <p>
+        <b>无菌环境与协作。</b>语音、脚踏、眼动融合，减少模态切换；会诊时共享相机与标注，
+        支持异步批注。AR 导航的真正难点是配准误差、延迟和失败模式，不是头显分辨率。
+      </p>
+
+      <div class="callout">
+        <span class="tag">筛选标准</span>
+        <p>
+          先问两个问题：这件事是不是厂商有结构优势的方向（扫描校准、PACS 集成、装机量）？
+          它改变的是决策、效率，还是只是观感？纯渲染效果的军备竞赛最容易复制，
+          也最难回答监管问题。若申请专利，这些设想多落在第三、四层：
+          权利要求要写步骤顺序、触发条件、反馈方式，而不是「显示得更真实」。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <div class="sec-head"><span class="sec-num">§</span><h2>参考</h2></div>
+    <div class="paper">
+      <p class="dek">
+        图形学经典按标题即可检索；医学文献给 PMID；专利给公开号与公开日。
+        文中所有数字均取自下列来源，未做二次推算。
+      </p>
+      <div class="refs">
+        <div class="ref" id="ref-1"><span class="i">01</span><span class="b"><a class="src" href="https://doi.org/10.1145/37401.37422" target="_blank" rel="noopener noreferrer">Lorensen WE, Cline HE. <em>Marching Cubes: A High Resolution 3D Surface Construction Algorithm.</em></a><span class="id">SIGGRAPH 1987</span></span></div>
+        <div class="ref" id="ref-2"><span class="i">02</span><span class="b"><a class="src" href="https://doi.org/10.1109/38.511" target="_blank" rel="noopener noreferrer">Levoy M. <em>Display of Surfaces from Volume Data.</em></a><span class="id">IEEE Computer Graphics and Applications. 1988;8(3):29–37</span></span></div>
+        <div class="ref" id="ref-3"><span class="i">03</span><span class="b"><a class="src" href="https://doi.org/10.1145/378456.378484" target="_blank" rel="noopener noreferrer">Drebin RA, Carpenter L, Hanrahan P. <em>Volume Rendering.</em></a><span class="id">SIGGRAPH 1988</span></span></div>
+        <div class="ref" id="ref-4"><span class="i">04</span><span class="b"><a class="src" href="https://doi.org/10.1109/SVV.1998.729588" target="_blank" rel="noopener noreferrer">Kindlmann G, Durkin JW. <em>Semi-Automatic Generation of Transfer Functions for Direct Volume Rendering.</em></a><span class="id">IEEE Symposium on Volume Visualization 1998</span></span></div>
+        <div class="ref" id="ref-5"><span class="i">05</span><span class="b"><a class="src" href="https://doi.org/10.1145/383507.383515" target="_blank" rel="noopener noreferrer">Engel K, Kraus M, Ertl T. <em>High-Quality Pre-Integrated Volume Rendering Using Hardware-Accelerated Pixel Shading.</em></a><span class="id">Graphics Hardware 2001</span></span></div>
+        <div class="ref" id="ref-6"><span class="i">06</span><span class="b"><a class="src" href="https://doi.org/10.1109/VISUAL.2001.964519" target="_blank" rel="noopener noreferrer">Kniss J, Kindlmann G, Hansen C. <em>Interactive Volume Rendering Using Multi-Dimensional Transfer Functions and Direct Manipulation Widgets.</em></a><span class="id">IEEE Visualization 2001</span></span></div>
+        <div class="ref" id="ref-7"><span class="i">07</span><span class="b"><a class="src" href="https://doi.org/10.1007/978-3-319-24574-4_28" target="_blank" rel="noopener noreferrer">Ronneberger O, Fischer P, Brox T. <em>U-Net: Convolutional Networks for Biomedical Image Segmentation.</em></a><span class="id">MICCAI 2015</span></span></div>
+        <div class="ref" id="ref-8"><span class="i">08</span><span class="b"><a class="src" href="https://doi.org/10.1038/s41592-020-01008-z" target="_blank" rel="noopener noreferrer">Isensee F, et al. <em>nnU-Net: a self-configuring method for deep learning-based biomedical image segmentation.</em></a><span class="id">Nature Methods. 2021;18:203–211</span></span></div>
+        <div class="ref" id="ref-9"><span class="i">09</span><span class="b"><a class="src" href="https://pubmed.ncbi.nlm.nih.gov/37795137/" target="_blank" rel="noopener noreferrer">Wasserthal J, et al. <em>TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images.</em></a><span class="id">Radiology: Artificial Intelligence. 2023;5(5):e230024 · PMID 37795137</span></span></div>
+        <div class="ref" id="ref-10"><span class="i">10</span><span class="b"><a class="src" href="https://pubmed.ncbi.nlm.nih.gov/39964271/" target="_blank" rel="noopener noreferrer">Akinci D'Antonoli T, et al. <em>TotalSegmentator MRI: Robust Sequence-Independent Segmentation of Multiple Anatomic Structures in MRI.</em></a><span class="id">Radiology. 2025;314(2):e241613 · PMID 39964271</span></span></div>
+        <div class="ref" id="ref-11"><span class="i">11</span><span class="b"><a class="src" href="https://pubmed.ncbi.nlm.nih.gov/27628743/" target="_blank" rel="noopener noreferrer">Dappa E, et al. <em>Cinematic rendering – an alternative to volume rendering for 3D computed tomography imaging.</em></a><span class="id">Insights into Imaging. 2016;7(6):849–856 · PMID 27628743</span></span></div>
+        <div class="ref" id="ref-12"><span class="i">12</span><span class="b"><a class="src" href="https://pubmed.ncbi.nlm.nih.gov/31141115/" target="_blank" rel="noopener noreferrer">Elshafei M, et al. <em>Comparison of Cinematic Rendering and Computed Tomography for Speed and Comprehension of Surgical Anatomy.</em></a><span class="id">JAMA Surgery. 2019;154(8):738–744 · PMID 31141115</span></span></div>
+        <div class="ref" id="ref-13"><span class="i">13</span><span class="b"><a class="src" href="https://pubmed.ncbi.nlm.nih.gov/22770690/" target="_blank" rel="noopener noreferrer">Fedorov A, et al. <em>3D Slicer as an image computing platform for the Quantitative Imaging Network.</em></a><span class="id">Magnetic Resonance Imaging. 2012;30(9):1323–1341 · PMID 22770690</span></span></div>
+        <div class="ref" id="ref-14"><span class="i">14</span><span class="b"><a class="src" href="https://doi.org/10.1136/bmjopen-2017-016891" target="_blank" rel="noopener noreferrer"><em>Clinical efficacy and effectiveness of 3D printing: a systematic review.</em></a><span class="id">BMJ Open. 2017;7(12):e016891</span></span></div>
+        <div class="ref" id="ref-15"><span class="i">15</span><span class="b"><a class="src" href="https://doi.org/10.1016/j.euf.2020.08.002" target="_blank" rel="noopener noreferrer"><em>The Use of Three-dimensional Visualization Techniques for Prostate Procedures: A Systematic Review.</em></a><span class="id">European Urology Focus. 2021;7(6):1274–1286</span></span></div>
+        <div class="ref" id="ref-P1"><span class="i">P1</span><span class="b"><a class="src" href="https://patents.google.com/patent/CN118799475A/zh" target="_blank" rel="noopener noreferrer"><em>一种医学影像的体绘制处理方法和装置</em></a><span class="id">CN118799475A · 北京安德医智科技有限公司 · 申请 2024-08 · 公开 2024-10-18</span></span></div>
+        <div class="ref" id="ref-P2"><span class="i">P2</span><span class="b"><a class="src" href="https://patents.google.com/patent/CN119816865A/zh" target="_blank" rel="noopener noreferrer"><em>在模拟 X 射线中优化 CT 图像形成</em></a><span class="id">CN119816865A · 皇家飞利浦有限公司 · 申请 2023-08 · 公开 2025-04-11</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>这是一份学习用调研，不构成诊断或治疗建议。产品名归各自公司所有，专利信息以公开文本为准。</p>
+    <p>整理于 2026-11 · 单文件，零外部依赖，可离线打开</p>
+    <p>相关阅读：<a class="inline" href="index.html">返回首页</a></p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+
+  /* ---------- 目录 ---------- */
+
+  var LABELS = {
+    s0: '摘要', s1: '管线', s2: '四种三维', s3: '等值面', s4: '体渲染',
+    s5: '传递函数', s6: '分割', s7: '电影级', s8: '论文', s9: '商业',
+    s10: '专利', s11: '动手', s12: '术语', s13: '产品', refs: '参考'
+  };
+
+  var nav = document.getElementById('nav');
+  var sections = [].slice.call(document.querySelectorAll('section[id]'));
+  var links = {};
+
+  sections.forEach(function (sec) {
+    var num = sec.querySelector('.sec-num');
+    var h = sec.querySelector('h2');
+    if (!num || !h) return;
+    var a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = LABELS[sec.id] || h.textContent;
+    nav.appendChild(a);
+    links[sec.id] = a;
+  });
+
+  var navLinks = [].slice.call(nav.querySelectorAll('a'));
+
+  function markActive(id) {
+    navLinks.forEach(function (a) {
+      a.classList.toggle('on', a.getAttribute('href') === '#' + id);
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        seen[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0;
+      });
+      var best = null, bestR = 0;
+      Object.keys(seen).forEach(function (k) {
+        if (seen[k] > bestR) { bestR = seen[k]; best = k; }
+      });
+      if (best) markActive(best);
+    }, { rootMargin: '-20% 0px -55% 0px', threshold: [0, .2, .6, 1] });
+    sections.forEach(function (s) { io.observe(s); });
+  }
+
+  /* ---------- 进度条 ---------- */
+
+  var bar = document.getElementById('progress');
+  var ticking = false;
+
+  function paint() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? Math.min(100, (window.scrollY / h) * 100) : 0) + '%';
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(paint); }
+  }, { passive: true });
+
+  window.addEventListener('resize', paint);
+  paint();
+
+  /* ---------- 主题 ---------- */
+
+  var btn = document.getElementById('themeBtn');
+  var THEME_KEY = 'technotes-theme';
+  var THEME_ORDER = ['auto', 'dark', 'light'];
+  var THEME_NAME = { auto: '主题：跟随系统', dark: '主题：深色', light: '主题：浅色' };
+  var themeMode = 'auto';
+
+  try {
+    var savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme && THEME_ORDER.indexOf(savedTheme) >= 0) themeMode = savedTheme;
+  } catch (e) { /* storage blocked, stay on auto */ }
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function setTheme(t) {
+    themeMode = t;
+    if (t === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', t);
+    root.classList.toggle('is-light', t === 'light' || (t === 'auto' && systemLight()));
+    btn.textContent = THEME_NAME[t];
+  }
+
+  btn.addEventListener('click', function () {
+    var next = THEME_ORDER[(THEME_ORDER.indexOf(themeMode) + 1) % THEME_ORDER.length];
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    setTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (themeMode === 'auto') setTheme('auto');
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  setTheme(themeMode);
+
+  /* ---------- 管线 ---------- */
+
+  var STEPS = [
+    {
+      t: '采集 · acquisition',
+      what: '扫描架绕体轴旋转，探测器记录透射强度，同时记录层位置、机架倾角、层厚、管电压与管电流等几何与曝光参数。重建所需的全部信息在此阶段确定。',
+      fail: '层厚过大使轴向分辨率不可逆损失；金属植入物产生放射状伪影；呼吸与心脏运动导致层间错位，且该错位在重建后无法区分于真实解剖变异。'
+    },
+    {
+      t: '重建 · reconstruction',
+      what: '由投影数据反算体数据。滤波反投影（FBP）计算量低，迭代重建（IR）在低剂量下噪声更低但引入非线性。输出为以 HU 为单位的标量场。',
+      fail: '迭代强度过高导致图像「塑料化」，小结节被正则项抹平；锥束伪影在扫描范围两端累积；不同年份设备采用不同重建核，配准前须先统一。'
+    },
+    {
+      t: '配准 · registration',
+      what: '将不同时间、模态或体位的图像变换到同一坐标系：平扫与增强、CT 与 MR、术前与术中。刚体变换适用于骨性结构，形变配准则需在软组织上估计位移场。',
+      fail: '增强前后患者位移使肝与血管偏差数毫米；PET 与 CT 的呼吸相位不一致使结节与代谢热区错位。此类错误在融合图上显著，在三维模型上不易察觉。'
+    },
+    {
+      t: '分割 · segmentation',
+      what: '为每个体素赋予标签。阈值加连通域是最小方案；nnU-Net 与 TotalSegmentator 是当前默认方案，后者单次推理输出 104 类结构。',
+      fail: '漏标、过分割、相邻器官粘连、细小血管整段丢失。关键特征是该失效不触发任何异常：颜色映射、光照与旋转均正常，非专业用户无法识别。'
+    },
+    {
+      t: '渲染 · rendering',
+      what: '四种输出：任意平面重采样（MPR）、等值面网格化（SSD）、沿视线归约（MIP）、沿视线积分合成（VRT）。',
+      fail: 'spacing 未按真实值读取导致几何压扁；窗宽窗位错误使骨与空气的映射反转；传递函数把体表映射为高不透明度层，内部结构全部被遮挡。'
+    },
+    {
+      t: '交互 · exploration',
+      what: '旋转、剖切、测量、路径标注。临床接受度的一半取决于能否在同一坐标系下完成测量。',
+      fail: '仅可观察不可测量；剖切平面与测量平面不在同一坐标系，测量值无法回溯到原始层面；交互帧率低于约 10 fps（文献常用的交互性下限）时，三维探索名存实亡，用户退回二维阅片。'
+    },
+    {
+      t: '交付 · delivery',
+      what: '报告插图、STL 模型、3D 打印导板、AR 叠加、手术导航配准。',
+      fail: '单位不一致（mm 与 inch）；网格不封闭导致无法切片；导板因配准误差无法就位；AR 叠加与患者实际体位存在残余旋转。'
+    }
+  ];
+
+  var pipe = document.getElementById('pipe');
+  var panel = document.getElementById('pipePanel');
+
+  function showStep(i) {
+    var s = STEPS[i];
+    panel.innerHTML =
+      '<h4>' + s.t + '</h4>' +
+      '<p>' + s.what + '</p>' +
+      '<p class="fail">出错时：' + s.fail + '</p>';
+    [].forEach.call(pipe.querySelectorAll('button'), function (b, j) {
+      b.setAttribute('aria-selected', j === i ? 'true' : 'false');
+    });
+  }
+
+  pipe.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-step]');
+    if (b) showStep(+b.dataset.step);
+  });
+
+  pipe.addEventListener('keydown', function (e) {
+    var bs = [].slice.call(pipe.querySelectorAll('button'));
+    var cur = bs.indexOf(document.activeElement);
+    if (cur < 0) return;
+    var next = -1;
+    if (e.key === 'ArrowRight') next = (cur + 1) % bs.length;
+    if (e.key === 'ArrowLeft') next = (cur - 1 + bs.length) % bs.length;
+    if (next >= 0) { e.preventDefault(); bs[next].focus(); showStep(next); }
+  });
+
+  showStep(0);
+
+  /* ---------- 选型器 ---------- */
+
+  var ROUTES = {
+    a: {
+      chain: ['装 3D Slicer', '载入 DICOM 文件夹', 'Volume Rendering 模块', '选择预设', '导出截图 / STL'],
+      lead: '最短可用路径，单日内可得到第一幅体绘制结果。',
+      why: 'Slicer 内置 DICOM 浏览器、体绘制、等值面提取与分割编辑器，无需编码。' +
+           '先用其预设确认数据形态与密度分布，再决定是否进入下游流程。' +
+           '需要注意它导入时默认保留原始 spacing，仅当切片几何信息不完整时才回退为 1×1×1 并给出警告——导入后核对 spacing 与 DICOM 是否一致即可。'
+    },
+    b: {
+      chain: ['pydicom 读序列', 'SimpleITK 重采样', 'TotalSegmentator 分割', 'VTK 体绘制 / Marching Cubes', '导出 nii / stl'],
+      lead: '完全可控，可批处理，适合算法实验。',
+      why: 'pydicom 负责解析文件与 slope/intercept，SimpleITK 负责几何变换与重采样，' +
+           'TotalSegmentator 一条命令输出 104 类解剖结构的掩膜，VTK 负责渲染。' +
+           '这条路径的失败点几乎都在几何而非算法：方向余弦、origin、spacing 三者错一个，画面就会倾覆。'
+    },
+    c: {
+      chain: ['预处理降采样', '压缩为 8 位 + LUT', '分块 / 三维纹理', 'vtk.js 或 three.js', '浏览器端合成'],
+      lead: '零安装、可分发，但须先把数据规模降下来。',
+      why: '浏览器很难顺畅承载 512×512×600 的 16 位体数据（约 315 MB，CPU 与 GPU 各存一份时翻倍）。' +
+           '通行做法是降采样到 256³、转为 8 位并保留 HU 到灰度的查找表，或在服务端预渲染一组旋转帧。' +
+           'vtk.js 提供现成的 volume mapper，其显存需求与桌面端相当，集显与移动端通常要先降采样才能流畅。'
+    }
+  };
+
+  var picker = document.getElementById('picker');
+  var pickOut = document.getElementById('pickOut');
+
+  function showRoute(k) {
+    var r = ROUTES[k];
+    var chain = r.chain.map(function (s) { return '<span>' + s + '</span>'; }).join('<i>→</i>');
+    pickOut.innerHTML =
+      '<div class="chain">' + chain + '</div>' +
+      '<p><b>' + r.lead + '</b></p>' +
+      '<p class="why">' + r.why + '</p>';
+    [].forEach.call(picker.querySelectorAll('.pick-q button'), function (b) {
+      b.setAttribute('aria-pressed', b.dataset.k === k ? 'true' : 'false');
+    });
+  }
+
+  picker.addEventListener('click', function (e) {
+    var b = e.target.closest('.pick-q button');
+    if (b) showRoute(b.dataset.k);
+  });
+
+  showRoute('a');
+
+  /* ---------- 窗宽窗位 ---------- */
+
+  var cv = document.getElementById('wlCv');
+
+  if (cv && cv.getContext) {
+    var GRID = 604;
+    var hu = new Float32Array(GRID * GRID);
+
+    (function build() {
+      for (var j = 0; j < GRID; j++) {
+        for (var i = 0; i < GRID; i++) {
+          var x = (i / (GRID - 1)) * 2 - 1;
+          var y = (j / (GRID - 1)) * 2 - 1;
+          var v = -1000;
+
+          var b = (x / .90) * (x / .90) + (y / .74) * (y / .74);
+          if (b < 1) v = -95;                       // 皮下脂肪
+          if (b < .90) v = 45;                      // 肌肉与软组织
+
+          var l1 = ((x - .34) / .30) * ((x - .34) / .30) + ((y + .02) / .40) * ((y + .02) / .40);
+          if (l1 < 1) v = -830;                     // 右肺
+          var l2 = ((x + .34) / .30) * ((x + .34) / .30) + ((y + .02) / .40) * ((y + .02) / .40);
+          if (l2 < 1) v = -830;                     // 左肺
+
+          var h = (x / .26) * (x / .26) + ((y + .16) / .22) * ((y + .16) / .22);
+          if (h < 1) v = 50;                        // 纵隔与心脏
+
+          var a = (x - .11) * (x - .11) + (y - .30) * (y - .30);
+          if (a < .0028) v = 260;                   // 增强后的降主动脉
+
+          var s = (x / .22) * (x / .22) + ((y - .60) / .17) * ((y - .60) / .17);
+          if (s < 1) v = 180;                       // 椎体松质骨
+          if (s < .52) v = 620;                     // 皮质骨
+
+          var n = (x + .42) * (x + .42) + (y + .16) * (y + .16);
+          if (n < .0016) v = 60;                    // 肺内结节
+
+          hu[j * GRID + i] = v;
+        }
+      }
+    }());
+
+    var off = document.createElement('canvas');
+    off.width = off.height = GRID;
+    var offCtx = off.getContext('2d');
+    var img = offCtx.createImageData(GRID, GRID);
+    var ctx = cv.getContext('2d');
+    var wIn = document.getElementById('wlW');
+    var lIn = document.getElementById('wlL');
+    var wTxt = document.getElementById('wlWv');
+    var lTxt = document.getElementById('wlLv');
+    var read = document.getElementById('wlRead');
+    var presets = document.getElementById('wlPresets');
+
+    function renderWL() {
+      var W = +wIn.value, L = +lIn.value;
+      var lo = L - W / 2;
+      var k = 255 / W;
+      var d = img.data;
+
+      for (var p = 0; p < GRID * GRID; p++) {
+        var g = (hu[p] - lo) * k;
+        if (g < 0) g = 0; else if (g > 255) g = 255;
+        var q = p * 4;
+        d[q] = d[q + 1] = d[q + 2] = g;
+        d[q + 3] = 255;
+      }
+
+      offCtx.putImageData(img, 0, 0);
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      var size = Math.max(320, Math.round(cv.getBoundingClientRect().width * dpr));
+      if (cv.width !== size || cv.height !== size) { cv.width = size; cv.height = size; }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(off, 0, 0, size, size);
+      wTxt.textContent = W;
+      lTxt.textContent = L;
+      read.innerHTML =
+        '显示范围 <span>' + Math.round(lo) + ' ~ ' + Math.round(lo + W) + ' HU</span><br>' +
+        '每 1 级灰度 ≈ <span>' + (W / 255).toFixed(1) + ' HU</span><br>' +
+        '窗外一律压成纯黑或纯白';
+
+      [].forEach.call(presets.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-pressed',
+          (+b.dataset.w === W && +b.dataset.l === L) ? 'true' : 'false');
+      });
+    }
+
+    wIn.addEventListener('input', renderWL);
+    lIn.addEventListener('input', renderWL);
+
+    presets.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      wIn.value = b.dataset.w;
+      lIn.value = b.dataset.l;
+      renderWL();
+    });
+
+    var wlTimer = 0;
+    window.addEventListener('resize', function () {
+      clearTimeout(wlTimer);
+      wlTimer = setTimeout(renderWL, 120);
+    });
+
+    renderWL();
+  }
+}());
+</script>
+<script>
+/* ---------- 首屏三平面 MPR：程序化胸部体模 ---------- */
+(function () {
+  var host = document.getElementById('mpr');
+  if (!host) return;
+
+  var N = 96;
+  var vol = new Float32Array(N * N * N);
+  var taper = new Float32Array(N);
+  var CX = 48, CY = 48, CZ = 48;
+  var W = 400, L = 40;
+  var raf = 0;
+
+  function idx(i, j, k) { return (k * N + j) * N + i; }
+  function inside(x, y, z, cx, cy, cz, rx, ry, rz) {
+    var dx = (x - cx) / rx, dy = (y - cy) / ry, dz = (z - cz) / rz;
+    return dx * dx + dy * dy + dz * dz;
+  }
+
+  (function build() {
+    var k, j, i;
+    for (k = 0; k < N; k++) {
+      var z = k / (N - 1) * 2 - 1;
+      taper[k] = Math.max(.35, Math.sqrt(Math.max(0, 1 - (z / 1.02) * (z / 1.02))));
+    }
+    for (k = 0; k < N; k++) {
+      var z2 = k / (N - 1) * 2 - 1;
+      var rx = .94 * taper[k], ry = .80 * taper[k];
+      var band = Math.abs((z2 + .55) / .14 - Math.round((z2 + .55) / .14));
+      for (j = 0; j < N; j++) {
+        var y = j / (N - 1) * 2 - 1;
+        for (i = 0; i < N; i++) {
+          var x = i / (N - 1) * 2 - 1;
+          var v = -1000;
+          var b = (x / rx) * (x / rx) + (y / ry) * (y / ry);
+          if (b < 1) v = -95;
+          if (b < .91) v = 45;
+          if (inside(x, y, z2, .34, -.02, .06, .27, .33, .52) < 1 ||
+              inside(x, y, z2, -.34, -.02, .06, .27, .33, .52) < 1) v = -830;
+          if (inside(x, y, z2, 0, -.14, -.14, .27, .23, .30) < 1) v = 50;
+          if (inside(x, y, z2, .10, .26, .02, .05, .05, .32) < 1) v = 260;
+          // 脊柱：椎体、椎间盘与椎管分开，避免整根白色立柱
+          var spineOn = Math.abs(z2) < .86;
+          var disc = Math.abs(((z2 + 1) / .17) % 1 - .5) * 2;
+          var vscale = 1 - .14 * disc * disc;
+          var body = (x / .12) * (x / .12) +
+                     ((y - .42) / (.10 * vscale)) * ((y - .42) / (.10 * vscale));
+          if (spineOn && body < 1) v = 150;
+          if (spineOn && body < .55) v = disc > .86 ? 90 : 600;
+          var canal = (x / .034) * (x / .034) +
+                      ((y - .62) / .034) * ((y - .62) / .034);
+          if (spineOn && canal < 1) v = 35;
+          // 胸骨
+          if (inside(x, y, z2, 0, -.745, .02, .085, .032, .42) < 1) v = 500;
+          var rb = (x / (.92 * taper[k])) * (x / (.92 * taper[k])) +
+                   (y / (.78 * taper[k])) * (y / (.78 * taper[k]));
+          if (band < .12 && rb > .82 && rb < .86) v = 520;
+          if (inside(x, y, z2, -.40, -.14, .22, .055, .055, .065) < 1) v = 60;
+          vol[idx(i, j, k)] = v;
+        }
+      }
+    }
+  }());
+
+  var off = document.createElement('canvas');
+  off.width = N; off.height = N;
+  var offCtx = off.getContext('2d');
+  var img = offCtx.createImageData(N, N);
+
+  function window8(hu) {
+    var lo = L - W / 2;
+    var g = (hu - lo) / W * 255;
+    return g < 0 ? 0 : g > 255 ? 255 : g;
+  }
+
+  function paintPlane(cv, mode) {
+    var d = img.data;
+    var i, j, k, p, hu;
+    for (j = 0; j < N; j++) {
+      for (i = 0; i < N; i++) {
+        if (mode === 'ax') hu = vol[idx(i, j, CZ)];
+        else if (mode === 'co') { k = N - 1 - j; hu = vol[idx(i, CY, k)]; }
+        else { k = N - 1 - j; hu = vol[idx(CX, i, k)]; }
+        p = (j * N + i) * 4;
+        d[p] = d[p + 1] = d[p + 2] = window8(hu);
+        d[p + 3] = 255;
+      }
+    }
+    offCtx.putImageData(img, 0, 0);
+
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var rect = cv.getBoundingClientRect();
+    var size = Math.max(160, Math.round(rect.width * dpr));
+    if (cv.width !== size || cv.height !== size) { cv.width = size; cv.height = size; }
+    var ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(off, 0, 0, size, size);
+
+    var px, py;
+    if (mode === 'ax') { px = (CX + .5) / N * size; py = (CY + .5) / N * size; }
+    else if (mode === 'co') { px = (CX + .5) / N * size; py = (N - CZ - .5) / N * size; }
+    else { px = (CY + .5) / N * size; py = (N - CZ - .5) / N * size; }
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,168,255,.72)';
+    ctx.lineWidth = Math.max(1, dpr);
+    ctx.beginPath();
+    ctx.moveTo(0, py); ctx.lineTo(size, py);
+    ctx.moveTo(px, 0); ctx.lineTo(px, size);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(110,168,255,.95)';
+    ctx.strokeRect(px - 4 * dpr, py - 4 * dpr, 8 * dpr, 8 * dpr);
+    ctx.restore();
+  }
+
+  var cvAx = document.getElementById('mprAx');
+  var cvCo = document.getElementById('mprCo');
+  var cvSa = document.getElementById('mprSa');
+  var outHU = document.getElementById('mprHU');
+  var outZ = document.getElementById('mprZ');
+  var outY = document.getElementById('mprY');
+  var outX = document.getElementById('mprX');
+  var outVox = document.getElementById('mprVox');
+  var outWL = document.getElementById('mprWL');
+  var presetName = document.getElementById('mprPresetName');
+  var slice = document.getElementById('mprSlice');
+  var presets = host.querySelector('.mpr-presets');
+
+  function readout() {
+    var hu = Math.round(vol[idx(CX, CY, CZ)]);
+    outHU.textContent = hu;
+    outZ.textContent = CZ;
+    outY.textContent = CY;
+    outX.textContent = CX;
+    outVox.textContent = CX + ', ' + CY + ', ' + CZ;
+    outWL.textContent = W + ' / ' + L;
+    slice.value = CZ;
+    host.dataset.ready = '1';
+  }
+
+  function draw() {
+    paintPlane(cvAx, 'ax');
+    paintPlane(cvCo, 'co');
+    paintPlane(cvSa, 'sa');
+    readout();
+  }
+
+  function schedule() {
+    if (raf) return;
+    raf = requestAnimationFrame(function () { raf = 0; draw(); });
+  }
+
+  function clamp(n, lo, hi) { return n < lo ? lo : n > hi ? hi : n; }
+
+  function bindPlane(cv, mode) {
+    function at(ev) {
+      var r = cv.getBoundingClientRect();
+      var fx = clamp((ev.clientX - r.left) / r.width, 0, .999);
+      var fy = clamp((ev.clientY - r.top) / r.height, 0, .999);
+      var ix = Math.floor(fx * N), iy = Math.floor(fy * N);
+      if (mode === 'ax') { CX = ix; CY = iy; }
+      else if (mode === 'co') { CX = ix; CZ = N - 1 - iy; }
+      else { CY = ix; CZ = N - 1 - iy; }
+      schedule();
+    }
+    cv.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+      at(ev);
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (ev.buttons) at(ev);
+    });
+  }
+
+  bindPlane(cvAx, 'ax');
+  bindPlane(cvCo, 'co');
+  bindPlane(cvSa, 'sa');
+
+  slice.addEventListener('input', function () {
+    CZ = +slice.value;
+    schedule();
+  });
+
+  presets.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (!b) return;
+    W = +b.dataset.w; L = +b.dataset.l;
+    presetName.textContent = b.textContent + ' W ' + W + ' / L ' + L;
+    [].forEach.call(presets.querySelectorAll('button'), function (x) {
+      x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+    });
+    schedule();
+  });
+
+  var resizeTimer = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(schedule, 120);
+  });
+
+  window.__mpr = {
+    state: function () { return { cx: CX, cy: CY, cz: CZ, w: W, l: L }; },
+    hu: function () { return Math.round(vol[idx(CX, CY, CZ)]); },
+    set: function (cx, cy, cz) {
+      if (typeof cx === 'number') CX = clamp(Math.round(cx), 0, N - 1);
+      if (typeof cy === 'number') CY = clamp(Math.round(cy), 0, N - 1);
+      if (typeof cz === 'number') CZ = clamp(Math.round(cz), 0, N - 1);
+      draw();
+    },
+    draw: draw
+  };
+
+  draw();
+}());
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM2I1ZDc4IiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMy4yIDE5IDcuNHY5LjJMMTIgMjAuOCA1IDE2LjZWNy40WiIvPjxwYXRoIGQ9Ik01IDcuNCAxMiAxMS42IDE5IDcuNE0xMiAxMS42djkuMiIvPjwvZz48L3N2Zz4=";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTNhN2UwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMy4yIDE5IDcuNHY5LjJMMTIgMjAuOCA1IDE2LjZWNy40WiIvPjxwYXRoIGQ9Ik01IDcuNCAxMiAxMS42IDE5IDcuNE0xMiAxMS42djkuMiIvPjwvZz48L3N2Zz4=";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

@@ -1,0 +1,3976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>论文精读——冻结的历史：时序损失如何让实时超采样停止累积</title>
+<meta name="description" content="Frozen History 论文精读：时序一致性损失如何在配准准确时让实时超采样网络复制历史、停止累积；四类配准错误、copy cost 推导、归一化累积器与 QRISP 实测。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="论文精读——冻结的历史：时序损失如何让实时超采样停止累积">
+<meta property="og:description" content="Frozen History 论文精读：时序一致性损失如何在配准准确时让实时超采样网络复制历史、停止累积；四类配准错误、copy cost 推导、归一化累积器与 QRISP 实测。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/paper-review-frozen-history.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/paper-review-frozen-history.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+/* ============================================================
+   0. 令牌
+   ============================================================ */
+
+:root {
+  --void: #05070c;
+  --void-2: #090e17;
+  --void-3: #0d1420;
+  --panel: rgba(14, 21, 33, .78);
+  --screen: #080d15;
+  --screen-2: #0c131e;
+  --screen-3: #111b29;
+  --screen-ink: #e8f0fa;
+  --screen-ink-2: #b6c7d9;
+  --screen-ink-3: #8fa3b8;
+  --ink: #e8eef6;
+  --ink-2: #b3c2d3;
+  --ink-3: #8497ac;
+  --rule: #172130;
+  --rule-2: #243246;
+  --ice: #8cc4ff;
+  --cyan: #58e2d6;
+  --teal: #34c9bd;
+  --amber: #ffc266;
+  --rose: #ff6f91;
+  --violet: #b9a1ff;
+  --rose-dim: rgba(255, 111, 145, .12);
+  --cyan-dim: rgba(88, 226, 214, .10);
+  --amber-dim: rgba(255, 194, 102, .10);
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 4px;
+  --max: 1180px;
+  /* 图内配色：深色为默认，浅色主题下由变量切换 */
+  --fig-bg: #0c131e;
+  --fig-bg-deep: #0a111b;
+  --fig-bg-2: #111b29;
+  --fig-bg-3: #08111b;
+  --fig-ink: #e8f0fa;
+  --fig-ink-2: #b6c7d9;
+  --fig-ink-3: #8fa3b8;
+  --fig-muted: #59616e;
+  --fig-line: #243246;
+  --fig-line-2: #1b2a3d;
+  --fig-line-3: #2d4058;
+  --fig-cyan: #58e2d6;
+  --fig-blue: #8cc4ff;
+  --fig-amber: #ffc266;
+  --fig-rose: #ff6f91;
+  --fig-violet: #b9a1ff;
+  --fig-orange: #ff9f6f;
+  --fig-grid: rgba(255,255,255,.012);
+  --fig-tint: rgba(140,196,255,.05);
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --void: #f6f8fb; --void-2: #edf1f6; --void-3: #e4eaf2;
+    --panel: rgba(255,255,255,.82);
+    --ink: #0f1722; --ink-2: #3d4e60; --ink-3: #5d7084;
+    --rule: #dfe6ee; --rule-2: #c9d4e0;
+    --ice: #1b5fc9; --cyan: #0b7d75; --teal: #0a6e67;
+    --amber: #9a5c00; --rose: #b51f45; --violet: #6347c7;
+    --rose-dim: rgba(181,31,69,.07);
+    --cyan-dim: rgba(11,125,117,.07);
+    --amber-dim: rgba(154,92,0,.07);
+    --screen: #f7f9fc;
+    --screen-2: #eef2f8;
+    --screen-3: #e7edf6;
+    --screen-ink: #0f1722;
+    --screen-ink-2: #3d4e60;
+    --screen-ink-3: #5d7084;
+    --fig-bg: #eef2f8;
+    --fig-bg-deep: #f7f9fc;
+    --fig-bg-2: #e7edf6;
+    --fig-bg-3: #f7f9fc;
+    --fig-ink: #0f1722;
+    --fig-ink-2: #3d4e60;
+    --fig-ink-3: #5d7084;
+    --fig-muted: #6b7788;
+    --fig-line: #c9d4e0;
+    --fig-line-2: #dfe6ee;
+    --fig-line-3: #c9d4e0;
+    --fig-cyan: #0b7d75;
+    --fig-blue: #1b5fc9;
+    --fig-amber: #9a5c00;
+    --fig-rose: #b51f45;
+    --fig-violet: #6347c7;
+    --fig-orange: #b45309;
+    --fig-grid: rgba(15,23,34,.03);
+    --fig-tint: rgba(27,95,201,.06);
+  }
+}
+
+[data-theme="light"] {
+  --void: #f6f8fb;
+  --void-2: #edf1f6;
+  --void-3: #e4eaf2;
+  --panel: rgba(255,255,255,.84);
+  --ink: #0f1722;
+  --ink-2: #3d4e60;
+  --ink-3: #5d7084;
+  --rule: #dfe6ee;
+  --rule-2: #c9d4e0;
+  --ice: #1b5fc9;
+  --cyan: #0b7d75;
+  --teal: #0a6e67;
+  --amber: #9a5c00;
+  --rose: #b51f45;
+  --violet: #6347c7;
+  --rose-dim: rgba(181,31,69,.07);
+  --cyan-dim: rgba(11,125,117,.07);
+  --amber-dim: rgba(154,92,0,.07);
+  --screen: #f7f9fc;
+  --screen-2: #eef2f8;
+  --screen-3: #e7edf6;
+  --screen-ink: #0f1722;
+  --screen-ink-2: #3d4e60;
+  --screen-ink-3: #5d7084;
+  --fig-bg: #eef2f8;
+  --fig-bg-deep: #f7f9fc;
+  --fig-bg-2: #e7edf6;
+  --fig-bg-3: #f7f9fc;
+  --fig-ink: #0f1722;
+  --fig-ink-2: #3d4e60;
+  --fig-ink-3: #5d7084;
+  --fig-muted: #6b7788;
+  --fig-line: #c9d4e0;
+  --fig-line-2: #dfe6ee;
+  --fig-line-3: #c9d4e0;
+  --fig-cyan: #0b7d75;
+  --fig-blue: #1b5fc9;
+  --fig-amber: #9a5c00;
+  --fig-rose: #b51f45;
+  --fig-violet: #6347c7;
+  --fig-orange: #b45309;
+  --fig-grid: rgba(15,23,34,.03);
+  --fig-tint: rgba(27,95,201,.06);
+}
+
+/* 浅色主题：仪器、首屏实验台与图框不再保持暗底 */
+:is([data-theme="light"], .is-light) .instrument-head {
+  border-bottom-color: rgba(15,23,34,.10);
+  background: rgba(15,23,34,.02);
+}
+:is([data-theme="light"], .is-light) .instrument canvas {
+  border-color: rgba(15,23,34,.10);
+  background: #f7f9fc;
+}
+:is([data-theme="light"], .is-light) #clockCanvas { background: #f7f9fc; }
+:is([data-theme="light"], .is-light) .hero-lab {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.97), rgba(238,242,248,.99)),
+    var(--screen);
+  box-shadow: 0 24px 60px rgba(15,23,34,.10), inset 0 1px 0 rgba(255,255,255,.85);
+}
+:is([data-theme="light"], .is-light) .lab-readout {
+  background: rgba(15,23,34,.08);
+  border-color: rgba(15,23,34,.10);
+}
+:is([data-theme="light"], .is-light) .lab-readout > div { background: #eef2f8; }
+:is([data-theme="light"], .is-light) .readout {
+  background: rgba(15,23,34,.10);
+  border-color: rgba(15,23,34,.12);
+}
+:is([data-theme="light"], .is-light) .ctl select { border-color: rgba(15,23,34,.16); }
+:is([data-theme="light"], .is-light) .btn {
+  color: var(--screen-ink-2);
+  background: rgba(15,23,34,.03);
+  border-color: rgba(15,23,34,.16);
+}
+:is([data-theme="light"], .is-light) .btn:hover {
+  color: var(--screen-ink);
+  border-color: rgba(15,23,34,.32);
+}
+:is([data-theme="light"], .is-light) .btn[aria-pressed="true"] {
+  color: #fff;
+  background: var(--rose);
+  border-color: var(--rose);
+}
+:is([data-theme="light"], .is-light) .arch-node:hover rect,
+:is([data-theme="light"], .is-light) .arch-node:focus rect,
+:is([data-theme="light"], .is-light) .arch-node.is-active rect {
+  fill: #dce9fb !important;
+}
+
+/* 图内 SVG 的硬编码配色跟随主题 */
+figure svg [fill="#0c131e"] { fill: var(--fig-bg); }
+figure svg [fill="#0a111b"] { fill: var(--fig-bg-deep); }
+figure svg [fill="#111b29"] { fill: var(--fig-bg-2); }
+figure svg [fill="#08111b"] { fill: var(--fig-bg-3); }
+figure svg [fill="#e8f0fa"] { fill: var(--fig-ink); }
+figure svg [fill="#b6c7d9"] { fill: var(--fig-ink-2); }
+figure svg [fill="#8fa3b8"] { fill: var(--fig-ink-3); }
+figure svg [fill="#59616e"] { fill: var(--fig-muted); }
+figure svg [fill="#58e2d6"] { fill: var(--fig-cyan); }
+figure svg [stroke="#58e2d6"] { stroke: var(--fig-cyan); }
+figure svg [fill="#8cc4ff"] { fill: var(--fig-blue); }
+figure svg [stroke="#8cc4ff"] { stroke: var(--fig-blue); }
+figure svg [fill="#ffc266"] { fill: var(--fig-amber); }
+figure svg [stroke="#ffc266"] { stroke: var(--fig-amber); }
+figure svg [fill="#ff6f91"] { fill: var(--fig-rose); }
+figure svg [stroke="#ff6f91"] { stroke: var(--fig-rose); }
+figure svg [fill="#b9a1ff"] { fill: var(--fig-violet); }
+figure svg [stroke="#b9a1ff"] { stroke: var(--fig-violet); }
+figure svg [fill="#ff9f6f"] { fill: var(--fig-orange); }
+figure svg [stroke="#ff9f6f"] { stroke: var(--fig-orange); }
+figure svg [stroke="#243246"] { stroke: var(--fig-line); }
+figure svg [stroke="#1b2a3d"] { stroke: var(--fig-line-2); }
+figure svg [stroke="#2d4058"] { stroke: var(--fig-line-3); }
+figure svg [stroke="#8fa3b8"] { stroke: var(--fig-ink-3); }
+figure svg [fill="rgba(255,255,255,.012)"] { fill: var(--fig-grid); }
+figure svg [fill="rgba(140,196,255,.05)"] { fill: var(--fig-tint); }
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   1. 底纹
+   ============================================================ */
+
+.glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 520px at 8% -8%, rgba(140, 196, 255, .12), transparent 62%),
+    radial-gradient(760px 520px at 96% 2%, rgba(255, 111, 145, .07), transparent 60%),
+    radial-gradient(900px 700px at 50% 110%, rgba(88, 226, 214, .06), transparent 65%);
+}
+
+.glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] .glow { opacity: .55; }
+
+/* 一层很淡的“时间刻度” */
+.tick-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    linear-gradient(90deg, transparent 0 49.7%, rgba(140,196,255,.055) 49.7% 50%, transparent 50% 100%),
+    linear-gradient(0deg, transparent 0 49.7%, rgba(140,196,255,.035) 49.7% 50%, transparent 50% 100%);
+  background-size: 25% 100%, 100% 120px;
+  mask-image: linear-gradient(180deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+}
+
+/* ============================================================
+   2. 顶栏
+   ============================================================ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: color-mix(in srgb, var(--void) 84%, transparent);
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar-in {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: block;
+  opacity: .95;
+  transition: opacity .18s;
+}
+
+.brand:hover .brand-mark { opacity: 1; }
+
+.brand-mark .bm-frame {
+  fill: none;
+  stroke: var(--cool-2, var(--cyan, var(--teal, #4fd1c5)));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.brand-mark .bm-slice {
+  stroke: var(--ice, var(--cool, var(--indigo, #8cc4ff)));
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  opacity: .8;
+}
+
+.brand-mark .bm-dot {
+  fill: var(--rose, var(--paper, #ff6f91));
+}
+
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+a.brand:hover { color: var(--ink-2); }
+
+.nav {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-left: 8px;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 7px 9px;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+}
+
+.nav a:hover { color: var(--ink); background: var(--void-3); }
+
+.nav a.active {
+  color: var(--rose);
+  background: var(--rose-dim);
+}
+
+.spacer { flex: 1; }
+
+.theme-btn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  padding: 7px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .18s, border-color .18s;
+}
+
+.theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.progress {
+  position: absolute;
+  left: 0; bottom: -1px;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, var(--ice), var(--cyan) 48%, var(--rose));
+  transition: width .12s linear;
+}
+
+/* ============================================================
+   3. 版面
+   ============================================================ */
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px 110px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 500px;
+  gap: 40px;
+  align-items: center;
+  padding: 74px 0 52px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--rose);
+  margin: 0 0 20px;
+}
+
+.kicker a {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(140,196,255,.32);
+}
+
+.kicker a:hover { border-bottom-color: var(--ice); }
+
+.h1-prefix {
+  display: block;
+  font-family: var(--mono);
+  font-size: clamp(13px, 1.3vw, 17px);
+  line-height: 1.4;
+  letter-spacing: .14em;
+  color: var(--rose);
+  margin-bottom: 12px;
+  font-weight: 400;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(38px, 5.4vw, 68px);
+  line-height: 1.1;
+  letter-spacing: -.018em;
+  margin: 0 0 22px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+h1 em {
+  font-style: normal;
+  display: block;
+  font-size: .47em;
+  line-height: 1.38;
+  letter-spacing: .005em;
+  margin-top: 14px;
+  background: linear-gradient(96deg, var(--ice), var(--cyan) 54%, var(--rose));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 500;
+}
+
+.lede {
+  font-size: 17.5px;
+  line-height: 1.86;
+  color: var(--ink-2);
+  max-width: 640px;
+  margin: 0 0 10px;
+}
+
+.lede b { color: var(--ink); font-weight: 600; }
+
+.byline {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  line-height: 1.7;
+}
+
+.byline span::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--rule-2);
+}
+
+.byline span:first-child::before { content: ""; margin: 0; }
+
+/* 右侧实时仪器 */
+
+.hero-lab {
+  position: relative;
+  border: 1px solid var(--rule-2);
+  border-radius: 6px;
+  background:
+    linear-gradient(155deg, rgba(20, 32, 48, .92), rgba(6, 10, 17, .96)),
+    var(--screen);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255,255,255,.05);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.hero-lab::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, transparent 35%, rgba(140,196,255,.055) 49.7%, transparent 50.3%),
+    linear-gradient(300deg, transparent 35%, rgba(255,111,145,.045) 49.7%, transparent 50.3%);
+}
+
+.lab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--screen-ink-2);
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cyan);
+}
+
+.live.frozen { color: var(--rose); }
+
+.live.frozen::before {
+  background: var(--rose);
+  box-shadow: 0 0 0 3px rgba(255,111,145,.12);
+}
+
+.live::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(88,226,214,.12);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+#clockCanvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  border-radius: 3px;
+  background: #070b12;
+  position: relative;
+  z-index: 1;
+}
+
+.lab-readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.07);
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.lab-readout > div {
+  background: #0a1019;
+  padding: 9px 10px;
+}
+
+.lab-readout .k {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.lab-readout .v {
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--screen-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lab-readout .v.rose { color: var(--rose); }
+.lab-readout .v.cyan { color: var(--cyan); }
+
+.lab-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.btn {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--screen-ink-2);
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 3px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.btn:hover { color: var(--screen-ink); border-color: rgba(255,255,255,.3); }
+
+.btn[aria-pressed="true"] {
+  color: #1a0a10;
+  background: var(--rose);
+  border-color: var(--rose);
+}
+
+.btn:focus-visible, .theme-btn:focus-visible, .nav a:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.lab-note {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--screen-ink-2);
+  margin: 10px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.lab-note b { color: var(--screen-ink-2); font-weight: 600; }
+
+/* 论文卡片 */
+
+.paper-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 34px;
+  margin: 30px 0 0;
+  padding: 24px 26px;
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--rose);
+  border-radius: 0 var(--r) var(--r) 0;
+  background: var(--panel);
+}
+
+.paper-card h2 {
+  font-family: var(--serif);
+  font-size: 21px;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.paper-card h2 a { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
+.paper-card h2 a:hover { border-bottom-color: var(--rule-2); }
+
+.paper-card .sub {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.paper-card .why {
+  font-size: 14px;
+  line-height: 1.78;
+  color: var(--ink-2);
+  margin: 12px 0 0;
+}
+
+.paper-card .why b { color: var(--ink); }
+
+.paper-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.paper-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .03em;
+  color: var(--ice);
+  text-decoration: none;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  padding: 7px 10px;
+  transition: border-color .18s, background .18s;
+}
+
+.paper-link:hover {
+  border-color: var(--ice);
+  background: var(--cyan-dim);
+}
+
+.kv {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.kv div {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kv div:last-child { border-bottom: 0; }
+
+.kv dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+
+.kv dd { margin: 0; color: var(--ink-2); }
+.kv dd b { color: var(--ink); font-weight: 600; }
+.kv a { color: var(--ice); text-decoration: none; border-bottom: 1px solid rgba(140,196,255,.25); }
+.kv a:hover { border-bottom-color: var(--ice); }
+
+/* 章节 */
+
+section { padding: 62px 0 8px; border-bottom: 1px solid var(--rule); scroll-margin-top: 72px; }
+section:last-of-type { border-bottom: 0; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--rose);
+  letter-spacing: .12em;
+  flex: none;
+  padding-top: 6px;
+}
+
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(24px, 2.7vw, 32px);
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+
+.dek {
+  color: var(--ink-3);
+  font-size: 14.5px;
+  margin: 0 0 30px;
+}
+
+.paper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1132px;
+  align-items: start;
+}
+
+.paper > * { grid-column: 1; }
+.paper > .mnote { grid-column: 1; }
+.paper > .wide { grid-column: 1 / -1; }
+
+h3 {
+  font-size: 16.5px;
+  letter-spacing: .01em;
+  margin: 32px 0 10px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+p { margin: 0 0 15px; color: var(--ink-2); }
+p b, p strong { color: var(--ink); font-weight: 600; }
+
+a.inline {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(140,196,255,.3);
+}
+
+a.inline:hover { border-bottom-color: var(--ice); }
+
+sup.cite {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--rose);
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+sup.cite a { color: inherit; text-decoration: none; }
+
+/* 边注 */
+
+.mnote {
+  font-size: 12.5px;
+  line-height: 1.72;
+  color: var(--ink-3);
+  border-left: 1px solid var(--rule-2);
+  padding: 2px 0 2px 14px;
+  margin: 6px 0 18px;
+}
+
+.mnote b { color: var(--ink-2); font-weight: 600; }
+
+.mnote .tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--rose);
+  margin-bottom: 5px;
+}
+
+/* ============================================================
+   4. 组件
+   ============================================================ */
+
+.callout {
+  border: 1px solid var(--rule-2);
+  border-left: 2px solid var(--cyan);
+  background: var(--panel);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 16px 20px;
+  margin: 24px 0;
+}
+
+.callout .tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.callout p { margin: 0; font-size: 14.5px; }
+.callout p + p { margin-top: 9px; }
+
+.callout.warn { border-left-color: var(--rose); }
+.callout.warn .tag { color: var(--rose); }
+
+.callout.amber { border-left-color: var(--amber); }
+.callout.amber .tag { color: var(--amber); }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 26px 0;
+}
+
+.stat {
+  background: var(--void-2);
+  padding: 17px 18px;
+}
+
+.stat .n {
+  font-family: var(--mono);
+  font-size: 25px;
+  color: var(--ink);
+  line-height: 1.15;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat .n small { font-size: 12px; color: var(--ink-3); margin-left: 2px; letter-spacing: 0; }
+.stat .l { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; line-height: 1.55; }
+.stat .l b { color: var(--ink-2); font-weight: 600; }
+
+.tbl-wrap { overflow-x: auto; margin: 22px 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 540px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 14px 10px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  color: var(--ink-2);
+}
+
+th {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 400;
+  border-bottom-color: var(--rule-2);
+}
+
+td b { color: var(--ink); }
+
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .94em; }
+
+ol.quick {
+  list-style: none;
+  counter-reset: q;
+  margin: 22px 0 26px;
+  padding: 0;
+}
+
+ol.quick > li {
+  counter-increment: q;
+  position: relative;
+  padding: 2px 0 2px 38px;
+  margin-bottom: 15px;
+  font-size: 14.5px;
+  line-height: 1.78;
+  color: var(--ink-2);
+}
+
+ol.quick > li::before {
+  content: counter(q, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--rose);
+  letter-spacing: .06em;
+}
+
+ol.quick > li b { color: var(--ink); font-weight: 600; }
+
+ul.dot {
+  list-style: none;
+  margin: 18px 0 22px;
+  padding: 0;
+}
+
+ul.dot li {
+  position: relative;
+  padding-left: 17px;
+  margin-bottom: 8px;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+
+ul.dot li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .72em;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--rose);
+  opacity: .7;
+}
+
+ul.dot li b { color: var(--ink); font-weight: 600; }
+
+/* 公式 */
+
+.eq {
+  margin: 26px 0;
+  padding: 19px 22px;
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--ice);
+  background: var(--void-2);
+  border-radius: 0 4px 4px 0;
+  font-family: var(--mono);
+  font-size: 14.5px;
+  line-height: 2.05;
+  overflow-x: auto;
+  color: var(--ink);
+}
+
+.eq .lbl {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.eq i { font-style: normal; color: var(--ice); }
+.eq .sub { font-size: .72em; vertical-align: -.22em; }
+.eq .sup { font-size: .72em; vertical-align: .42em; }
+.eq small {
+  display: block;
+  margin-top: 11px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+.eq small b { color: var(--ink); }
+.eq .var { color: var(--ice); }
+
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: -.5em;
+  text-align: center;
+  margin: 0 .18em;
+  font-size: .82em;
+  line-height: 1.3;
+}
+
+.frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 .22em; }
+
+/* 图 */
+
+figure { margin: 28px 0; }
+
+.fig-frame {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  padding: 18px;
+  overflow-x: auto;
+}
+
+figure svg { display: block; width: 100%; height: auto; min-width: 520px; }
+
+figcaption {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+figcaption b { color: var(--ink-2); font-weight: 600; }
+
+/* 屏幕面板（浅色主题下同步换浅底） */
+
+.instrument {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  color: var(--screen-ink);
+  margin: 28px 0;
+  overflow: hidden;
+}
+
+.instrument-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+}
+
+.instrument-head .t {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.instrument-head .s {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  color: var(--screen-ink-3);
+}
+
+.instrument-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, .75fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.instrument-body.single { grid-template-columns: 1fr; }
+
+.instrument canvas {
+  display: block;
+  width: 100%;
+  background: #070b12;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 3px;
+}
+
+.instrument .side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ctl {
+  display: grid;
+  gap: 6px;
+}
+
+.ctl label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .07em;
+  color: var(--screen-ink-3);
+}
+
+.ctl label b {
+  color: var(--screen-ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.ctl input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan);
+  height: 18px;
+  cursor: pointer;
+}
+
+.ctl select {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--screen-ink);
+  background: var(--screen-3);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 3px;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.07);
+}
+
+.readout > div {
+  background: var(--screen-2);
+  padding: 9px 10px;
+}
+
+.readout .k {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-3);
+}
+
+.readout .v {
+  font-family: var(--mono);
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--screen-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout .v.cyan { color: var(--cyan); }
+.readout .v.rose { color: var(--rose); }
+.readout .v.amber { color: var(--amber); }
+
+.inst-note {
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--screen-ink-3);
+  margin: 0;
+}
+
+/* 架构图交互 */
+
+.arch-node { cursor: pointer; }
+.arch-node rect { transition: stroke .18s, fill .18s; }
+.arch-node:hover rect, .arch-node:focus rect {
+  stroke: var(--cyan) !important;
+  fill: #13243a !important;
+}
+.arch-node.is-active rect {
+  stroke: var(--cyan) !important;
+  fill: #13243a !important;
+}
+.arch-node:focus { outline: none; }
+
+.arch-detail {
+  border: 1px solid var(--rule-2);
+  border-left: 2px solid var(--cyan);
+  background: var(--panel);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 13px 17px;
+  margin: 0 0 24px;
+  min-height: 72px;
+}
+
+.arch-detail .tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.arch-detail p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.arch-detail b { color: var(--ink); }
+
+.inst-note b { color: var(--screen-ink-2); font-weight: 600; }
+
+/* 指标仪表盘 */
+
+.metric-dash {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 24px 0;
+}
+
+.metric {
+  background: var(--void-2);
+  padding: 15px 16px;
+}
+
+.metric .k {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.metric .v {
+  font-family: var(--mono);
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+}
+
+.metric .v small {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.metric .d {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  margin-top: 3px;
+}
+
+.metric .d.bad { color: var(--rose); }
+.metric .d.good { color: var(--cyan); }
+.metric .d.neutral { color: var(--amber); }
+
+.metric .bar {
+  height: 3px;
+  background: var(--rule);
+  margin-top: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.metric .bar i {
+  display: block;
+  height: 100%;
+  background: var(--rose);
+  border-radius: 2px;
+}
+
+.metric .bar i.cyan { background: var(--cyan); }
+.metric .bar i.amber { background: var(--amber); }
+
+/* 四类错误 */
+
+.err-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.err-card {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.err-card summary {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 18px;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.err-card summary::-webkit-details-marker { display: none; }
+
+.err-card summary .no {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--rose);
+  letter-spacing: .06em;
+}
+
+.err-card summary .tt {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.err-card summary .mx {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--amber);
+  white-space: nowrap;
+}
+
+.err-card summary::after {
+  content: "+";
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink-3);
+  grid-column: 4;
+  margin-left: 4px;
+}
+
+.err-card[open] summary::after { content: "−"; }
+
+.err-card .body {
+  padding: 0 14px 14px 58px;
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+
+.err-card .body p { font-size: 13px; margin: 0 0 8px; }
+.err-card .body .fix {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--cyan);
+  border-left: 1px solid var(--cyan);
+  padding-left: 8px;
+  margin-top: 8px;
+}
+
+/* 对照栏 */
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.compare > div {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 15px 17px;
+  background: var(--panel);
+}
+
+.compare h4 {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin: 0 0 9px;
+  color: var(--cyan);
+}
+
+.compare .neg h4 { color: var(--rose); }
+
+.compare ul {
+  margin: 0;
+  padding-left: 15px;
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+
+.compare li { margin-bottom: 6px; }
+.compare li:last-child { margin-bottom: 0; }
+.compare b { color: var(--ink); font-weight: 600; }
+
+/* 清单 */
+
+.checklist {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--void-2);
+  padding: 11px 14px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.check input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  background: var(--void);
+  margin-top: 4px;
+  flex: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.check input:checked {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.check input:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px; top: 0;
+  width: 5px; height: 9px;
+  border: solid #04110f;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.check b { color: var(--ink); font-weight: 600; }
+
+/* 系列 */
+
+.series {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 22px 0;
+}
+
+.series a, .series div.row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--void-2);
+  padding: 12px 15px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.series a:hover { background: var(--void-3); }
+
+.series .no {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.series .tt {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.series .tt small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--rule-2);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.pill.on {
+  color: var(--cyan);
+  border-color: rgba(88,226,214,.35);
+  background: var(--cyan-dim);
+}
+
+.pill.plan {
+  color: var(--amber);
+  border-color: rgba(255,194,102,.3);
+  background: var(--amber-dim);
+}
+
+/* 参考 */
+
+.refs {
+  margin: 18px 0 0;
+  padding-left: 26px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.refs li { margin-bottom: 9px; }
+.refs li:target { background: var(--amber-dim); }
+.refs a { color: var(--ice); text-decoration: none; border-bottom: 1px solid rgba(140,196,255,.25); }
+.refs a:hover { border-bottom-color: var(--ice); }
+.refs .j { color: var(--ink-3); }
+
+/* 页脚 */
+
+.foot {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 30px 24px 40px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 30px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+.foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+.foot a:hover { color: var(--ink); }
+
+/* 渐进显现：JS 可用时才隐藏，JS 失败不影响阅读 */
+
+.js-reveal .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+
+.js-reveal .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .js-reveal .reveal { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   5. 响应式
+   ============================================================ */
+
+@media (max-width: 1020px) {
+  .hero { grid-template-columns: 1fr; gap: 36px; }
+  .hero-lab { max-width: 620px; }
+  .paper-card { grid-template-columns: 1fr; gap: 18px; }
+  .metric-dash { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 900px) {
+  .paper { grid-template-columns: minmax(0, 1fr); column-gap: 0; }
+  .paper > .mnote {
+    grid-column: 1;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding: 12px 0 0;
+    margin: 8px 0 18px;
+  }
+  .paper > .wide { grid-column: 1; }
+  .instrument-body { grid-template-columns: 1fr; }
+  .err-grid { grid-template-columns: 1fr; }
+  .compare { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  body { font-size: 16px; }
+  .wrap { padding: 0 16px 80px; }
+  .topbar-in { padding: 0 16px; height: 52px; gap: 10px; }
+  .brand { font-size: 10px; letter-spacing: .1em; }
+  .nav { margin-left: 0; }
+  .nav a { padding: 6px 7px; font-size: 9.5px; }
+  .hero { padding: 48px 0 36px; }
+  h1 { font-size: clamp(34px, 10vw, 48px); }
+  .lede { font-size: 16px; }
+  .paper-card { padding: 18px; }
+  .sec-head { gap: 10px; }
+  .dek { padding-left: 0; font-size: 13.5px; }
+  .metric-dash { grid-template-columns: 1fr 1fr; }
+  .metric .v { font-size: 18px; }
+  .instrument-body { padding: 12px; gap: 12px; }
+  .instrument-head { padding: 12px 14px; flex-wrap: wrap; }
+  .lab-readout .v { font-size: 15px; }
+  .foot { flex-direction: column; gap: 8px; }
+  figure svg { min-width: 460px; }
+}
+
+@media print {
+  .topbar, .glow, .tick-field, .hero-lab, .instrument, .nav { display: none !important; }
+  body { background: #fff; color: #111; }
+  .wrap { max-width: none; padding: 0; }
+  .paper { grid-template-columns: 1fr; }
+  .mnote { grid-column: 1; }
+  a { color: #111; }
+}
+</style>
+<style id="layout-contract">
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+  --mnote-rule: var(--line-2, var(--rule-2, var(--line, var(--rule, currentColor))));
+}
+
+.paper { grid-template-columns:minmax(0,1fr); max-width:1132px; }
+.paper > :not(.wide):not(.mrow):not(.overview-grid):not(.refs) { max-width:852px; }
+.paper > .wide { max-width:1132px; }
+.paper > .mnote { grid-column:1; max-width:852px; }
+
+/* ---- margin-note contract: target in .mrow-main, note pinned right/bottom ---- */
+.mrow { position:relative; display:flow-root; min-width:0; margin:22px 0; }
+.mrow > .mrow-main { max-width:852px; }
+.mrow > .mrow-main > :first-child { margin-top:0; }
+.mrow > .mrow-main > :last-child { margin-bottom:0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom:0; }
+.mrow > .mnote {
+  position:absolute; right:0; bottom:0; width:236px; margin:0;
+  padding:0 0 0 16px; border:0; border-left:1.6px dashed var(--mnote-rule);
+  border-radius:0; background:transparent; display:block;
+}
+.mrow--cardtext > .mnote { bottom:var(--card-lift, 14px); }
+@media (max-width:1179px) {
+  .mrow > .mnote {
+    position:static; width:auto; max-width:852px; margin:18px 0 0;
+    padding:11px 0 0; border-left:0; border-top:1.6px dashed var(--mnote-rule);
+  }
+}
+
+figure.wide > figcaption, .wide > figcaption,
+.wide figure > figcaption { max-width:852px; }
+
+.paper > .stats + p,
+.paper > .cards + p,
+.paper > .papers + p,
+.paper > .err-grid + p,
+.paper > .metric-dash + p,
+.paper > .factor-grid + p,
+.paper > .zones + p,
+.paper > .appliance-grid + p,
+.paper > .meter-grid + p { margin-top:32px; }
+
+.paper > .refs { max-width:1132px; columns:2; column-gap:44px; }
+@media (max-width:860px) { .paper > .refs { columns:1; max-width:852px; } }
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTliOThlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSI0LjUiIHk9IjguNSIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiByeD0iMS44Ii8+PHBhdGggZD0iTTguNSA0LjVoOS4yYTEuOCAxLjggMCAwIDEgMS44IDEuOHY5LjIiLz48L2c+PC9zdmc+">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+<div class="tick-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="文章目录"></nav>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">主题：深色</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="reveal">
+      <p class="kicker">Paper Review · <a href="https://arxiv.org/abs/2610.15752" target="_blank" rel="noopener">arXiv:2610.15752 ↗</a></p>
+      <h1><span class="h1-prefix">论文精读——</span>冻结的历史<em>时序损失如何让实时超采样停止累积</em></h1>
+      <p class="lede">
+        实时超采样靠跨帧累积抖动样本。这篇论文展示了一个反直觉的结果：
+        当配准足够准确时，<b>时序一致性损失会反过来奖励“复制历史”</b>——
+        网络停止吸收新样本，静态画面变得异常稳定，而像素方差与时序 PSNR
+        反而把这种退化读成“更稳、更好”。
+      </p>
+      <div class="byline">
+        <span>原文 27 页（含补充）</span>
+        <span>阅读约 28 分钟</span>
+        <span>代码 MIT · 权重未随仓库发布</span>
+        <span>数据核对至 2026-11-01</span>
+      </div>
+    </div>
+
+    <aside class="hero-lab reveal" aria-label="抖动样本时钟">
+      <div class="lab-head">
+        <span><span class="live" id="clockLive">采样中</span> · jitter clock</span>
+        <span id="clockStatus">累积 · α = 1.0000</span>
+      </div>
+      <canvas id="clockCanvas" width="520" height="416" aria-label="一个低分辨率像素覆盖 4×4 个输出像素；每帧只采一个抖动相位，冻结后停止摄入新样本"></canvas>
+      <div class="lab-readout">
+        <div><div class="k">帧</div><div class="v" id="clockN">1</div></div>
+        <div><div class="k">已采样相位</div><div class="v" id="clockK">1 / 16</div></div>
+        <div><div class="k">新样本占比 α</div><div class="v cyan" id="clockA">1.0000</div></div>
+      </div>
+      <div class="lab-controls">
+        <button class="btn" id="freezeBtn" type="button" aria-pressed="false">模拟冻结（停止采样）</button>
+        <button class="btn" id="resetClock" type="button">重置</button>
+      </div>
+      <p class="lab-note">
+        <b>不冻结：</b>每帧从 16 个相位中取 1 个新样本，N 增加，α = 1/N 下降，画面继续获得新信息；16 帧覆盖全部相位后，时钟停在 16/16。<br>
+        <b>冻结：</b>模拟 λ<sub>T</sub> 过大时的退化——不再摄入新样本，只复制上一帧，α → 0。<br>
+        这是示意，不是论文的操作；论文本身没有“冻结按钮”。
+      </p>
+    </aside>
+  </section>
+
+  <div class="paper-card reveal">
+    <div>
+      <h2><a href="https://arxiv.org/abs/2610.15752" target="_blank" rel="noopener">Frozen History: When Temporal Losses Stop Accumulation in Learned Real-Time Supersampling</a></h2>
+      <p class="sub">Hao Yu, Guoying Zhao · ELLIS Institute Finland / CMVS, University of Oulu · arXiv 2026-10-11</p>
+      <p class="why">
+        <b>推荐理由：</b>它不是又一个网络模块，而是把“训练目标”和“跨帧累积”放在一起审视。
+        这套条件——配准准确、参考变化小、λ<sub>T</sub> 偏大——对任何带时序一致性损失的视频复原、
+        渲染超采样、医学时序重建都值得检查；对做 DVR / 路径追踪实时上采样的人，
+        它还同时提供一份零成本的配准自检清单。
+      </p>
+      <p class="paper-links">
+        <a class="paper-link" href="https://arxiv.org/abs/2610.15752" target="_blank" rel="noopener">阅读原文 · arXiv ↗</a>
+        <a class="paper-link" href="https://arxiv.org/pdf/2610.15752" target="_blank" rel="noopener">PDF ↗</a>
+        <a class="paper-link" href="https://github.com/CV-AC/Frozen_history" target="_blank" rel="noopener">代码仓库 ↗</a>
+      </p>
+    </div>
+    <dl class="kv">
+      <div><dt>发表</dt><dd><a href="https://arxiv.org/abs/2610.15752" target="_blank" rel="noopener">arXiv:2610.15752</a> · 2026-10-11 · cs.CV</dd></div>
+      <div><dt>篇幅</dt><dd>27 页（含补充材料）</dd></div>
+      <div><dt>代码</dt><dd><a href="https://github.com/CV-AC/Frozen_history" target="_blank" rel="noopener">CV-AC/Frozen_history</a> · MIT</dd></div>
+      <div><dt>任务</dt><dd>抖动 LR 输入 → ×2 / ×3 / ×4 输出</dd></div>
+      <div><dt>关键量</dt><dd><b>α</b>：新样本在累积权重中的占比</dd></div>
+      <div><dt>核心结论</dt><dd>配准正确时，时序损失会让网络学会冻结历史，而常用指标在奖励它。</dd></div>
+    </dl>
+  </div>
+
+  <section id="s0" data-nav="速览">
+    <div class="sec-head"><span class="sec-num">00</span><h2>结论速览：指标为何会奖励退化</h2></div>
+    <div class="paper">
+      <p class="dek">一页速览。五个结论，按“机制 → 证据 → 工程 → 边界”排序。</p>
+
+      <ol class="quick">
+        <li><b>时序损失并不天然鼓励累积。</b>配准准确时，把上一帧输出 warp 过来几乎不付时序代价；
+          这个代价叫 <b>copy cost</b>，等于参考自身重投影后的变化。参考越“静止”，复制历史在时序项上越便宜。</li>
+        <li><b>λ<sub>T</sub> 一大，网络就停止累积。</b>在 ×4 的受控分析网络（192 通道）上，λ<sub>T</sub>=0.25 时，图中裁块的
+          α 中位数跌到 <span class="num">3.9×10⁻⁶</span>；Table S2 全数据的中位数是 3.2×10⁻⁵，两者都低于 10⁻⁴。静态 PSNR 掉 <span class="num">0.86 dB</span>；
+          但静态像素标准差同时下降，时序 PSNR 反而上升。</li>
+        <li><b>四类配准错误会掩盖这个故障。</b>运动矢量含抖动、低分/高分晶格共用运动场、深度带抖动、
+          skip 路径未配准——它们抬高 copy cost，让“冻结”看起来更有吸引力。修正后 QRISP 上
+          ×2/×3/×4 分别提升 <span class="num">0.48 / 0.34 / 0.62 dB</span>。</li>
+        <li><b>方法本身极简。</b>归一化累积器 <span class="num">S/N</span> + 小 λ<sub>T</sub>=0.05 + 普通卷积，
+          ×4 的 1080p 单帧在 H200 上为 0.332–2.032 ms（普通卷积），最轻的 shift-MLP 64×6 为 0.201 ms / 0.17 M 参数。</li>
+        <li><b>医学 DVR 的适用边界。</b>全部验证在游戏资产上；半透明体素会破坏运动矢量，
+          无抖动输入会让模型失效（零样本 25.8 dB，低于双三次 33.2 dB）。它更适合作为方法学参考与配准清单，
+          而不是可直接部署的医学 SR。</li>
+      </ol>
+
+      <div class="wide stats">
+        <div class="stat"><div class="n">118<small>×</small></div><div class="l"><b>copy cost 差距</b><br>抖动 MV vs 正确配准，静态像素</div></div>
+        <div class="stat"><div class="n">−0.86<small> dB</small></div><div class="l"><b>静态帧 PSNR</b><br>λ<sub>T</sub>=0.25 vs 0，×4</div></div>
+        <div class="stat"><div class="n">0.201–2.032<small> ms</small></div><div class="l"><b>×4 1080p 单帧（各变体）</b><br>H200，不含渲染</div></div>
+        <div class="stat"><div class="n">+0.34–0.62<small> dB</small></div><div class="l"><b>QRISP 提升</b><br>×3–×4；×2 为 +0.48</div></div>
+      </div>
+
+      <h3>章节导航：建议阅读顺序</h3>
+      <div class="mrow"><div class="mrow-main">
+<div class="tbl-wrap">
+        <table>
+          <thead><tr><th>原文</th><th>内容</th><th>阅读重点</th></tr></thead>
+          <tbody>
+            <tr><td class="num">§3</td><td>归一化累积、α、稳态</td><td>理解 <b>α</b> 为什么是全文的核心观测量</td></tr>
+            <tr><td class="num">§4</td><td>两套晶格与四类配准错误</td><td>工程上可优先复用的部分</td></tr>
+            <tr><td class="num">§5</td><td>copy cost 推导、oracle、受控训练</td><td>全文的因果核心；也是“指标奖励退化”的证据</td></tr>
+            <tr><td class="num">§6</td><td>网络与训练配方</td><td>网络与训练配方的极简程度</td></tr>
+            <tr><td class="num">§7</td><td>QRISP / Arm / STSS 实验</td><td>实验数字与适用边界</td></tr>
+            <tr><td class="num">§8</td><td>作者自述局限</td><td>比摘要更值得引用的一节</td></tr>
+          </tbody>
+        </table>
+      </div></div><aside class="mnote">
+        <span class="tag">阅读提示</span>
+        这篇论文的“贡献”不在网络结构。把 §5 的 copy cost 看懂，剩下的实验都是它的推论和边界检查。
+        如果你只关心工程，直接跳到 <a class="inline" href="#s4">§4 配准</a> 和 <a class="inline" href="#s7">§7 部署自检</a>。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s1" data-nav="背景">
+    <div class="sec-head"><span class="sec-num">01</span><h2>背景：一帧只有 1/16 的样本，因此需要跨帧累积</h2></div>
+    <div class="paper">
+      <p class="dek">实时渲染的帧预算由着色、几何与后处理共同占用。超采样把“分辨率”换成“时间”：这一帧少算一点，用过去几帧补回来。</p>
+
+      <p>
+        以 ×4 为例：输出 1920×1080，内部只渲染 480×270。一个低分辨率像素要负责
+        <b>16 个输出像素</b>。仅靠空间插值无法恢复边缘与细纹理；
+        实时渲染的解法是让相机每帧做亚像素抖动（jitter），使每帧的采样点落在不同的子像素位置，
+        再把过去几帧的样本按运动矢量对齐、累积起来。
+      </p>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 960 340" role="img" aria-label="×4 超采样中一个低分辨率像素覆盖 16 个输出像素；16 个抖动相位位于输出像素中心；跨帧累积使新样本占比 alpha 随 N 下降">
+            <text x="24" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">A · 输出晶格（4 × 4 裁切）</text>
+            <text x="24" y="48" fill="#8cc4ff" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">整块 = 1 个 LR 像素</text>
+            <g transform="translate(24,56)">
+              <rect x="0" y="0" width="216" height="216" fill="#0c131e" stroke="#8cc4ff" stroke-width="1.6"/>
+              <g fill="rgba(255,255,255,.012)">
+                <rect x="54" y="0" width="54" height="54"/><rect x="162" y="0" width="54" height="54"/>
+                <rect x="0" y="54" width="54" height="54"/><rect x="108" y="54" width="54" height="54"/>
+                <rect x="54" y="108" width="54" height="54"/><rect x="162" y="108" width="54" height="54"/>
+                <rect x="0" y="162" width="54" height="54"/><rect x="108" y="162" width="54" height="54"/>
+              </g>
+              <g stroke="#243246" stroke-width="1">
+                <path d="M54 0V216M108 0V216M162 0V216M0 54H216M0 108H216M0 162H216"/>
+              </g>
+              <rect x="0" y="0" width="54" height="54" fill="none" stroke="#ffc266" stroke-width="1.2" stroke-dasharray="4 3"/>
+              <text x="27" y="24" fill="#ffc266" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="10" text-anchor="middle">1 个输出</text>
+              <text x="27" y="37" fill="#ffc266" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="10" text-anchor="middle">像素</text>
+            </g>
+            <text x="24" y="300" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">格子 = 输出像素；整块 = 1 个 LR 像素。</text>
+
+            <text x="360" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">B · 16 个抖动相位</text>
+            <text x="360" y="48" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">每帧只取 1 个相位</text>
+            <g transform="translate(360,56)">
+              <rect x="0" y="0" width="216" height="216" fill="#0c131e" stroke="#243246"/>
+              <g stroke="#243246" stroke-width="1">
+                <path d="M54 0V216M108 0V216M162 0V216M0 54H216M0 108H216M0 162H216"/>
+              </g>
+              <g fill="#0c131e" stroke="#58e2d6" stroke-width="1.4">
+                <circle cx="27" cy="27" r="3.4"/><circle cx="81" cy="27" r="3.4"/><circle cx="135" cy="27" r="3.4"/><circle cx="189" cy="27" r="3.4"/>
+                <circle cx="27" cy="81" r="3.4"/><circle cx="81" cy="81" r="3.4"/><circle cx="135" cy="81" r="3.4"/><circle cx="189" cy="81" r="3.4"/>
+                <circle cx="27" cy="135" r="3.4"/><circle cx="81" cy="135" r="3.4"/><circle cx="135" cy="135" r="3.4"/><circle cx="189" cy="135" r="3.4"/>
+                <circle cx="27" cy="189" r="3.4"/><circle cx="81" cy="189" r="3.4"/><circle cx="135" cy="189" r="3.4"/><circle cx="189" cy="189" r="3.4"/>
+              </g>
+              <circle cx="81" cy="81" r="3.4" fill="#ffc266" stroke="#ffc266" stroke-width="1.4"/>
+              <circle cx="81" cy="81" r="12" fill="none" stroke="#ffc266" stroke-width="1.4"/>
+              <rect x="94" y="96" width="88" height="34" rx="3" fill="#0c131e" stroke="#243246"/>
+              <text x="102" y="110" fill="#ffc266" font-family="ui-monospace, monospace" font-size="10">本帧</text>
+              <text x="102" y="123" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">t = 5 / 16</text>
+            </g>
+            <text x="360" y="300" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">点 = 抖动相位；×4 时与输出像素中心重合。</text>
+            <text x="360" y="318" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">一个样本服务整块 16 个输出像素。</text>
+
+            <text x="696" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">C · 跨帧累积</text>
+            <g transform="translate(696,56)">
+              <rect x="0" y="0" width="240" height="216" fill="#0c131e" stroke="#243246"/>
+              <g font-family="ui-monospace, monospace" font-size="11">
+                <text x="16" y="28" fill="#b6c7d9">样本 1</text><text x="224" y="28" fill="#58e2d6" text-anchor="end">w₁</text>
+                <text x="16" y="54" fill="#b6c7d9">样本 2</text><text x="224" y="54" fill="#58e2d6" text-anchor="end">w₂</text>
+                <text x="16" y="80" fill="#b6c7d9">样本 3</text><text x="224" y="80" fill="#58e2d6" text-anchor="end">w₃</text>
+                <text x="16" y="106" fill="#8fa3b8">…</text><text x="224" y="106" fill="#8fa3b8" text-anchor="end">…</text>
+                <text x="16" y="132" fill="#e8f0fa">样本 N</text><text x="224" y="132" fill="#58e2d6" text-anchor="end">w_N</text>
+              </g>
+              <path d="M16 146H224" stroke="#243246"/>
+              <text x="16" y="166" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="12">ŷ = Σ wᵢxᵢ / Σ wᵢ</text>
+              <text x="16" y="188" fill="#e8f0fa" font-family="ui-monospace, monospace" font-size="12">α = w_N / Σ wᵢ</text>
+              <text x="16" y="208" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="10.5">等权时 α = 1 / N</text>
+            </g>
+            <text x="696" y="300" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">N 增加 → α 下降；等权时 α = 1/N。</text>
+          </svg>
+        </div>
+        <figcaption><b>图 1 · 一个 LR 像素、16 个输出像素与 16 个抖动相位。</b>左：×4 时一个 LR 像素覆盖 4×4 个输出像素，格子是输出像素，整块才是 LR 像素。中：这个 LR 像素内的 16 个抖动相位，点是采样位置；在 ×4 的规则网格里相位恰好落在输出像素中心，但“格子”和“点”仍是两套概念。每帧只增加 1 个样本，它作用于整块 16 个输出像素，而不是只更新点所在的那一格。右：N 增加时 α = 1/N 下降，新样本的边际影响变小。</figcaption>
+      </figure>
+
+      <p>
+        这里要区分两套坐标：<b>格子</b>是输出像素，<b>点</b>是抖动相位。在 ×4 的规则网格里，16 个相位的位置恰好与 16 个输出像素的中心重合，所以两张图看起来一样；但语义不同——相位是“这一帧从哪里采样”，输出像素是“重建结果写到哪里”。每帧的 1 个样本服务整块 16 个输出像素，而不是只更新点所在的那一格。
+      </p>
+
+      <p>
+        静态相机是这件事最纯粹的场合：画面不动，但抖动仍在继续，每个新样本都应该带来新的边缘信息。
+        一个已经“稳定”的估计，可能只是停止变化，而不是停止改进。论文要问的正是：
+        <b>训练时的时序一致性损失，会让网络继续累积，还是让它提前停止累积？</b>
+      </p>
+
+      <h3>学习式超采样把“混合”交给网络</h3>
+      <p>
+        经典 TAA/TAAU 用手写的指数平均和邻域 clamp 来混合历史。学习式方法则把当前 LR 颜色、深度、
+        运动矢量、历史帧一起喂给网络，让网络自行分配当前帧与历史的权重。为了抑制闪烁，
+        训练时通常再加一项时序一致性损失：让输出帧间的变化，去匹配参考帧间的变化。
+      </p>
+      <div class="mrow"><div class="mrow-main">
+<p>
+        这项损失的权重 λ<sub>T</sub> 一直是手调的。论文的切入点很小：<b>如果配准是准的，参考帧重投影后几乎不变，
+        那么“复制上一帧输出”在时序项上几乎不付代价。</b>网络完全可以在重建项尚可的情况下，
+        选择不再吸收新样本。作者把这种现象叫 <b>frozen history</b>。
+      </p></div><aside class="mnote">
+        <span class="tag">一个先验</span>
+        静态画面越“稳”，不一定越接近真值。参考帧自己也在动——噪声、抖动、亚像素细节——
+        冻结输出把参考的变化也一并抹掉了。问题是：指标能不能分辨“收敛”与“停止累积”？
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s2" data-nav="累积器">
+    <div class="sec-head"><span class="sec-num">02</span><h2>方法：把“累积”写成一个可观测的比值</h2></div>
+    <div class="paper">
+      <p class="dek">论文没有发明新模块。它把 TAAU 式的加权累积写成 S/N，让网络预测三个量，并监测 α。</p>
+
+      <p>
+        在输出晶格上，维护两个缓冲：加权颜色和 <span class="num">S<sub>t</sub></span> 与累积权重
+        <span class="num">N<sub>t</sub></span>。网络在每个输出像素上预测候选颜色
+        <span class="num">ĉ<sub>t</sub></span>、可靠性 <span class="num">r<sub>t</sub>∈(0,1)</span>、
+        保留率 <span class="num">ρ<sub>t</sub>∈(0,1)</span>。新样本的权重
+        <span class="num">w<sub>t</sub> = k(d<sub>t</sub>)·r<sub>t</sub></span>，其中
+        <span class="num">k</span> 是到像素中心的距离核。
+      </p>
+
+      <div class="eq">
+        <span class="lbl">式 1 · 归一化累积</span>
+        <i>S</i><span class="sub">t</span> = <i>ρ</i><span class="sub">t</span> · <i>v</i><span class="sub">t</span> · <i>R</i><span class="sub">t</span>[<i>S</i><span class="sub">t−1</span>] + <i>w</i><span class="sub">t</span> · <i>ĉ</i><span class="sub">t</span><br>
+        <i>N</i><span class="sub">t</span> = <i>ρ</i><span class="sub">t</span> · <i>v</i><span class="sub">t</span> · <i>R</i><span class="sub">t</span>[<i>N</i><span class="sub">t−1</span>] + <i>w</i><span class="sub">t</span><br>
+        <i>ŷ</i><span class="sub">t</span> = <i>S</i><span class="sub">t</span> / <i>N</i><span class="sub">t</span>
+        <small>
+          <span class="var">R<sub>t</sub></span> 是重投影，<span class="var">v<sub>t</sub></span> 是历史有效性掩码。
+          <b>关键在分母：</b>同一个可靠性，在历史权重很大时只能带来很小的更新；历史被 disocclusion 清空时，
+          新候选立刻占满输出。S 与 N 同比例缩放可以把累积权重封顶到 <span class="var">N<sub>max</sub></span>，不改变输出。
+        </small>
+      </div>
+
+      <div class="eq">
+        <span class="lbl">式 2 · 新样本占比</span>
+        <i>α</i><span class="sub">t</span> = <i>w</i><span class="sub">t</span> / <i>N</i><span class="sub">t</span>
+        &nbsp;&nbsp;→&nbsp;&nbsp;
+        <i>ŷ</i><span class="sub">t</span> ≈ <i>α</i><span class="sub">t</span> · <i>ĉ</i><span class="sub">t</span> + (1 − <i>α</i><span class="sub">t</span>) · <i>R</i><span class="sub">t</span>[<i>ŷ</i><span class="sub">t−1</span>]
+        <small>
+          在历史有效、空间常数、<span class="var">0&lt;ρ&lt;1</span> 的稳态下，<b>N = w/(1−ρ)</b>，
+          <b>α = 1−ρ</b>，累积退化为指数平均。α 是本文诊断“冻结”的核心可观测量：
+          它不是训练loss，而是部署时能直接记录的样本吸收率。
+        </small>
+      </div>
+
+      <p>
+        注意：<span class="num">R<sub>t</sub>[S]/R<sub>t</sub>[N]</span> 一般不等于
+        <span class="num">R<sub>t</sub>[S/N]</span>，所以 α 只表示“新候选的摄入比例”，
+        不是严格意义上的混合系数。但在历史权重空间变化缓慢时，上面的近似足够解释行为。
+        论文在 QRISP 上把这种归一化累积与“网络直接预测 blend 权重”对比：
+        PSNR 几乎一样（29.74 vs 29.71 dB），但静态像素标准差从 0.53 降到 0.43。
+        也就是说，<b>归一化带来的是稳定性，而不是精度</b>。
+      </p>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 1040 620" role="img" aria-label="Frozen History 网络结构：输入缓冲进入抖动调制卷积与残差主干，三个头预测颜色、可靠性和保留率，经子像素重排进入归一化累积器，输出高分辨率帧；跨帧历史在底部单独说明">
+            <defs>
+              <marker id="a1" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#58e2d6"/></marker>
+              <marker id="a2" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8cc4ff"/></marker>
+              <marker id="a3" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#ffc266"/></marker>
+              <marker id="a5" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8fa3b8"/></marker>
+            </defs>
+
+            <text x="24" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">每帧输入</text>
+            <text x="250" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">LR 主干</text>
+            <text x="600" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">三个头</text>
+            <text x="770" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">输出晶格</text>
+
+            <!-- inputs -->
+            <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12">
+              <g class="arch-node" data-detail="抖动后的低分辨率颜色。第一层 3×3 卷积由抖动相位调制；这是网络知道“当前样本落在哪个子像素”的入口。">
+                <rect x="24" y="48" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="74" fill="#e8f0fa">抖动 LR 颜色</text>
+                <text x="158" y="74" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">C</text>
+              </g>
+              <g class="arch-node" data-detail="无抖动深度。论文特别强调：深度不能带抖动，否则深度变化会触发去遮挡/运动膨胀测试；在 School 静止段，抖动深度的平均重投影变化大约是无抖动深度的 10³ 倍。">
+                <rect x="24" y="98" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="124" fill="#e8f0fa">无抖动深度</text>
+                <text x="158" y="124" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">D</text>
+              </g>
+              <g class="arch-node" data-detail="运动矢量。输出晶格用 m_t；样本侧状态（包括低分辨率循环特征）必须用 m̃_t = m_t + (o_t − o_{t−1})，把抖动位移补回去。">
+                <rect x="24" y="148" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="174" fill="#e8f0fa">运动矢量 m</text>
+                <text x="158" y="174" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">MV</text>
+              </g>
+              <g class="arch-node" data-detail="去遮挡掩码：历史无效的像素会把 v_t 置零，等效于清空 S/N；此时 α=1，输出等于当前候选。">
+                <rect x="24" y="198" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="224" fill="#e8f0fa">去遮挡掩码</text>
+                <text x="158" y="224" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">v</text>
+              </g>
+              <g class="arch-node" data-detail="8 邻域深度差：给网络提供局部几何/边缘线索，帮助判断重投影是否可信。">
+                <rect x="24" y="248" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="274" fill="#e8f0fa">8 邻域深度差</text>
+              </g>
+              <g class="arch-node" data-detail="采样相位：当前抖动在输出网格中的亚像素位置。相位符号写错会把垂直偏移镜像，×4 时 16 个相位全部选错行。">
+                <rect x="24" y="298" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="324" fill="#e8f0fa">采样相位</text>
+                <text x="158" y="324" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">o</text>
+              </g>
+              <g class="arch-node" data-detail="历史颜色 S/N 与循环特征。颜色历史在输出晶格上；低分辨率循环特征在样本晶格上，二者要用不同的 warp。">
+                <rect x="24" y="348" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="374" fill="#e8f0fa">历史 S/N + 特征</text>
+                <text x="158" y="374" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">H</text>
+              </g>
+              <g class="arch-node" data-detail="输出历史 S/N 按 space-to-depth 重排后送入主干，让网络同时看到“上一帧的输出”和“上一帧的置信度”。">
+                <rect x="24" y="398" width="190" height="42" rx="3" fill="#0c131e" stroke="#243246"/>
+                <text x="38" y="424" fill="#e8f0fa">Spatial-to-depth</text>
+                <text x="158" y="424" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">S,N</text>
+              </g>
+            </g>
+
+            <!-- input bus -->
+            <g stroke="#58e2d6" stroke-width="1.1" fill="none">
+              <path d="M214 69H232M214 119H232M214 169H232M214 219H232M214 269H232M214 319H232M214 369H232M214 419H232"/>
+              <path d="M232 69V419"/>
+            </g>
+            <path d="M232 244H250" stroke="#58e2d6" stroke-width="1.2" marker-end="url(#a1)"/>
+
+            <!-- trunk -->
+            <g class="arch-node" data-detail="LR 主干：第一层 3×3 卷积由抖动调制；8 个残差块，每块两个 3×3 卷积 + GELU，无归一化，学习到的通道缩放初始化为 0.1。×2/×3 用 192 通道，×4 用 256 通道。">
+              <rect x="250" y="48" width="310" height="400" rx="4" fill="#0a111b" stroke="#243246" stroke-width="1.2"/>
+              <text x="270" y="76" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1">LR TRUNK · 8 BLOCKS</text>
+              <text x="270" y="96" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">192 / 256 channels · no norm</text>
+              <rect x="270" y="116" width="270" height="38" rx="3" fill="#111b29" stroke="#2d4058"/>
+              <text x="284" y="140" fill="#e8f0fa" font-size="12">抖动调制 3×3 卷积</text>
+              <text x="478" y="140" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">jitter</text>
+              <g>
+                <rect x="270" y="174" width="270" height="34" rx="3" fill="#111b29" stroke="#2d4058"/>
+                <text x="284" y="196" fill="#e8f0fa" font-size="12">3×3 Conv → GELU</text>
+                <rect x="270" y="218" width="270" height="34" rx="3" fill="#111b29" stroke="#2d4058"/>
+                <text x="284" y="240" fill="#e8f0fa" font-size="12">3×3 Conv</text>
+                <text x="500" y="240" fill="#ffc266" font-family="ui-monospace, monospace" font-size="10">×8</text>
+                <path d="M405 208V218" stroke="#2d4058"/>
+                <text x="284" y="286" fill="#8fa3b8" font-size="11">learned channel scale, init 0.1</text>
+                <rect x="270" y="306" width="270" height="34" rx="3" fill="#111b29" stroke="#2d4058"/>
+                <text x="284" y="328" fill="#e8f0fa" font-size="12">残差输出 → 三个 1×1 头</text>
+                <text x="284" y="368" fill="#8fa3b8" font-size="11">普通卷积 + 学习率调优</text>
+                <text x="284" y="386" fill="#8fa3b8" font-size="11">在受控比较里不输复杂模块</text>
+              </g>
+            </g>
+
+            <!-- trunk-to-heads bus -->
+            <g stroke="#58e2d6" stroke-width="1.1" fill="none">
+              <path d="M560 154H580M560 226H580M560 298H580"/>
+              <path d="M580 154V298"/>
+            </g>
+
+            <!-- heads -->
+            <g class="arch-node" data-detail="三个头在输出晶格上预测：候选颜色 ĉ、可靠性 r、保留率 ρ。颜色头把残差加到一个双三次 skip 上；skip 必须按当前样本位置 x_t(q) 采样，而不是输入像素中心。">
+              <rect x="600" y="128" width="130" height="52" rx="3" fill="#0c131e" stroke="#ffc266"/>
+              <text x="614" y="150" fill="#ffc266" font-family="ui-monospace, monospace" font-size="10">ĉ</text>
+              <text x="614" y="168" fill="#e8f0fa" font-size="12">候选颜色</text>
+              <rect x="600" y="200" width="130" height="52" rx="3" fill="#0c131e" stroke="#ffc266"/>
+              <text x="614" y="222" fill="#ffc266" font-family="ui-monospace, monospace" font-size="10">r</text>
+              <text x="614" y="240" fill="#e8f0fa" font-size="12">可靠性</text>
+              <rect x="600" y="272" width="130" height="52" rx="3" fill="#0c131e" stroke="#ffc266"/>
+              <text x="614" y="294" fill="#ffc266" font-family="ui-monospace, monospace" font-size="10">ρ</text>
+              <text x="614" y="312" fill="#e8f0fa" font-size="12">保留率</text>
+            </g>
+
+            <!-- head arrows -->
+            <g stroke="#ffc266" stroke-width="1.2" fill="none">
+              <path d="M580 154H600" marker-end="url(#a3)"/>
+              <path d="M580 226H600" marker-end="url(#a3)"/>
+              <path d="M580 298H600" marker-end="url(#a3)"/>
+              <path d="M730 154H770" marker-end="url(#a3)"/>
+              <path d="M730 226H770" marker-end="url(#a3)"/>
+              <path d="M730 298H770" marker-end="url(#a3)"/>
+            </g>
+
+            <!-- accumulator -->
+            <g class="arch-node" data-detail="归一化累积器：S_t = ρ v R[S] + w ĉ，N_t = ρ v R[N] + w，输出 ŷ=S/N。N_max=16；距离核是高斯，学习到的宽度接近平坦。">
+              <rect x="770" y="104" width="240" height="292" rx="4" fill="#0a111b" stroke="#58e2d6" stroke-width="1.2"/>
+              <text x="790" y="130" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1">NORMALISED ACCUMULATOR</text>
+              <rect x="790" y="146" width="200" height="32" rx="3" fill="#111b29" stroke="#2d4058"/>
+              <text x="802" y="167" fill="#e8f0fa" font-size="11">sub-pixel rearrange</text>
+              <text x="790" y="204" fill="#b6c7d9" font-family="ui-monospace, monospace" font-size="10">S ← ρ·v·R[S] + w·ĉ</text>
+              <text x="790" y="226" fill="#b6c7d9" font-family="ui-monospace, monospace" font-size="10">N ← ρ·v·R[N] + w</text>
+              <path d="M790 242H990" stroke="#1b2a3d"/>
+              <text x="790" y="268" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="12">ŷ = S / N</text>
+              <text x="790" y="290" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">N_max = 16 · Gaussian kernel</text>
+              <rect x="790" y="316" width="200" height="42" rx="3" fill="#111b29" stroke="#58e2d6"/>
+              <text x="802" y="335" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="10">OUTPUT</text>
+              <text x="802" y="351" fill="#e8f0fa" font-size="12">高分辨率帧 ŷ_t</text>
+            </g>
+
+            <!-- history loop, kept in its own lane to avoid crossing the main path -->
+            <rect x="24" y="468" width="986" height="132" rx="4" fill="#0a111b" stroke="#243246"/>
+            <text x="38" y="490" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.5">跨帧历史 · 下一帧进入</text>
+
+            <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">
+              <g class="arch-node" data-detail="输出历史在固定输出晶格上，用 m_t 重投影；warp 后作为下一帧累积器的历史 S/N。">
+                <rect x="38" y="502" width="160" height="32" rx="3" fill="#111b29" stroke="#8cc4ff"/>
+                <text x="50" y="523" fill="#e8f0fa">上一帧输出 S/N</text>
+              </g>
+              <path d="M198 518H230" stroke="#8fa3b8" stroke-width="1.1" marker-end="url(#a5)"/>
+              <g class="arch-node" data-detail="输出历史用 m_t 重投影。它不补抖动位移，因为颜色历史本来就存于输出晶格。">
+                <rect x="230" y="502" width="170" height="32" rx="3" fill="#111b29" stroke="#8cc4ff"/>
+                <text x="242" y="523" fill="#8cc4ff" font-family="ui-monospace, monospace" font-size="10.5">warp ① · m_t</text>
+              </g>
+              <path d="M400 518H432" stroke="#8fa3b8" stroke-width="1.1" marker-end="url(#a5)"/>
+              <text x="440" y="523" fill="#b6c7d9" font-size="11">→ 本帧累积器</text>
+
+              <g class="arch-node" data-detail="低分辨率循环特征在样本晶格上，用 m̃_t = m_t + (o_t − o_{t−1}) 重投影；warp 后作为下一帧主干的输入。">
+                <rect x="38" y="546" width="160" height="32" rx="3" fill="#111b29" stroke="#ff6f91"/>
+                <text x="50" y="567" fill="#e8f0fa">上一帧循环特征</text>
+              </g>
+              <path d="M198 562H230" stroke="#8fa3b8" stroke-width="1.1" marker-end="url(#a5)"/>
+              <g class="arch-node" data-detail="样本侧状态用 m̃_t 重投影：m̃_t = m_t + (o_t − o_{t−1})。这是四类配准错误中的第 2 类；用错会让历史整体偏移一个抖动相位。">
+                <rect x="230" y="546" width="170" height="32" rx="3" fill="#111b29" stroke="#ff6f91"/>
+                <text x="242" y="567" fill="#ff6f91" font-family="ui-monospace, monospace" font-size="10.5">warp ② · m̃_t</text>
+              </g>
+              <path d="M400 562H432" stroke="#8fa3b8" stroke-width="1.1" marker-end="url(#a5)"/>
+              <text x="440" y="567" fill="#b6c7d9" font-size="11">→ 本帧主干</text>
+            </g>
+
+            <text x="620" y="518" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">输出历史在输出晶格；循环特征在样本晶格。</text>
+            <text x="620" y="538" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">两套运动场不可混用。</text>
+            <text x="620" y="566" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">warp 后的状态作为下一帧输入。</text>
+
+            <text x="24" y="616" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">实线：本帧前向路径 · 底部：跨帧历史（单独成带，不画回环） · 点击任一模块查看说明</text>
+          </svg>
+        </div>
+        <figcaption><b>图 2 · 网络与累积器的数据流。</b>上半部分是单帧前向路径：输入经主干得到三个逐像素量，再由归一化累积器输出高分辨率帧。跨帧历史单独放在底部：输出历史用 <span class="num">m<sub>t</sub></span> warp，低分辨率循环特征用 <span class="num">m̃<sub>t</sub></span> warp；两张图不画交叉回环，以免与主路径混淆。图按论文 Figure 2a 与 §6 重绘，省略了部分通道细节。</figcaption>
+      </figure>
+
+      <div class="arch-detail" id="archDetail">
+        <span class="tag">模块说明</span>
+        <p>点击上方图中的输入、主干、三个头、累积器或重投影模块，查看它在论文中的具体作用。</p>
+      </div>
+
+      <h3>训练目标：让输出的变化去匹配参考的变化</h3>
+      <div class="eq">
+        <span class="lbl">式 3 · 训练损失</span>
+        <i>L</i> = Σ<span class="sub">t</span> ‖<i>ŷ</i><span class="sub">t</span> − <i>y</i><span class="sub">t</span>‖<span class="sup">2</span><span class="sub">2</span>
+        + <i>λ</i><span class="sub">T</span> Σ<span class="sub">t</span> ‖Δ<i>ŷ</i><span class="sub">t</span> − Δ<i>y</i><span class="sub">t</span>‖<span class="sub">1</span>,
+        &nbsp;&nbsp; Δ<i>x</i><span class="sub">t</span> = <i>x</i><span class="sub">t</span> − <i>R</i><span class="sub">t</span>[<i>x</i><span class="sub">t−1</span>]
+        <small>
+          时序项只统计有效像素，每个 clip 的前两帧不参与训练（重建项与时序项都跳过）。两个导数用同一个重投影，
+          所以它们的匹配程度完全取决于配准是否正确。论文推荐 <b>λ<sub>T</sub>=0.05</b>：
+          在 ×4 的 45k 分析运行里，它把静态像素标准差从 0.77 降到 0.43，代价是静态 PSNR −0.19 dB。
+        </small>
+      </div>
+
+      <p>
+        训练数据是 QRISP：30 帧 clip、66×66 的 LR crop、batch 8；AdamW，峰值学习率 6×10⁻⁴，
+        one-cycle schedule。分析用 45k 迭代，最终模型 ×2/×3 用 100k、×4 用 200k。
+        推理时主干使用 bf16、累积用 fp32，融合 Triton kernel + 单个 CUDA graph；
+        论文的计时都基于这套实现。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<div class="instrument reveal" aria-label="归一化累积器实验">
+        <div class="instrument-head">
+          <span class="t">仪器 01 · 归一化累积器</span>
+          <span class="s">N_t = ρ·N_{t−1} + w · 第 30 帧清空历史</span>
+        </div>
+        <div class="instrument-body">
+          <canvas id="accCanvas" width="720" height="420" aria-label="累积权重 N 和新样本占比 α 随时间的变化曲线"></canvas>
+          <div class="side">
+            <div class="ctl">
+              <label for="rhoRange"><span>保留率 ρ</span><b id="rhoVal">0.90</b></label>
+              <input id="rhoRange" type="range" min="0" max="0.98" step="0.01" value="0.90">
+            </div>
+            <div class="ctl">
+              <label for="wRange"><span>新样本权重 w</span><b id="wVal">0.10</b></label>
+              <input id="wRange" type="range" min="0.02" max="1" step="0.02" value="0.10">
+            </div>
+            <div class="readout">
+              <div><div class="k">稳态 N</div><div class="v cyan" id="accN">1.00</div></div>
+              <div><div class="k">稳态 α</div><div class="v amber" id="accA">0.10</div></div>
+            </div>
+            <p class="inst-note">
+              拖到 <b>ρ→1</b>：N 线性增长，α 按 1/t 衰减——累积“记得越来越久”，新样本也越来越难改变它。
+              第 30 帧的竖直虚线模拟一次 <b>disocclusion</b>：N 清零，α 瞬间跳到 1。
+            </p>
+          </div>
+        </div>
+      </div></div><aside class="mnote">
+        <span class="tag">工程含义</span>
+        α 不是训练时的辅助量，而是部署时能记录的“样本吸收率”。论文建议在静态段监控它的中位数：
+        如果塌到 10⁻³ 以下，先怀疑冻结，而不是把稳定当作收敛。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s3" data-nav="Copy cost">
+    <div class="sec-head"><span class="sec-num">03</span><h2>机制：copy cost，为什么“复制历史”在时序项上几乎免费</h2></div>
+    <div class="paper">
+      <p class="dek">这是全文的关键推导。它不需要网络，只需要参考帧、重投影和一条假设：冻结输出。</p>
+
+      <p>
+        设输出误差 <span class="num">e<sub>t</sub> = ŷ<sub>t</sub> − y<sub>t</sub></span>。
+        如果网络完全冻结，<span class="num">ŷ<sub>t</sub> = R<sub>t</sub>[ŷ<sub>t−1</sub>]</span>，
+        那么它的时序导数 <span class="num">Δŷ<sub>t</sub> = 0</span>。代入式 3 的时序项，惩罚只剩下参考自己的变化：
+      </p>
+
+      <div class="eq">
+        <span class="lbl">式 6 · 冻结输出的时序代价</span>
+        ‖Δ<i>ŷ</i><span class="sub">t</span> − Δ<i>y</i><span class="sub">t</span>‖<span class="sub">1</span>
+        = ‖Δ<i>y</i><span class="sub">t</span>‖<span class="sub">1</span>
+        = ‖<i>y</i><span class="sub">t</span> − <i>R</i><span class="sub">t</span>[<i>y</i><span class="sub">t−1</span>]‖<span class="sub">1</span>
+        <small>
+          右边这一项就是 <b>copy cost</b>：参考帧经过同一个重投影之后，还剩多少变化。
+          静态相机、准确配准、低噪声参考 → 这一项很小，冻结在时序项上几乎“免费”。
+          它和冻结保留了多少重建误差<b>无关</b>。
+        </small>
+      </div>
+
+      <p>把冻结输出代回误差定义，可以得到一个上界：</p>
+
+      <div class="eq">
+        <span class="lbl">误差上界</span>
+        ‖<i>e</i><span class="sub">t</span>‖ ≤ ‖<i>R</i><span class="sub">t</span>[<i>e</i><span class="sub">t−1</span>]‖
+        + ‖<i>R</i><span class="sub">t</span>[<i>y</i><span class="sub">t−1</span>] − <i>y</i><span class="sub">t</span>‖
+        <small>
+          第一项是旧误差被重投影后的残留，第二项是 copy cost。两者都不奖励“新信息”——
+          只要 copy cost 足够小，冻结输出在时序项上就接近最优；这与旧误差多大无关。
+        </small>
+      </div>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 940 300" role="img" aria-label="参考帧与冻结输出在重投影前后的变化：参考有 copy cost，冻结输出的时序差为零">
+            <defs>
+              <marker id="b1" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8cc4ff"/></marker>
+              <marker id="b2" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#ff6f91"/></marker>
+              <marker id="b3" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#58e2d6"/></marker>
+            </defs>
+            <text x="24" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">参考</text>
+            <g font-family="ui-monospace, monospace" font-size="11">
+              <rect x="24" y="44" width="120" height="44" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+              <text x="44" y="70" fill="#8cc4ff">y_{t−1}</text>
+              <rect x="230" y="44" width="150" height="44" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+              <text x="252" y="70" fill="#8cc4ff">R_t[y_{t−1}]</text>
+              <rect x="466" y="44" width="120" height="44" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+              <text x="490" y="70" fill="#8cc4ff">y_t</text>
+              <path d="M144 66H230" stroke="#8cc4ff" stroke-width="1.2" marker-end="url(#b1)"/>
+              <text x="162" y="58" fill="#8fa3b8" font-size="10">warp R_t</text>
+              <path d="M380 66H466" stroke="#8cc4ff" stroke-width="1.2" marker-end="url(#b1)"/>
+              <text x="390" y="58" fill="#8fa3b8" font-size="10">参考变化</text>
+              <path d="M466 98H380" stroke="#ffc266" stroke-width="1.6" marker-end="url(#b1)"/>
+              <text x="392" y="116" fill="#ffc266" font-size="10">copy cost c</text>
+            </g>
+
+            <text x="24" y="158" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">冻结输出</text>
+            <g font-family="ui-monospace, monospace" font-size="11">
+              <rect x="24" y="174" width="120" height="44" rx="3" fill="#0c131e" stroke="#ff6f91"/>
+              <text x="46" y="200" fill="#ff6f91">ŷ_{t−1}</text>
+              <rect x="230" y="174" width="150" height="44" rx="3" fill="#0c131e" stroke="#ff6f91"/>
+              <text x="254" y="200" fill="#ff6f91">R_t[ŷ_{t−1}] = ŷ_t</text>
+              <rect x="466" y="174" width="120" height="44" rx="3" fill="#0c131e" stroke="#ff6f91" stroke-dasharray="4 3"/>
+              <text x="490" y="200" fill="#ff6f91">Δŷ = 0</text>
+              <path d="M144 196H230" stroke="#ff6f91" stroke-width="1.2" marker-end="url(#b2)"/>
+              <path d="M380 196H466" stroke="#ff6f91" stroke-width="1.2" marker-end="url(#b2)"/>
+              <text x="394" y="188" fill="#8fa3b8" font-size="10">不吸收新样本</text>
+            </g>
+
+            <path d="M650 44V232" stroke="#1b2a3d"/>
+            <text x="674" y="70" fill="#e8f0fa" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="13">冻结的时序惩罚</text>
+            <text x="674" y="94" fill="#ffc266" font-family="ui-monospace, monospace" font-size="12">= ‖y_t − R_t[y_{t−1}]‖</text>
+            <text x="674" y="118" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12">参考自身的变化，与旧误差无关</text>
+            <text x="674" y="160" fill="#e8f0fa" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="13">持续累积的时序惩罚</text>
+            <text x="674" y="184" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="12">= ‖α·d − c‖</text>
+            <text x="674" y="208" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12">新样本的波动开始“收费”</text>
+            <text x="674" y="252" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">α → 0 时，回到 copy cost</text>
+          </svg>
+        </div>
+        <figcaption><b>图 3 · copy cost 的几何。</b>参考帧重投影后仍有 c 的变化；冻结输出的重投影变化为 0。时序损失比较的是“输出的变化”与“参考的变化”，于是冻结只付 c，不付旧误差。图按式 6 重绘。</figcaption>
+      </figure>
+
+      <h3>没有网络也能测：oracle 实验</h3>
+      <p>
+        作者构建了一个不训练模型的 oracle：把 QRISP 的参考帧按 k 步链式重投影，比较“正确配准”与
+        “带抖动运动矢量”两种 warp。×4 下，单帧配准 copy 在测试帧上达到 <b>35.71 dB</b>，
+        带抖动 warp 只有 <b>25.45 dB</b>；在静态相机帧上，配准 copy 达到 <b>48.74 dB</b>，
+        错配 copy 停在 24–27 dB。最长静止段上，配准 copy 连续四次重投影仍高于 58 dB。
+        对应的静态 L1 copy cost 是 <b>3.2×10⁻⁴ vs 3.76×10⁻²</b>，相差 <b>118×</b>。
+      </p>
+      <p>
+        这解释了为什么故障会被“藏起来”：如果运动矢量本身带抖动，静态参考也会被平移，
+        copy cost 被抬高，冻结不再便宜，网络就没有动机停止累积。反过来，一旦把配准修对，
+        时序损失才开始“奖励”冻结。
+      </p>
+
+      <h3>受控训练：配准方向一换，λ<sub>T</sub> 的效果反转</h3>
+      <p>
+        接着是受控训练：同一个 192 通道、8 块的主干，×4（受控分析；最终 ×4 模型为 256 通道），45k 迭代，数据、调度、种子固定，
+        只扫 λ<sub>T</sub> ∈ {0, 0.05, 0.25, 1}。R 表示四类配准全部修正，J 表示沿用原始约定
+        （抖动 MV、双晶格共用运动场、抖动深度、镜像相位、未配准 skip）。
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>设置（×4，45k）</th><th>PSNR 变化（静态）</th><th>PSNR 变化（运动）</th><th>静态像素 STD</th><th>静态 α 中位数</th></tr></thead>
+          <tbody>
+            <tr><td><b>R · λ<sub>T</sub>=0</b></td><td class="num">—</td><td class="num">—</td><td class="num">0.77</td><td class="num">3.4×10⁻²</td></tr>
+            <tr><td><b>R · λ<sub>T</sub>=0.05</b></td><td class="num">−0.19 dB</td><td class="num">0.00 dB</td><td class="num">0.43</td><td class="num">2.3×10⁻³</td></tr>
+            <tr><td><b>R · λ<sub>T</sub>=0.25</b></td><td class="num" style="color:var(--rose)">−0.86 dB</td><td class="num">−0.24 dB</td><td class="num">0.17</td><td class="num" style="color:var(--rose)">3.2×10⁻⁵</td></tr>
+            <tr><td><b>R · λ<sub>T</sub>=1</b></td><td class="num">−1.98 dB</td><td class="num">−0.74 dB</td><td class="num">0.086</td><td class="num">9.6×10⁻⁷</td></tr>
+            <tr><td><b>J · λ<sub>T</sub>=0.25</b></td><td class="num" style="color:var(--cyan)">+0.11 dB</td><td class="num">+0.10 dB</td><td class="num">1.33–1.40</td><td class="num">0.46</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        这张表是全文的“因果核心”。在 R 下，λ<sub>T</sub> 从 0 加到 0.25，静态 PSNR 掉 0.86 dB，
+        静态 α 从 3.4×10⁻² 塌到 3.2×10⁻⁵；同一组权重在 J 下却让 PSNR 略升，α 仍在 0.39–0.61 之间，几乎没有变化。
+        <b>配准把时序权重对 PSNR 的方向反了过来。</b>这个反转还在三种网络族、两个尺度上复现，
+        包括一个没有显式累积器的 direct-prediction 网络。
+      </p>
+
+      <div class="wide metric-dash">
+        <div class="metric">
+          <div class="k">测试集 PSNR-Y</div>
+          <div class="v">29.75 <small>→</small> 28.96</div>
+          <div class="d bad">↓ 0.79 dB · 变差</div>
+          <div class="bar"><i style="width:38%"></i></div>
+        </div>
+        <div class="metric">
+          <div class="k">静态像素 STD</div>
+          <div class="v">0.77 <small>→</small> 0.086</div>
+          <div class="d neutral">↓ 89% · 指标读作更稳</div>
+          <div class="bar"><i class="cyan" style="width:11%"></i></div>
+        </div>
+        <div class="metric">
+          <div class="k">时序 PSNR</div>
+          <div class="v">30.59 <small>→</small> 31.32</div>
+          <div class="d neutral">↑ 0.73 dB · 指标奖励冻结</div>
+          <div class="bar"><i class="cyan" style="width:100%"></i></div>
+        </div>
+        <div class="metric">
+          <div class="k">静态 JOD</div>
+          <div class="v">7.64 <small>→</small> 6.70</div>
+          <div class="d bad">↓ 0.94 · 感知变差</div>
+          <div class="bar"><i style="width:88%"></i></div>
+        </div>
+      </div>
+      <p class="dek" style="padding-left:0;margin-top:-8px">
+        λ<sub>T</sub>: 0 → 1，同一网络、同一数据、同一种子。PSNR 为测试集整体，STD 与 JOD 为静态子集，tPSNR 为全测试帧对；
+        下表 PSNR 变化是静态子集。PSNR 与时序 PSNR 的方向相反；静态 STD 下降既可能是收敛，也可能是冻结。
+        JOD 越高越好（10 = 与参考无可见差异），所以 7.64 → 6.70 是感知变差。
+      </p>
+
+      <h3>把机制压缩成一个一维模型</h3>
+      <p>
+        下面这个“仪器”不是论文的逐像素网络，而是一个只有一维 α 的玩具模型：
+        重建项偏好新样本（候选误差小于历史误差），时序项偏好复制（copy cost 小）。
+        拖动 λ<sub>T</sub> 与配准误差，看最优 α 如何从“持续累积”跳到“冻结”，以及错误配准如何把冻结藏起来。
+      </p>
+
+      <div class="instrument reveal" aria-label="copy cost 一维损失模型">
+        <div class="instrument-head">
+          <span class="t">仪器 02 · copy cost 与最优 α</span>
+          <span class="s">L(α) = 重建项 + λ_T · 时序项</span>
+        </div>
+        <div class="instrument-body">
+          <canvas id="lossCanvas" width="720" height="430" aria-label="总损失随新样本占比 α 变化的曲线；标出最优 α 和冻结区"></canvas>
+          <div class="side">
+            <div class="ctl">
+              <label for="lambdaRange"><span>时序权重 λ_T</span><b id="lambdaVal">0.25</b></label>
+              <input id="lambdaRange" type="range" min="0" max="1" step="0.01" value="0.25">
+            </div>
+            <div class="ctl">
+              <label for="copySel"><span>配准状态（copy cost c）</span></label>
+              <select id="copySel">
+                <option value="0.002">正确配准 · c = 0.002</option>
+                <option value="0.03">抖动 MV · c = 0.030</option>
+                <option value="0.10">严重错配 · c = 0.100</option>
+              </select>
+            </div>
+            <div class="readout">
+              <div><div class="k">最优 α*</div><div class="v cyan" id="optAlpha">0.00</div></div>
+              <div><div class="k">状态</div><div class="v rose" id="optState">冻结</div></div>
+            </div>
+            <p class="inst-note">
+              固定候选噪声 σ<sub>c</sub>=0.05、历史偏差 e<sub>h</sub>=0.12、净时序信号 d=0.40。
+              <b>当 c 很小、λ 很大</b>时，α*=0：复制历史在时序项上最便宜。
+              <b>c 变大</b>后，最优解回到中间——这就是“错误配准掩盖冻结”的玩具版。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout amber">
+        <span class="tag">适用边界</span>
+        <p>
+          这个玩具模型只解释方向，不解释论文的全部细节。真实网络里 α 是逐像素、由网络预测的，
+          重建项与候选/历史的误差结构也更复杂；论文的结论来自受控训练，不是这个一维模型。
+          它的价值在于让你在看到“λ 一大就稳定”时，先问一句：<b>copy cost 有多小？</b>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s4" data-nav="配准">
+    <div class="sec-head"><span class="sec-num">04</span><h2>工程：四类配准错误，和它们如何把故障藏起来</h2></div>
+    <div class="paper">
+      <p class="dek">这是全文工程价值最直接的部分。不需要训练，逐条核对渲染器缓冲区的晶格归属即可。</p>
+
+      <p>
+        输出历史存在<b>固定</b>的输出晶格上；渲染样本在<b>移动</b>的输入晶格上。
+        设相机抖动 <span class="num">J<sub>t</sub>=(j<sub>t</sub><sup>x</sup>, j<sub>t</sub><sup>y</sup>)</span>，
+        图像 y 轴向下，则样本 q 的位置是：
+      </p>
+
+      <div class="eq">
+        <span class="lbl">式 4 · 输入晶格</span>
+        <i>x</i><span class="sub">t</span>(<i>q</i>) = <i>q</i> + <i>o</i><span class="sub">t</span>,
+        &nbsp;&nbsp; <i>o</i><span class="sub">t</span> = (<i>j</i><span class="sub">t</span><sup>x</sup>, −<i>j</i><span class="sub">t</span><sup>y</sup>)
+        <small>负号来自图像 y 轴向下。这个符号在后面的 skip/相位错误里还会出现一次。</small>
+      </div>
+
+      <div class="eq">
+        <span class="lbl">式 5 · 两套运动场</span>
+        <i>m̃</i><span class="sub">t</span> = <i>m</i><span class="sub">t</span> + (<i>o</i><span class="sub">t</span> − <i>o</i><span class="sub">t−1</span>)
+        <small>
+          输出晶格量（颜色历史、累积权重）用 <span class="var">m<sub>t</sub></span>；
+          样本侧量（低分辨率循环特征、skip 位置）用 <span class="var">m̃<sub>t</sub></span>。
+          每个缓冲跟着自己的坐标系走，这是全文配准部分的核心结论。
+        </small>
+      </div>
+
+      <div class="instrument reveal" aria-label="两套晶格与运动场">
+        <div class="instrument-head">
+          <span class="t">仪器 03 · 两套晶格</span>
+          <span class="s">左：输出晶格 · 右：样本晶格 · 拖动抖动相位</span>
+        </div>
+        <div class="instrument-body">
+          <canvas id="latticeCanvas" width="760" height="440" aria-label="输出晶格与样本晶格在抖动下的对齐关系；错误使用 m_t 会让历史错位"></canvas>
+          <div class="side">
+            <div class="ctl">
+              <label for="phaseRange"><span>抖动相位</span><b id="phaseVal">5 / 16</b></label>
+              <input id="phaseRange" type="range" min="0" max="15" step="1" value="5">
+            </div>
+            <div class="ctl">
+              <label for="warpSel"><span>样本侧 warp</span></label>
+              <select id="warpSel">
+                <option value="correct">正确 · m̃ = m + Δo</option>
+                <option value="wrong">错误 · 只用 m</option>
+              </select>
+            </div>
+            <div class="readout">
+              <div><div class="k">Δo（px）</div><div class="v amber" id="deltaO">0.00, 0.00</div></div>
+              <div><div class="k">错位</div><div class="v rose" id="misalign">0.00 px</div></div>
+            </div>
+            <div class="lab-controls">
+              <button class="btn" id="playPhase" type="button" aria-pressed="false">播放抖动</button>
+            </div>
+            <p class="inst-note">
+              右图的红色虚线框是“只用 m”时历史落在哪；青色框是加上 Δo 后的正确位置。
+              静态场景里 m=0，错位完全来自抖动差 <b>o_t − o_{t−1}</b>。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="err-grid">
+        <details class="err-card">
+          <summary>
+            <span class="no">01</span>
+            <span class="tt">运动矢量包含相机抖动</span>
+            <span class="mx">copy cost ×118</span>
+          </summary>
+          <div class="body">
+            <p>QRISP 提供的是抖动投影之间的运动 <span class="num">m̃<sub>t</sub></span>。如果直接用它 warp <b>输出历史</b>，
+              静态内容也会被平移，copy cost 被抬高。论文故意用未补偿的 shipped field 做 J 实验：
+              静态 L1 copy cost 3.76×10⁻²，而正确配准是 3.2×10⁻⁴。</p>
+            <p>注意：QRISP 自己的流水线会去掉这个抖动位移（TAA 惯例）。论文不是说 QRISP 有 bug，
+              而是用它来隔离“运动约定”对 copy cost 的影响。</p>
+            <p class="fix">修正：输出历史 warp 用 m<sub>t</sub>；样本侧用 m̃<sub>t</sub>。两套晶格的运动场不可混用。</p>
+          </div>
+        </details>
+
+        <details class="err-card">
+          <summary>
+            <span class="no">02</span>
+            <span class="tt">低分/高分晶格共用同一运动场</span>
+            <span class="mx">28.35 vs 26.52 dB</span>
+          </summary>
+          <div class="body">
+            <p>把抖动从所有 warp 里都去掉，会制造另一个错误：<span class="num">m<sub>t</sub></span> 不含输入晶格的位移。
+              用 <span class="num">m̃<sub>t</sub></span> 把上一帧低分辨率渲染带过来是 28.35 dB；
+              用 <span class="num">m<sub>t</sub></span> 只有 26.52 dB；平均绝对残差从 0.0357 涨到 0.0433（+21%）。</p>
+            <p class="fix">修正：输出侧用 m<sub>t</sub>，样本侧（含 LR 循环特征、skip）用 m̃<sub>t</sub> = m<sub>t</sub> + (o<sub>t</sub>−o<sub>t−1</sub>)。</p>
+          </div>
+        </details>
+
+        <details class="err-card">
+          <summary>
+            <span class="no">03</span>
+            <span class="tt">深度带抖动</span>
+            <span class="mx">~10³× / 训练发散</span>
+          </summary>
+          <div class="body">
+            <p>抖动深度每帧采到不同表面点，深度变化会触发去遮挡测试或运动膨胀，即使相机静止。
+              School 静止段上，抖动深度的平均重投影变化大约是无抖动深度的 <b>10³ 倍</b>。</p>
+            <p>留一消融里，去掉无抖动深度后 seed-0 在约 11k 次迭代<b>发散</b>（非有限值）；
+              seed-1 相对自己的对照掉 0.14 dB。</p>
+            <p class="fix">修正：历史测试、重投影有效性、去遮挡都用无抖动深度；抖动只用于颜色采样。</p>
+          </div>
+        </details>
+
+        <details class="err-card">
+          <summary>
+            <span class="no">04</span>
+            <span class="tt">skip 路径未配准 / 相位符号错</span>
+            <span class="mx">+0.86–1.53 dB</span>
+          </summary>
+          <div class="body">
+            <p>双三次 skip 必须把当前样本放在 <span class="num">x<sub>t</sub>(q)</span>，而不是输入像素中心。
+              在 5 帧运动的 SeaPort 上，不训练网络、只修这个偏移就能涨 <b>0.86–1.53 dB</b>。</p>
+            <p>相位若用 <span class="num">+j<sub>t</sub><sup>y</sup></span> 会镜像垂直偏移。×4 时 16 个抖相位<b>全部选错行</b>，
+              平均位移 1.80 个输出像素。School 静止段：正确相位 34.19 dB，镜像相位 29.78 dB，
+              抖动输入直接双三次 28.38 dB。</p>
+            <p class="fix">修正：skip 采样位置 x<sub>t</sub>(q)；相位符号统一成 o<sub>t</sub>=(j<sub>x</sub>, −j<sub>y</sub>)。</p>
+          </div>
+        </details>
+      </div>
+
+      <h3>训练为何会放大配准错误</h3>
+      <p>
+        最反直觉的一点：这些错误在 λ<sub>T</sub>=0 时几乎看不出来。完整配准 29.75 dB，
+        原始约定 29.72 dB，只差 0.03 dB；单个组件的留一消融也只改 0.03–0.12 dB。
+        训练会通过学到的补偿部分抵消几何错误，重建质量指标因此失去诊断力。
+      </p>
+      <p>
+        真正的诊断信号是<b>“时序权重响应”</b>：在正确配准下，增大 λ<sub>T</sub> 应该让 PSNR 下降、α 塌缩；
+        如果增大 λ<sub>T</sub> 反而让 PSNR 上升或静态变化不变，说明配准有问题，冻结被藏住了。
+        论文称之为“配准反转了时序权重对 PSNR 的影响”（registration reverses the temporal weight’s effect on PSNR）。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<div class="callout warn">
+        <span class="tag">自检顺序</span>
+        <p>先别调 λ<sub>T</sub>。先逐条核对：<b>①</b> 输出 warp 是否含抖动；<b>②</b> 两套晶格是否各用各的运动场；
+          <b>③</b> 深度是否去抖动；<b>④</b> skip 位置与相位符号是否正确。四项全过，再谈权重。</p>
+      </div></div><aside class="mnote">
+        <span class="tag">一个细节</span>
+        论文的 R 与 J 是<b>整条流水线</b>的对照：R 同时修正四类错误，J 同时保留四类错误。
+        所以 Table 1 的差异不能拆给单个错误；单个错误的量级要看留一消融和 oracle。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s5" data-nav="架构">
+    <div class="sec-head"><span class="sec-num">05</span><h2>架构与训练：极简架构为何足够</h2></div>
+    <div class="paper">
+      <p class="dek">这篇论文在架构上的新意有限，但它的受控比较给出了一条明确的工程结论：先把配准与学习率处理正确，再讨论模块。</p>
+
+      <p>
+        主干是 8 个残差块，每块两个 3×3 卷积 + GELU，无归一化，学习到的通道缩放初始化为 0.1。
+        第一层 3×3 卷积由抖动调制；三个 1×1 头输出候选颜色、可靠性、保留率，再经 sub-pixel rearrange
+        搬到输出晶格。×2/×3 用 192 通道，×4 用 256 通道。颜色头把残差加到一个双三次 skip 上，
+        skip 必须在配准后的样本位置采样。累积器 <span class="num">N<sub>max</sub>=16</span>，
+        距离核是高斯的，学习到的宽度接近平坦；另有 state guard，在颜色/特征越界时重置像素块，
+        防止长序列偶发发散。
+      </p>
+
+      <p>
+        补充材料 S13 比较了若干更复杂的模块：U-Net、部分卷积、star block、倒残差、深度可分离、
+        池化、线性注意力。结论不是“普通卷积永远最好”，而是：<b>在作者的受控设置里，复杂模块大多没有稳定收益。</b>
+        U-Net 从 +0.01 到 −0.27 dB；部分卷积、star block、带 depthwise 的倒残差在宽网络档掉
+        0.29–0.56 dB；小网络档的 ECB 重参数化能涨 0.24 dB，但普通卷积把学习率调高也能涨 0.23 dB，
+        两者叠加只剩 0.13 dB。换句话说，<b>学习率本身就是架构比较的一部分</b>。
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>×4 变体（1080p，H200）</th><th>参数</th><th>GFLOP</th><th>时延</th><th>PSNR-Y</th></tr></thead>
+          <tbody>
+            <tr><td>shift-MLP 64×6</td><td class="num">0.17 M</td><td class="num">38</td><td class="num" style="color:var(--cyan)">0.201 ms</td><td class="num">29.32</td></tr>
+            <tr><td>shift-MLP 64×8</td><td class="num">0.20 M</td><td class="num">47</td><td class="num">0.301 ms</td><td class="num">29.35</td></tr>
+            <tr><td>Conv 64×4（重参数化）</td><td class="num">0.36 M</td><td class="num">89</td><td class="num">0.332 ms</td><td class="num">29.32</td></tr>
+            <tr><td>Conv 96×4（重参数化）</td><td class="num">0.77 M</td><td class="num">191</td><td class="num">0.524 ms</td><td class="num" style="color:var(--cyan)">29.49</td></tr>
+            <tr><td>Conv 96×8</td><td class="num">1.43 M</td><td class="num">363</td><td class="num">0.790 ms</td><td class="num">29.76</td></tr>
+            <tr><td>Conv 192×8</td><td class="num">5.51 M</td><td class="num">1414</td><td class="num">1.258 ms</td><td class="num">29.92</td></tr>
+            <tr><td>Conv 256×8</td><td class="num">9.70 M</td><td class="num">2496</td><td class="num">2.032 ms</td><td class="num" style="color:var(--ink)">30.04</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        两个工程结论：其一，<b>shift-MLP 是性价比最高的配置</b>。64×6 的 shift-MLP 和 64×4 卷积同为 29.32 dB，
+        但时延 0.201 vs 0.332 ms，省 39%。其二，<b>宽度换精度是收益递减</b>：192→256 通道只加 0.12 dB，
+        却多 0.774 ms；在 120 Hz 的 8.33 ms 预算里，256×8 已占用 24.4% 的预算，96×4 仅占 6.3%。
+        选型不是“越大越好”，而是“你的帧预算里还能放多少”。
+      </p>
+
+      <div class="callout">
+        <span class="tag">训练配方</span>
+        <p>30 帧 clip · 66×66 LR crop · batch 8 · AdamW（β₁=0.9, β₂=0.99, wd=10⁻⁴）· one-cycle · 峰值 lr 6×10⁻⁴ ·
+          λ<sub>T</sub>=0.05 · 前两帧不参与训练（含重建项）。45k 是分析模型，最终 ×2/×3 100k、×4 200k。</p>
+      </div>
+
+      <div class="mrow"><div class="mrow-main">
+<p>
+        还有一个容易忽略的细节：<b>clip 长度本身会影响 α</b>。把训练 clip 从 30 帧缩到 16 帧，
+        PSNR 掉 0.14 dB，静态 α 中位数从 2.3×10⁻³ 降到 8.3×10⁻⁴。更短的 clip 让网络见不到
+        “长时间保留历史”的后果，反而更容易压低样本吸收。论文选择 30 帧训练，并非随意。
+      </p></div><aside class="mnote">
+        <span class="tag">部署</span>
+        论文的计时全部是 <b>H200</b>、batch 1、1080p、融合 kernel + 单个 CUDA graph、bf16 主干 + fp32 累积，
+        且<b>不含渲染</b>。消费级 GPU 的完整渲染器 profile 是作者明确留下的未来工作。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s6" data-nav="结果">
+    <div class="sec-head"><span class="sec-num">06</span><h2>结果解读：每个数字的适用条件</h2></div>
+    <div class="paper">
+      <p class="dek">依次看主表、时延-质量前沿和三个边界实验：Arm 零样本、STSS 无抖动、历史消融。</p>
+
+      <h3>QRISP 主结果：+0.34 到 +0.62 dB</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>尺度</th><th>方法</th><th>PSNR-Y</th><th>SSIM-Y</th><th>静态 STD</th><th>备注</th></tr></thead>
+          <tbody>
+            <tr><td rowspan="4">×2</td><td><b>Ours 192×8</b></td><td class="num"><b>32.69</b></td><td class="num">0.9246</td><td class="num">0.096</td><td>100k</td></tr>
+            <tr><td>QRISP-L</td><td class="num">32.21</td><td class="num">0.9115</td><td class="num">—</td><td>500k，发表值</td></tr>
+            <tr><td>DLSS 2 v2.2</td><td class="num">30.12</td><td class="num">0.8821</td><td class="num">0.41</td><td>出厂帧</td></tr>
+            <tr><td>TAAU（同输入）</td><td class="num">29.99</td><td class="num">0.8740</td><td class="num">0.67</td><td>经典</td></tr>
+            <tr><td rowspan="2">×3</td><td><b>Ours 192×8</b></td><td class="num"><b>31.01</b></td><td class="num">0.8899</td><td class="num">0.25</td><td>100k</td></tr>
+            <tr><td>QRISP-L</td><td class="num">30.67</td><td class="num">0.8747</td><td class="num">—</td><td>500k，发表值</td></tr>
+            <tr><td rowspan="5">×4</td><td><b>Ours 256×8</b></td><td class="num"><b>30.04</b></td><td class="num">0.8635</td><td class="num">0.38</td><td>200k，2.032 ms</td></tr>
+            <tr><td>Ours 96×4</td><td class="num">29.49</td><td class="num">0.8457</td><td class="num">0.46</td><td>0.524 ms</td></tr>
+            <tr><td>QRISP-L</td><td class="num">29.42</td><td class="num">0.8403</td><td class="num">—</td><td>500k，发表值</td></tr>
+            <tr><td>NSRR</td><td class="num">29.02</td><td class="num">0.8364</td><td class="num">—</td><td>—</td></tr>
+            <tr><td>双三次</td><td class="num">26.15</td><td class="num">0.7534</td><td class="num">0.0090</td><td>静态 STD 低，但质量差</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        这张表里最需要谨慎解读的是“静态 STD”。双三次的静态 STD 只有 0.0090，比本文的 0.096 还低——
+        因为它根本不吸收新样本，输出自然稳定。低方差本身不是优点；必须和 PSNR、JOD 一起看。
+        论文的原话是：<b>STD 与 temporal PSNR 都不区分“成功重建”与“冻结”。</b>
+      </p>
+
+      <figure class="wide">
+        <div class="fig-frame">
+          <svg viewBox="0 0 760 460" role="img" aria-label="×4 模型在 H200 上的时延与 PSNR 散点图；96×4 在 0.524 毫秒达到 29.49 dB，256×8 在 2.032 毫秒达到 30.04 dB">
+            <title>×4 时延-质量前沿（H200，1080p，不含渲染）</title>
+            <desc>横轴为单帧时延毫秒，对数刻度；纵轴为 PSNR-Y。虚线连接非支配点。96×4 与 256×8 被高亮。</desc>
+            <g stroke="#1b2a3d" stroke-width="1">
+              <path d="M80 343.6H700"/><path d="M80 277.6H700"/><path d="M80 211.6H700"/><path d="M80 145.6H700"/><path d="M80 79.6H700"/>
+              <path d="M105.6 40V370"/><path d="M204.2 40V370"/><path d="M328.6 40V370"/><path d="M497.4 40V370"/><path d="M666 40V370"/>
+            </g>
+            <g fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">
+              <text x="105.6" y="388" text-anchor="middle">0.2</text>
+              <text x="204.2" y="388" text-anchor="middle">0.3</text>
+              <text x="328.6" y="388" text-anchor="middle">0.5</text>
+              <text x="497.4" y="388" text-anchor="middle">1.0</text>
+              <text x="666" y="388" text-anchor="middle">2.0</text>
+              <text x="70" y="346.6" text-anchor="end">29.00</text>
+              <text x="70" y="280.6" text-anchor="end">29.25</text>
+              <text x="70" y="214.6" text-anchor="end">29.50</text>
+              <text x="70" y="148.6" text-anchor="end">29.75</text>
+              <text x="70" y="82.6" text-anchor="end">30.00</text>
+              <text x="390" y="414" text-anchor="middle" fill="#b6c7d9">单帧时延（ms，log）</text>
+              <text x="22" y="205" text-anchor="middle" fill="#b6c7d9" transform="rotate(-90 22 205)">PSNR-Y（dB）</text>
+            </g>
+
+            <path d="M106.9 259.1L205 251.2L340.2 214.2L440 143L553.2 100.7L669.8 69"
+                  fill="none" stroke="#58e2d6" stroke-width="1" stroke-dasharray="4 5" opacity=".45"/>
+            <path d="M80 232.7H700" stroke="#ff6f91" stroke-width="1" stroke-dasharray="5 5" opacity=".55"/>
+            <text x="686" y="226" text-anchor="end" fill="#ff6f91" font-family="ui-monospace, monospace" font-size="10">QRISP-L 29.42 dB</text>
+
+            <g>
+              <circle cx="106.9" cy="259.1" r="5" fill="#58e2d6"><title>shift-MLP 64×6：0.201 ms，29.32 dB</title></circle>
+              <circle cx="205" cy="251.2" r="4" fill="#58e2d6"><title>shift-MLP 64×8：0.301 ms，29.35 dB</title></circle>
+              <circle cx="228.9" cy="259.1" r="4" fill="#8fa3b8"><title>Conv 64×4：0.332 ms，29.32 dB</title></circle>
+              <circle cx="340.2" cy="214.2" r="7" fill="none" stroke="#ffc266" stroke-width="2"><title>Conv 96×4：0.524 ms，29.49 dB</title></circle>
+              <circle cx="340.2" cy="214.2" r="3.5" fill="#ffc266"/>
+              <circle cx="440" cy="143" r="4" fill="#58e2d6"><title>Conv 96×8：0.790 ms，29.76 dB</title></circle>
+              <circle cx="553.2" cy="100.7" r="4" fill="#58e2d6"><title>Conv 192×8：1.258 ms，29.92 dB</title></circle>
+              <circle cx="669.8" cy="69" r="6" fill="#e8f0fa"><title>Conv 256×8：2.032 ms，30.04 dB</title></circle>
+              <circle cx="299.1" cy="327.8" r="4" fill="none" stroke="#8cc4ff" stroke-width="1.5"><title>QRISP-M：0.443 ms，29.06 dB</title></circle>
+              <circle cx="409.8" cy="232.7" r="4" fill="none" stroke="#ff6f91" stroke-width="1.5"><title>QRISP-L：0.698 ms，29.42 dB</title></circle>
+            </g>
+
+            <g font-family="ui-monospace, monospace" font-size="10" fill="#b6c7d9">
+              <text x="118" y="255">shift-MLP 64×6 · 0.201 ms</text>
+              <text x="215" y="244" fill="#8fa3b8">64×8</text>
+              <text x="238" y="276" fill="#8fa3b8">64×4</text>
+              <text x="352" y="206" fill="#ffc266">96×4 · 0.524 ms / 29.49 dB</text>
+              <text x="452" y="136" fill="#8fa3b8">96×8</text>
+              <text x="565" y="94" fill="#8fa3b8">192×8</text>
+              <text x="600" y="62" fill="#e8f0fa" text-anchor="end">256×8 · 30.04 dB</text>
+              <text x="420" y="250" fill="#ff6f91">QRISP-L · 0.698 ms</text>
+              <text x="309" y="321" fill="#8cc4ff">QRISP-M</text>
+            </g>
+            <text x="80" y="438" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10">H200 · 1080p · batch 1 · 不含渲染 · 300 次调用均值</text>
+          </svg>
+        </div>
+        <figcaption><b>图 4 · ×4 的时延-质量前沿。</b>黄色圈是 96×4：0.524 ms / 29.49 dB，比 QRISP-L 快 25%，高 0.07 dB。最重的 256×8 达到 30.04 dB，但时延是 QRISP-L 的 2.91×。数据来自论文 Table 2 与补充 Table S12。</figcaption>
+      </figure>
+
+      <h3>三个边界实验</h3>
+      <p>
+        <b>Arm Bistro 零样本。</b>QRISP 训练的 ×2 模型不重新训练，直接迁移到 Arm 的 100 帧 Unreal 抓帧
+        （92 帧计分，period-32 抖动、1/8 像素网格）。结果 31.62 dB，比两个经典时序上采样器高
+        4.4–4.5 dB；报告的主要指标都更好。匹配的 45k 对照里，带历史的 31.07 dB，单帧 26.64 dB，
+        差 4.43 dB——这个差值直接量化了“历史”本身的价值。
+      </p>
+      <p>
+        <b>STSS 无抖动。</b>这是反面证据。STSS 的输入不抖动，时序损失失去了“互补样本”这个前提。
+        重新训练后 λ<sub>T</sub>=0 的均值 33.48 dB，高于 STSSNet 的 32.89（论文 §7.3 的 STSS 协议：偶数帧、8-bit）；
+        λ<sub>T</sub>=0.25 时均值掉 1.93 dB。按 §5.4 的全帧协议，Arena 单场景从 34.16 掉到 30.46（−3.70 dB）——
+        两套协议不可直接比较（1.93 dB vs 3.70 dB），但方向一致。<b>在无抖动数据上，时序损失是净损失。</b>
+        这条实验把“配准正确”这个条件又收紧了一步：不仅要配准对，还要有真正的互补样本。
+      </p>
+      <p>
+        <b>历史消融。</b>把颜色历史、累积器、循环特征一起去掉，×2 掉 1.65 dB，×4 掉 2.02 dB；
+        静态 STD 从 0.11 升到 1.09（×2），从 0.44 升到 1.74（×4）。历史是主要贡献，而非附带项。
+        归一化与直接 blend 的 PSNR 几乎一样，但前者静态 STD 0.43 vs 0.53；
+        短 clip（16 帧）PSNR 掉 0.14 dB，α 反而更低——更短的历史让网络更不敢吸收新样本。
+      </p>
+
+      <div class="mrow"><div class="mrow-main">
+<div class="callout warn">
+        <span class="tag">引用注意</span>
+        <p>
+          “2.03 ms”对应的是 <b>256×8 / 30.04 dB</b>，时延是 QRISP-L 的 2.91×。
+          “比 QRISP-L 快 25%、高 0.07 dB”对应的是 <b>96×4 / 0.524 ms / 29.49 dB</b>。
+          “快 71%、只低 0.10 dB”对应 <b>shift-MLP 64×6 / 0.201 ms / 29.32 dB</b>。
+          三个配置不要混着引用。所有数字都是 H200、1080p、不含渲染。
+        </p>
+      </div></div><aside class="mnote">
+        <span class="tag">证据强度</span>
+        主结果有 5 个 300 帧序列，扣除预热帧后共 1460 个计分帧；机制网格是单种子，但 7 组 15k 种子对的差异只有
+        0.003–0.08 dB（中位 0.03）。稳定性只评了 3 个 QRISP 场景 + 1 个 Arm 抓帧。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s7" data-nav="边界">
+    <div class="sec-head"><span class="sec-num">07</span><h2>批判性阅读：已证明与未证明的边界</h2></div>
+    <div class="paper">
+      <p class="dek">论文的边界与结论同样重要。下面把“已有证据支持”和“尚未证明”分开列。</p>
+
+      <div class="compare">
+        <div>
+          <h4>已有证据支持</h4>
+          <ul>
+            <li><b>因果链较完整。</b>从式 6 的 copy cost，到无网络 oracle，到受控训练，再到三网络族/两尺度复现，最后到真实 benchmark。每一步都能独立复核。</li>
+            <li><b>oracle 设计清晰。</b>用参考帧链式重投影隔离运动场，不依赖训练；118× 的差距是可直接复算的。</li>
+            <li><b>对指标的批评有数据支撑。</b>PSNR↓、静态 STD↓、tPSNR↑、JOD↓ 同时出现，不是“感觉指标不对”。</li>
+            <li><b>工程贡献可迁移。</b>四类配准错误与两套晶格的公式，和网络结构无关；任何 TAAU/神经超采样管线都能逐条核对。</li>
+            <li><b>代码 MIT 开源。</b>训练、推理、评估、数据集转换、融合 kernel 都有；权重未随仓库发布。</li>
+          </ul>
+        </div>
+        <div class="neg">
+          <h4>尚未证明</h4>
+          <ul>
+            <li><b>未在医学/体渲染域验证。</b>全部在游戏资产上；半透明体素、传递函数分层、无 MV 的粒子/sprite 都没有覆盖。</li>
+            <li><b>消费级 GPU 未测。</b>H200 的 0.201–2.032 ms 不能线性外推到 RTX 4060；完整渲染器 profile 是作者留下的未来工作。</li>
+            <li><b>连续尺度不支持。</b>只有 ×2/×3/×4 三个离散档；没有任意倍数。</li>
+            <li><b>机制网格单种子。</b>15k 种子对只测了重复性，不是每个机制设置都多种子。</li>
+            <li><b>主表不是同容量对比。</b>容量最大的模型为 256 通道，QRISP-L 更小；主表比的是完整系统，不是同容量架构。</li>
+            <li><b>输入分布脆弱。</b>无抖动输入下，QRISP 模型零样本 25.8 dB，低于双三次 33.2 dB；迁移取决于抖动分布。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>论文没有说的三件事</h3>
+      <ul class="dot">
+        <li><b>“时序损失是坏的”。</b>论文只说：在配准正确、参考变化小、λ<sub>T</sub> 大的条件下，它会抑制累积。
+          在 J 约定下，同样的损失甚至略微提升 PSNR；在运动帧上，0.25 的代价也只有 0.24 dB。条件不成立时，它未必有害。</li>
+        <li><b>“λ<sub>T</sub>=0.05 是通用最优”。</b>0.05 是在 QRISP、这个主干、这套配准约定下测出来的折中。
+          换配准、换数据分布、换损失范数，都要重新扫。论文自己说：“改变配准约定或数据分布后必须重新考虑。”</li>
+        <li><b>“冻结总是坏事”。</b>如果历史确实比新候选好，复制历史是理性的。论文判定“有害冻结”的条件是：
+          <b>复制增加的同时，准确率/感知质量下降</b>。单独看 copy fraction 高，不足以判定为有害。</li>
+      </ul>
+
+      <h3>如果要把这套方法搬到医学 DVR</h3>
+      <p>
+        迁移时最关键的是输入接口。论文的输入是 {抖动 LR 颜色, 深度, 运动矢量}，
+        而 DVR 恰好天然拥有深度和逐像素运动（相机矩阵解析可得），抖动也可以由应用层注入；
+        辅助数据几乎没有额外 pass 成本。从接口上看，它比纯图像医学 SR 更匹配 DVR，但半透明场景仍需重新定义 MV。
+      </p>
+      <p>
+        但有两个硬问题：<b>① 半透明</b>。DVR 的透射/半透明层会让“这个像素属于哪个表面”变得模糊，
+        运动矢量不再唯一；论文的 sprite 案例已经表明，无 MV 的 sprite 会被历史涂抹。
+        <b>② 域偏移</b>。游戏资产的噪声、边缘、材质统计和 CT/MR 体渲染差别很大；
+        论文没有做任何医学数据验证。半透明体素的 reactive mask 是作者点名的未解项。
+      </p>
+      <p>
+        所以我的判断是：<b>方法学强烈推荐，DVR 落地有条件推荐</b>。先拿四类配准约定去核对现有管线
+        （零成本、纯正确性），再把 α 加入监控；等这两步做完，再决定要不要训模型。
+      </p>
+
+      <h3>部署前自检清单</h3>
+      <div class="mrow"><div class="mrow-main">
+<div class="checklist">
+        <label class="check"><input type="checkbox"><span><b>输出历史 warp 是否含相机抖动？</b>输出侧应去掉；样本侧保留 m̃。</span></label>
+        <label class="check"><input type="checkbox"><span><b>低分/高分状态是否各用各的运动场？</b>LR 循环特征、skip 用 m̃ = m + (o_t−o_{t−1})。</span></label>
+        <label class="check"><input type="checkbox"><span><b>深度是否去抖动？</b>历史测试、去遮挡、运动膨胀都用无抖动深度。</span></label>
+        <label class="check"><input type="checkbox"><span><b>skip 采样位置与相位符号是否正确？</b>双三次 skip 放在 x_t(q)，不是输入像素中心。</span></label>
+        <label class="check"><input type="checkbox"><span><b>是否监控 α？</b>静态段中位 α 塌到 10⁻³ 以下先怀疑冻结；不要只看 PSNR/方差。</span></label>
+        <label class="check"><input type="checkbox"><span><b>验收是否加了 FLIP / ColorVideoVDP？</b>PSNR、静态 STD、tPSNR 都可能奖励冻结。</span></label>
+        <label class="check"><input type="checkbox"><span><b>关闭抖动时是否有非时序 fallback？</b>QRISP 模型在无抖动输入下会退化到双三次以下。</span></label>
+        <label class="check"><input type="checkbox"><span><b>是否在目标 GPU 实测？</b>H200 的数字不能线性外推到消费卡；完整渲染器也要 profile。</span></label>
+      </div></div><aside class="mnote">
+        <span class="tag">研究机会</span>
+        如果要把它用于医学 DVR，我会先问三个问题：半透明层的 MV 怎么定义？能否用 per-pixel 自适应 λ<sub>T</sub>
+        替代全局权重？在真实 CT 体渲染噪声下，α 的诊断含义还成立吗？这三个都不是这篇论文能回答的。
+      </aside></div>
+    </div>
+  </section>
+
+  <section id="s8" data-nav="带走">
+    <div class="sec-head"><span class="sec-num">08</span><h2>结论：三条可执行判断</h2></div>
+    <div class="paper">
+      <p class="dek">读论文的收益，最终要落成可执行的判断。</p>
+
+      <ol class="quick">
+        <li><b>时序损失优化的是“变化匹配”，不是“信息吸收”。</b>配准正确时，复制历史在时序项上几乎免费；
+          网络没有义务继续采样。要判断它有没有在学，必须看 α，而不是看画面稳不稳。</li>
+        <li><b>配准是方法的一部分，不是实现细节。</b>四类错误能把冻结藏得几乎看不见；λ<sub>T</sub>=0 时
+          完整配准与原始约定只差 0.03 dB。先修配准，再调权重。</li>
+        <li><b>指标要成组看。</b>PSNR、静态 STD、tPSNR 都可能奖励冻结；JOD/ColorVideoVDP 与 α 一起，
+          才能区分“收敛”与“停止累积”。</li>
+      </ol>
+
+      <div class="callout">
+        <span class="tag">核心结论</span>
+        <p>这篇论文把“时序一致性损失”从抗闪烁的正则项，变成了一个可能让模型停止累积的激励错配；
+          它给出的不是新网络，而是一套诊断工具：copy cost、α、两套晶格、四类配准错误。</p>
+      </div>
+
+      <h3>本系列：11 月六篇深度报告</h3>
+      <div class="series">
+        <a href="paper-review-frozen-history.html" aria-current="page">
+          <span class="no">01</span>
+          <span class="tt">Frozen History<small>时序损失让实时超采样停止累积 · 渲染超采样 · P0</small></span>
+          <span class="pill on">本篇</span>
+        </a>
+        <a href="paper-review-gsmr3d.html">
+          <span class="no">02</span>
+          <span class="tt">GSMR3D<small>任意各向异性尺度 3D MRI 超分 · 高斯原型 · P0</small></span>
+          <span class="pill">已发布</span>
+        </a>
+        <a href="paper-review-ctbakegs.html">
+          <span class="no">03</span>
+          <span class="tt">CTBakeGS<small>14 秒把 CT 体渲染烘焙到 3DGS · 实时显示 · P1</small></span>
+          <span class="pill">已发布</span>
+        </a>
+        <a href="paper-review-spectralinr.html">
+          <span class="no">04</span>
+          <span class="tt">SpectralINR-4DFlow<small>逐例无监督 INR 做 4D Flow MRI · 1.6 分钟收敛 · P1</small></span>
+          <span class="pill">已发布</span>
+        </a>
+              <a href="paper-review-factorsplat.html">
+          <span class="no">05</span>
+          <span class="tt">FactorSplat<small>传递函数可编辑的医学体渲染代理 · 3DGS · P0</small></span>
+          <span class="pill">已发布</span>
+        </a>
+        <a href="paper-review-xiao-tr-gs-sparse-ct.html">
+          <span class="no">06</span>
+          <span class="tt">TR-GS<small>厚尾基元 + 射线置信度做稀疏视角 CT · 0.38→0.09 dB · P1</small></span>
+          <span class="pill">已发布</span>
+        </a>
+</div>
+
+      <h3>相关阅读</h3>
+      <ul class="dot">
+        <li><a class="inline" href="medical-imaging-3d-visualization.html">从断层到三维：医学影像三维可视化</a> —— 医学渲染管线的七级链路与误差传播，决定这类方法能不能落地。</li>
+      </ul>
+
+      <h3>参考</h3>
+      <ol class="refs">
+        <li id="r1">H. Yu, G. Zhao. <a href="https://arxiv.org/abs/2610.15752" target="_blank" rel="noopener">Frozen History: When Temporal Losses Stop Accumulation in Learned Real-Time Supersampling</a>. arXiv:2610.15752, 2026. 代码：<a href="https://github.com/CV-AC/Frozen_history" target="_blank" rel="noopener">CV-AC/Frozen_history</a>（MIT；权重未随仓库发布）。</li>
+        <li id="r2">A. Mercier, R. Erasmus, Y. Savani, M. Dhingra, F. Porikli, G. Berger. <span class="j">Efficient Neural Supersampling on a Novel Gaming Dataset.</span> ICCV 2023. QRISP 数据集与基线。</li>
+        <li id="r3">B. Karis. <span class="j">High-Quality Temporal Supersampling.</span> SIGGRAPH 2014 Course. TAA 的邻域 clamp 与抖动约定。</li>
+        <li id="r4">E. Liu. <span class="j">DLSS 2.0 — Image Reconstruction for Real-Time Rendering with Deep Learning.</span> NVIDIA GTC 2020.</li>
+        <li id="r5">Z. He et al. <span class="j">STSS: Spatial-Temporal Super-Resolution for Real-Time Rendering.</span> 2024. 无抖动输入的对照数据集。</li>
+        <li id="r6">C. R. A. Chaitanya et al. <span class="j">Interactive Reconstruction of Monte Carlo Image Sequences Using a Recurrent Denoising Autoencoder.</span> SIGGRAPH 2017. 时序导数损失的来源之一。</li>
+        <li id="r7">P. Andersson et al. <span class="j">FLIP: A Difference Evaluator for Alternating Images.</span> PACMCGIT 2020.</li>
+        <li id="r8">R. K. Mantiuk et al. <span class="j">ColorVideoVDP: A Visual Difference Predictor for Image and Video.</span> 2024. JOD 指标。</li>
+        <li id="r9">Arm Limited. <span class="j">Neural Super Sampling (NSS): Model, Weights and Neural Graphics Dataset.</span> Hugging Face, 2025. Arm Bistro 抓帧。</li>
+        <li id="r10">AMD. <span class="j">FidelityFX Super Resolution 2 (FSR 2).</span> GPUOpen, 2022. 经典时序上采样对照。</li>
+      </ol>
+
+      <p class="dek" style="padding-left:0;margin-top:24px">
+        文中的数字均取自论文正文、Table 1–4 与补充材料；与 11 月调研报告不一致处，以论文原表为准。
+        本文没有复现实验；交互仪器是为了建立直觉，不是论文结果的替代。
+      </p>
+    </div>
+  </section>
+
+
+</div>
+
+<footer class="foot">
+  <span>© 2026 灯箱 · LIGHTBOX</span>
+  <span><a href="index.html">← 返回首页</a> · 单文件 · 零外部请求</span>
+</footer>
+
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     0. 主题
+     ============================================================ */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var KEY = 'technotes-theme';
+  var order = ['auto', 'dark', 'light'];
+  var mode = 'auto';
+
+  try { mode = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
+  if (order.indexOf(mode) < 0) mode = 'auto';
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function syncLightClass() {
+    var light = mode === 'light' || (mode === 'auto' && systemLight());
+    root.classList.toggle('is-light', light);
+  }
+
+  function applyTheme(next) {
+    mode = next;
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    syncLightClass();
+    var text = mode === 'auto' ? '跟随系统' : (mode === 'dark' ? '深色' : '浅色');
+    themeBtn.textContent = '主题：' + text;
+    document.dispatchEvent(new CustomEvent('technotes:theme'));
+  }
+
+  applyTheme(mode);
+
+  themeBtn.addEventListener('click', function () {
+    var i = order.indexOf(mode);
+    var next = order[(i + 1) % order.length];
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    applyTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (mode !== 'auto') return;
+      syncLightClass();
+      document.dispatchEvent(new CustomEvent('technotes:theme'));
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  /* ============================================================
+     1. 目录、进度、显现
+     ============================================================ */
+
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[data-nav]'));
+  var links = [];
+
+  sections.forEach(function (section) {
+    var a = document.createElement('a');
+    a.href = '#' + section.id;
+    a.textContent = section.getAttribute('data-nav');
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function updateScroll() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.min(100, Math.max(0, y / max * 100)) : 0;
+    progress.style.width = pct + '%';
+
+    var current = sections[0];
+    sections.forEach(function (section) {
+      if (section.getBoundingClientRect().top <= 130) current = section;
+    });
+    links.forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  setInterval(updateScroll, 450);
+  updateScroll();
+
+  /* 不依赖 IntersectionObserver / rAF 的显现兜底：滚动检查 + 定时检查 */
+  document.body.classList.add('js-reveal');
+  var reveals = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+
+  function revealVisible() {
+    reveals.forEach(function (el) {
+      if (el.classList.contains('is-visible')) return;
+      if (el.getBoundingClientRect().top < window.innerHeight - 36) {
+        el.classList.add('is-visible');
+      }
+    });
+  }
+
+  window.addEventListener('scroll', revealVisible, { passive: true });
+  window.addEventListener('resize', revealVisible);
+  setInterval(revealVisible, 550);
+  revealVisible();
+  setTimeout(revealVisible, 1200);
+
+  /* ============================================================
+     2. 架构图点击说明
+     ============================================================ */
+
+  var archDetail = document.getElementById('archDetail');
+  var archNodes = Array.prototype.slice.call(document.querySelectorAll('.arch-node'));
+
+  function selectArch(node) {
+    archNodes.forEach(function (n) { n.classList.remove('is-active'); });
+    node.classList.add('is-active');
+    var detail = node.getAttribute('data-detail');
+    if (detail && archDetail) archDetail.querySelector('p').textContent = detail;
+  }
+
+  archNodes.forEach(function (node) {
+    node.setAttribute('tabindex', '0');
+    node.setAttribute('role', 'button');
+    node.setAttribute('aria-label', '查看该模块的说明');
+    node.addEventListener('click', function () { selectArch(node); });
+    node.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectArch(node);
+      }
+    });
+  });
+
+  /* ============================================================
+     3. 画布工具
+     ============================================================ */
+
+  var C = {
+    bg: '#070b12',
+    panel: '#0c131e',
+    panel2: '#111b29',
+    line: '#1b2a3d',
+    line2: '#243246',
+    ink: '#e8f0fa',
+    ink2: '#b6c7d9',
+    ink3: '#8fa3b8',
+    cyan: '#58e2d6',
+    ice: '#8cc4ff',
+    amber: '#ffc266',
+    rose: '#ff6f91'
+  };
+
+  /* 浅色主题下把画布里的深色“屏幕”配色映射到浅色。
+     只映射界面色，不碰 CT 灰度、热力图等内容色。 */
+  var CANVAS_LIGHT = {
+    '#070b12': '#f7f9fc',
+    '#0c131e': '#eef2f8',
+    '#111b29': '#e7edf6',
+    '#1b2a3d': '#dfe6ee',
+    '#243246': '#c9d4e0',
+    '#2d4058': '#c9d4e0',
+    '#e8f0fa': '#0f1722',
+    '#b6c7d9': '#3d4e60',
+    '#8fa3b8': '#5d7084',
+    '#59616e': '#6b7788',
+    '#58e2d6': '#0b7d75',
+    '#8cc4ff': '#1b5fc9',
+    '#ffc266': '#9a5c00',
+    '#ff6f91': '#b51f45',
+    '#ff9f6f': '#b45309',
+    '#b9a1ff': '#6347c7',
+    'rgba(255,255,255,.018)': 'rgba(15,23,34,.025)',
+    'rgba(255,255,255,.006)': 'rgba(15,23,34,.012)',
+    'rgba(255,255,255,.012)': 'rgba(15,23,34,.02)',
+    'rgba(140,196,255,.025)': 'rgba(27,95,201,.05)',
+    'rgba(232,240,250,.78)': 'rgba(15,23,34,.78)',
+    'rgba(88,226,214,.35)': 'rgba(11,125,117,.35)',
+    'rgba(12,19,30,.55)': 'rgba(15,23,34,.10)',
+    'rgba(255,194,102,.13)': 'rgba(154,92,0,.10)',
+    'rgba(255,194,102,.62)': 'rgba(154,92,0,.62)',
+    'rgba(255,194,102,.7)': 'rgba(154,92,0,.70)',
+    'rgba(88,226,214,.38)': 'rgba(11,125,117,.38)',
+    'rgba(255,111,145,.07)': 'rgba(181,31,69,.07)',
+    'rgba(88,226,214,.10)': 'rgba(11,125,117,.10)'
+  };
+
+  function isLightTheme() {
+    var attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'light') return true;
+    if (attr === 'dark') return false;
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function mapCanvasColor(value) {
+    if (!isLightTheme() || typeof value !== 'string') return value;
+    var key = value.toLowerCase().replace(/\s+/g, '');
+    return CANVAS_LIGHT[key] || value;
+  }
+
+  function ensureCanvas(canvas) {
+    if (!canvas.dataset.baseW) {
+      canvas.dataset.baseW = String(canvas.getAttribute('width') || 720);
+      canvas.dataset.baseH = String(canvas.getAttribute('height') || 420);
+    }
+    var bw = parseFloat(canvas.dataset.baseW);
+    var bh = parseFloat(canvas.dataset.baseH);
+    var cw = canvas.clientWidth || bw;
+    var ch = cw * bh / bw;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var pw = Math.round(cw * dpr);
+    var ph = Math.round(ch * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) {
+      canvas.width = pw;
+      canvas.height = ph;
+    }
+    var ctx = canvas.getContext('2d');
+    if (!ctx.__tnTheme) {
+      ctx.__tnTheme = true;
+      ['fillStyle', 'strokeStyle'].forEach(function (prop) {
+        var proto = Object.getPrototypeOf(ctx);
+        var desc = Object.getOwnPropertyDescriptor(proto, prop);
+        if (!desc || !desc.set) return;
+        Object.defineProperty(ctx, prop, {
+          configurable: true,
+          get: function () { return desc.get.call(ctx); },
+          set: function (value) { desc.set.call(ctx, mapCanvasColor(value)); }
+        });
+      });
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: cw, h: ch };
+  }
+
+  function mono(ctx, text, x, y, color, size, align) {
+    ctx.fillStyle = color || C.ink3;
+    ctx.font = (size || 10) + 'px ui-monospace, "Cascadia Mono", Consolas, monospace';
+    ctx.textAlign = align || 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  }
+
+  function cn(ctx, text, x, y, color, size, align) {
+    ctx.fillStyle = color || C.ink2;
+    ctx.font = (size || 12) + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = align || 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  }
+
+  function line(ctx, x1, y1, x2, y2, color, width, dash) {
+    ctx.strokeStyle = color || C.line;
+    ctx.lineWidth = width || 1;
+    if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function rect(ctx, x, y, w, h, fill, stroke, width, radius) {
+    var r = radius === undefined ? 2 : radius;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+    }
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = width || 1; ctx.stroke(); }
+  }
+
+  function arrow(ctx, x1, y1, x2, y2, color, width) {
+    var w = width || 1.2;
+    line(ctx, x1, y1, x2, y2, color, w);
+    var a = Math.atan2(y2 - y1, x2 - x1);
+    var s = 6;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - s * Math.cos(a - 0.42), y2 - s * Math.sin(a - 0.42));
+    ctx.lineTo(x2 - s * Math.cos(a + 0.42), y2 - s * Math.sin(a + 0.42));
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function dashRect(ctx, x, y, w, h, color, width) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width || 1.2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+  }
+
+  function fmt(x, digits) {
+    var n = Number(x);
+    if (!isFinite(n)) return '—';
+    var d = digits === undefined ? 3 : digits;
+    return n.toFixed(d).replace(/0+$/, '').replace(/\.$/, '') || '0';
+  }
+
+  /* ============================================================
+     4. 仪器 00 · 抖动样本时钟
+     ============================================================ */
+
+  var clockCanvas = document.getElementById('clockCanvas');
+  var clockN = document.getElementById('clockN');
+  var clockK = document.getElementById('clockK');
+  var clockA = document.getElementById('clockA');
+  var clockStatus = document.getElementById('clockStatus');
+  var clockLive = document.getElementById('clockLive');
+  var freezeBtn = document.getElementById('freezeBtn');
+  var resetClock = document.getElementById('resetClock');
+
+  var clockOrder = [0, 5, 10, 15, 2, 7, 8, 13, 1, 4, 11, 14, 3, 6, 9, 12];
+  var clock = { n: 1, frozen: false };
+
+  function clockPos(i) {
+    return { gx: i % 4, gy: Math.floor(i / 4) };
+  }
+
+  function clockCount() {
+    return Math.min(clock.n, 16);
+  }
+
+  function drawClock() {
+    var d = ensureCanvas(clockCanvas);
+    var ctx = d.ctx;
+    var w = d.w;
+    var h = d.h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    /* 所有坐标按 520×416 的设计稿绘制，再等比缩放到实际画布 */
+    var scale = Math.min(w / 520, h / 416);
+    ctx.save();
+    ctx.translate((w - 520 * scale) / 2, (h - 416 * scale) / 2);
+    ctx.scale(scale, scale);
+
+    var x0 = 24;
+    var y0 = 48;
+    var size = 276;
+    var cell = size / 4;
+    var count = clockCount();
+
+    cn(ctx, '1 个 LR 像素 = 4 × 4 个输出像素', 20, 24, C.ink, 15);
+
+    /* 整块是一个 LR 像素，16 个格子是它覆盖的输出像素 */
+    rect(ctx, x0 - 6, y0 - 6, size + 12, size + 12, 'rgba(140,196,255,.025)', C.ice, 1.2, 4);
+
+    for (var gy = 0; gy < 4; gy++) {
+      for (var gx = 0; gx < 4; gx++) {
+        ctx.fillStyle = ((gx + gy) % 2 === 0) ? 'rgba(255,255,255,.018)' : 'rgba(255,255,255,.006)';
+        ctx.fillRect(x0 + gx * cell, y0 + gy * cell, cell, cell);
+      }
+    }
+
+    for (var i = 1; i < 4; i++) {
+      line(ctx, x0 + i * cell, y0, x0 + i * cell, y0 + size, C.line2);
+      line(ctx, x0, y0 + i * cell, x0 + size, y0 + i * cell, C.line2);
+    }
+
+    /* 16 个抖动相位：位置在输出像素中心 */
+    var sampled = {};
+    for (var k = 0; k < count; k++) sampled[clockOrder[k]] = true;
+
+    for (var p = 0; p < 16; p++) {
+      var pp = clockPos(p);
+      var px = x0 + (pp.gx + 0.5) * cell;
+      var py = y0 + (pp.gy + 0.5) * cell;
+      if (sampled[p]) {
+        ctx.fillStyle = C.cyan;
+        ctx.beginPath();
+        ctx.arc(px, py, 4.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = C.line2;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(px, py, 3.8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    /* 本帧样本；冻结时改为标出“本该采样、但被跳过”的相位 */
+    if (!clock.frozen) {
+      var cur = clockPos(clockOrder[count - 1]);
+      var curx = x0 + (cur.gx + 0.5) * cell;
+      var cury = y0 + (cur.gy + 0.5) * cell;
+      ctx.strokeStyle = C.amber;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(curx, cury, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = C.amber;
+      ctx.beginPath();
+      ctx.arc(curx, cury, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (count < 16) {
+      var nxt = clockPos(clockOrder[count]);
+      var nx = x0 + (nxt.gx + 0.5) * cell;
+      var ny = y0 + (nxt.gy + 0.5) * cell;
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = C.rose;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(nx, ny, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = C.rose;
+      ctx.lineWidth = 1.6;
+      line(ctx, nx - 4, ny - 4, nx + 4, ny + 4, C.rose, 1.6);
+      line(ctx, nx - 4, ny + 4, nx + 4, ny - 4, C.rose, 1.6);
+    }
+
+    if (clock.frozen) {
+      ctx.strokeStyle = C.rose;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x0 - 6, y0 - 6, size + 12, size + 12);
+    }
+
+    /* 图例：明确区分“格子 = 输出像素”与“点 = 采样相位” */
+    mono(ctx, '图例', 326, 56, C.ink3, 12.5);
+    ctx.strokeStyle = C.line2;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(330, 70, 14, 14);
+    cn(ctx, '每格 = 1 个输出像素', 352, 79, C.ink2, 13.5);
+
+    ctx.strokeStyle = C.line2;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(337, 104, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    cn(ctx, '未采样相位', 352, 104, C.ink3, 13.5);
+
+    ctx.fillStyle = C.cyan;
+    ctx.beginPath();
+    ctx.arc(337, 130, 4.4, 0, Math.PI * 2);
+    ctx.fill();
+    cn(ctx, '已采样相位', 352, 130, C.ink2, 13.5);
+
+    ctx.strokeStyle = C.amber;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(337, 156, 9, 0, Math.PI * 2);
+    ctx.stroke();
+    cn(ctx, '本帧样本', 352, 156, C.ink2, 13.5);
+
+    line(ctx, 326, 176, 500, 176, C.line);
+
+    cn(ctx, '整块 = 1 个 LR 像素', 326, 200, C.ink2, 14);
+    cn(ctx, '每格 = 1 个输出像素', 326, 222, C.ink3, 13.5);
+    cn(ctx, '点 = 一个抖动相位', 326, 244, C.ink3, 13.5);
+    cn(ctx, '×4 时点落在格心', 326, 266, C.ink3, 13.5);
+    cn(ctx, '每帧只取 1 个点', 326, 294, C.cyan, 13);
+
+    /* 底部状态：本帧到底有没有摄入新样本 */
+    rect(ctx, 18, 342, 520 - 36, 40, C.panel, C.line2, 1, 4);
+    cn(ctx, '帧 ' + clock.n + ' / 16 · 已覆盖 ' + count + ' / 16', 30, 362, C.ink2, 13);
+    var msg = clock.frozen ? '本帧 +0 · 复制历史' : (count >= 16 ? '16 / 16 已覆盖' : '本帧 +1 个相位');
+    cn(ctx, msg, 520 - 30, 362, clock.frozen ? C.rose : C.cyan, 13, 'right');
+
+    ctx.restore();
+  }
+
+  function updateClockUI() {
+    var count = clockCount();
+    var a = clock.frozen ? 0 : 1 / clock.n;
+    clockN.textContent = String(clock.n);
+    clockK.textContent = count + ' / 16';
+    clockA.textContent = clock.frozen ? '→ 0' : a.toFixed(4);
+    clockStatus.textContent = clock.frozen ? '冻结 · 本帧不采样' : '累积 · α = ' + a.toFixed(4);
+    clockLive.textContent = clock.frozen ? '已冻结' : (count >= 16 ? '采样完成' : '采样中');
+    clockLive.classList.toggle('frozen', clock.frozen);
+    clockA.classList.toggle('rose', clock.frozen);
+    clockA.classList.toggle('cyan', !clock.frozen);
+  }
+
+  function clockTick() {
+    if (document.hidden) return;
+    if (!clock.frozen && clock.n < 16) clock.n += 1;
+    drawClock();
+    updateClockUI();
+  }
+
+  freezeBtn.addEventListener('click', function () {
+    clock.frozen = !clock.frozen;
+    freezeBtn.setAttribute('aria-pressed', clock.frozen ? 'true' : 'false');
+    freezeBtn.textContent = clock.frozen ? '恢复采样' : '模拟冻结（停止采样）';
+    drawClock();
+    updateClockUI();
+  });
+
+  resetClock.addEventListener('click', function () {
+    clock.n = 1;
+    clock.frozen = false;
+    freezeBtn.setAttribute('aria-pressed', 'false');
+    freezeBtn.textContent = '模拟冻结（停止采样）';
+    restartClockTimer();
+    drawClock();
+    updateClockUI();
+  });
+
+  function restartClockTimer() {
+    clearInterval(clockTimer);
+    clockTimer = setInterval(clockTick, 700);
+  }
+  var clockTimer = null;
+  restartClockTimer();
+
+  drawClock();
+  updateClockUI();
+
+  /* ============================================================
+     5. 仪器 01 · 归一化累积器
+     ============================================================ */
+
+  var accCanvas = document.getElementById('accCanvas');
+  var rhoRange = document.getElementById('rhoRange');
+  var wRange = document.getElementById('wRange');
+  var rhoVal = document.getElementById('rhoVal');
+  var wVal = document.getElementById('wVal');
+  var accN = document.getElementById('accN');
+  var accA = document.getElementById('accA');
+
+  function drawAcc() {
+    var d = ensureCanvas(accCanvas);
+    var ctx = d.ctx;
+    var w = d.w;
+    var h = d.h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    var rho = parseFloat(rhoRange.value);
+    var wgt = parseFloat(wRange.value);
+    var series = [];
+    var N = 0;
+    var maxN = 0;
+    for (var t = 1; t <= 60; t++) {
+      if (t === 30) N = 0;
+      N = rho * N + wgt;
+      series.push({ t: t, N: N, a: wgt / N });
+      if (N > maxN) maxN = N;
+    }
+
+    var steadyN = rho < 0.999 ? wgt / (1 - rho) : wgt * 60;
+    var steadyA = rho < 0.999 ? 1 - rho : 0;
+    rhoVal.textContent = rho.toFixed(2);
+    wVal.textContent = wgt.toFixed(2);
+    accN.textContent = steadyN.toFixed(2);
+    accA.textContent = steadyA.toFixed(2);
+
+    var left = 54;
+    var right = 48;
+    var top = 40;
+    var bottom = 44;
+    var pw = w - left - right;
+    var ph = h - top - bottom;
+    var yMax = Math.max(2, steadyN * 1.18, maxN * 1.08);
+    yMax = Math.min(yMax, 80);
+
+    function x(t) { return left + (t - 1) / 59 * pw; }
+    function yN(v) { return top + ph - Math.min(v, yMax) / yMax * ph; }
+    function yA(v) { return top + ph - v * ph; }
+
+    /* 网格 */
+    for (var g = 0; g <= 4; g++) {
+      var yy = top + g / 4 * ph;
+      line(ctx, left, yy, left + pw, yy, C.line);
+      var nv = yMax * (1 - g / 4);
+      mono(ctx, nv.toFixed(nv >= 10 ? 0 : 1), left - 8, yy, C.ink3, 10.5, 'right');
+      mono(ctx, (1 - g / 4).toFixed(2), left + pw + 8, yy, C.ink3, 10.5);
+    }
+    for (var gx = 0; gx <= 6; gx++) {
+      var xx = left + gx / 6 * pw;
+      line(ctx, xx, top, xx, top + ph, C.line);
+      mono(ctx, String(1 + gx * 10), xx, top + ph + 14, C.ink3, 10.5, 'center');
+    }
+
+    mono(ctx, 'N', 16, top + 10, C.cyan, 11.5);
+    mono(ctx, 'α', w - 18, top + 10, C.amber, 11.5, 'right');
+    cn(ctx, '帧', left + pw / 2, h - 14, C.ink3, 11.5, 'center');
+
+    /* reset */
+    line(ctx, x(30), top, x(30), top + ph, C.rose, 1, [4, 4]);
+    mono(ctx, 'reset', x(30) + 5, top + 8, C.rose, 10.5);
+
+    /* N 曲线 */
+    ctx.beginPath();
+    series.forEach(function (p, i) {
+      var xx = x(p.t);
+      var yy = yN(p.N);
+      if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    });
+    ctx.strokeStyle = C.cyan;
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([]);
+    ctx.stroke();
+
+    /* α 曲线 */
+    ctx.beginPath();
+    series.forEach(function (p, i) {
+      var xx = x(p.t);
+      var yy = yA(p.a);
+      if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    });
+    ctx.strokeStyle = C.amber;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([3, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* 图例 */
+    mono(ctx, '— N', left + 8, top + 14, C.cyan, 10.5);
+    mono(ctx, '-- α', left + 52, top + 14, C.amber, 10.5);
+    mono(ctx, '稳态 N = w/(1−ρ)', left + pw - 8, top + 14, C.ink3, 10.5, 'right');
+  }
+
+  rhoRange.addEventListener('input', drawAcc);
+  wRange.addEventListener('input', drawAcc);
+  drawAcc();
+
+  /* ============================================================
+     6. 仪器 02 · copy cost 与最优 α
+     ============================================================ */
+
+  var lossCanvas = document.getElementById('lossCanvas');
+  var lambdaRange = document.getElementById('lambdaRange');
+  var lambdaVal = document.getElementById('lambdaVal');
+  var copySel = document.getElementById('copySel');
+  var optAlpha = document.getElementById('optAlpha');
+  var optState = document.getElementById('optState');
+
+  var LOSS = { sigma: 0.05, hist: 0.12, d: 0.40 };
+
+  function lossAt(a, lambda, c) {
+    var rec = Math.pow(a * LOSS.sigma, 2) + Math.pow((1 - a) * LOSS.hist, 2);
+    var temp = lambda * Math.abs(a * LOSS.d - c);
+    return { rec: rec, temp: temp, total: rec + temp };
+  }
+
+  function drawLoss() {
+    var d = ensureCanvas(lossCanvas);
+    var ctx = d.ctx;
+    var w = d.w;
+    var h = d.h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    var lambda = parseFloat(lambdaRange.value);
+    var c = parseFloat(copySel.value);
+    lambdaVal.textContent = lambda.toFixed(2);
+
+    var pts = [];
+    var best = 0;
+    var bestTotal = Infinity;
+    var maxTotal = 0;
+    for (var i = 0; i <= 200; i++) {
+      var a = i / 200;
+      var l = lossAt(a, lambda, c);
+      pts.push({ a: a, rec: l.rec, temp: l.temp, total: l.total });
+      if (l.total < bestTotal) { bestTotal = l.total; best = a; }
+      if (l.total > maxTotal) maxTotal = l.total;
+    }
+
+    var left = 54;
+    var right = 30;
+    var top = 38;
+    var bottom = 44;
+    var pw = w - left - right;
+    var ph = h - top - bottom;
+    var yMax = Math.max(0.008, maxTotal * 1.12);
+    yMax = Math.min(yMax, 0.16);
+
+    function x(a) { return left + a * pw; }
+    function y(v) { return top + ph - Math.min(v, yMax) / yMax * ph; }
+
+    /* 冻结区 */
+    ctx.fillStyle = 'rgba(255,111,145,.07)';
+    ctx.fillRect(x(0), top, x(0.05) - x(0), ph);
+    var freezeLabelX = x(0.05) + 8;
+    mono(ctx, '冻结区', freezeLabelX, top + 30, C.rose, 10.5);
+    mono(ctx, 'α < 0.05', freezeLabelX, top + 42, C.rose, 9.5);
+
+    for (var g = 0; g <= 4; g++) {
+      var yy = top + g / 4 * ph;
+      line(ctx, left, yy, left + pw, yy, C.line);
+      mono(ctx, (yMax * (1 - g / 4)).toFixed(3), left - 8, yy, C.ink3, 10.5, 'right');
+    }
+    for (var gx = 0; gx <= 4; gx++) {
+      var xx = left + gx / 4 * pw;
+      line(ctx, xx, top, xx, top + ph, C.line);
+      mono(ctx, (gx / 4).toFixed(2), xx, top + ph + 14, C.ink3, 10.5, 'center');
+    }
+    cn(ctx, '新样本占比 α', left + pw / 2, h - 14, C.ink3, 11.5, 'center');
+    mono(ctx, 'L', 18, top + 10, C.ink2, 11.5);
+
+    function plot(key, color, width, dash) {
+      ctx.beginPath();
+      pts.forEach(function (p, i) {
+        var xx = x(p.a);
+        var yy = y(p[key]);
+        if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash || []);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    plot('total', C.rose, 2.1);
+    plot('rec', C.cyan, 1.2, [4, 4]);
+    plot('temp', C.amber, 1.2, [2, 4]);
+
+    /* 最优点 */
+    line(ctx, x(best), top, x(best), top + ph, C.ice, 1, [2, 4]);
+    ctx.fillStyle = C.ice;
+    ctx.beginPath();
+    ctx.arc(x(best), y(bestTotal), 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    mono(ctx, 'α* = ' + fmt(best, 3), Math.min(x(best) + 8, left + pw - 4), top + ph - 12, C.ice, 10.5, best > 0.7 ? 'right' : 'left');
+
+    /* 图例 */
+    mono(ctx, '— 总损失', left + 8, top + 12, C.rose, 10.5);
+    mono(ctx, '-- 重建项', left + 76, top + 12, C.cyan, 10.5);
+    mono(ctx, '-- 时序项', left + 148, top + 12, C.amber, 10.5);
+
+    optAlpha.textContent = fmt(best, 3);
+    var state = best < 0.06 ? '冻结 / 近冻结' : (best < 0.85 ? '部分累积' : '持续累积');
+    optState.textContent = state;
+    optState.classList.toggle('rose', best < 0.06);
+    optState.classList.toggle('amber', best >= 0.06 && best < 0.85);
+    optState.classList.toggle('cyan', best >= 0.85);
+  }
+
+  lambdaRange.addEventListener('input', drawLoss);
+  copySel.addEventListener('change', drawLoss);
+  drawLoss();
+
+  /* ============================================================
+     7. 仪器 03 · 两套晶格
+     ============================================================ */
+
+  var latticeCanvas = document.getElementById('latticeCanvas');
+  var phaseRange = document.getElementById('phaseRange');
+  var phaseVal = document.getElementById('phaseVal');
+  var warpSel = document.getElementById('warpSel');
+  var deltaO = document.getElementById('deltaO');
+  var misalign = document.getElementById('misalign');
+  var playPhase = document.getElementById('playPhase');
+
+  var phase = 5;
+  var prevPhase = 5;
+  var phaseTimer = null;
+
+  function jitter(i) {
+    var gx = i % 4;
+    var gy = Math.floor(i / 4);
+    return { x: (gx + 0.5) / 4 - 0.5, y: (gy + 0.5) / 4 - 0.5 };
+  }
+
+  function drawLattice() {
+    var d = ensureCanvas(latticeCanvas);
+    var ctx = d.ctx;
+    var w = d.w;
+    var h = d.h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    var gap = 34;
+    var cell = Math.max(8, Math.min(27, (w - 64 - gap) / 14, (h - 132) / 6));
+    var cols = 7;
+    var rows = 6;
+    var gw = cols * cell;
+    var gh = rows * cell;
+    var total = 14 * cell + gap;
+    var leftX = Math.max(20, (w - total) / 2);
+    var top = Math.max(64, (h - (gh + 84)) / 2);
+    var leftOrigin = { x: leftX, y: top };
+    var rightOrigin = { x: leftX + 7 * cell + gap, y: top };
+
+    var cur = jitter(phase);
+    var prev = jitter(prevPhase);
+    var o = { x: cur.x, y: -cur.y };
+    var oPrev = { x: prev.x, y: -prev.y };
+    var delta = { x: o.x - oPrev.x, y: o.y - oPrev.y };
+    var jScale = cell * 1.25;
+    var m = { x: 1.1, y: 0.55 };
+
+    cn(ctx, '输出晶格 · 固定', leftOrigin.x, 34, C.ink2, 12);
+    mono(ctx, 'history warp · m_t', leftOrigin.x, 52, C.ink3, 10.5);
+    cn(ctx, '样本晶格 · 随抖动移动', rightOrigin.x, 34, C.ink2, 12);
+    mono(ctx, 'sample warp · m̃_t', rightOrigin.x, 52, C.ink3, 10.5);
+
+    function grid(ox, oy, highlight, color) {
+      rect(ctx, ox, oy, gw, gh, 'rgba(255,255,255,.012)', C.line2, 1, 2);
+      for (var i = 1; i < cols; i++) line(ctx, ox + i * cell, oy, ox + i * cell, oy + gh, C.line);
+      for (var j = 1; j < rows; j++) line(ctx, ox, oy + j * cell, ox + gw, oy + j * cell, C.line);
+      if (highlight) {
+        rect(ctx, ox + 3 * cell, oy + 3 * cell, cell, cell, 'rgba(88,226,214,.10)', color || C.cyan, 1.2, 1);
+      }
+    }
+
+    /* 左：输出晶格 */
+    grid(leftOrigin.x, leftOrigin.y, true, C.cyan);
+    var lc = { x: leftOrigin.x + 3.5 * cell, y: leftOrigin.y + 3.5 * cell };
+    var lghost = { x: lc.x + m.x * cell, y: lc.y + m.y * cell };
+    arrow(ctx, lc.x, lc.y, lghost.x, lghost.y, C.cyan, 1.2);
+    dashRect(ctx, lghost.x - cell / 2, lghost.y - cell / 2, cell, cell, C.cyan, 1.2);
+    mono(ctx, 'm_t', (lc.x + lghost.x) / 2 + 6, (lc.y + lghost.y) / 2 - 8, C.cyan, 10.5);
+    mono(ctx, 'R_t[ŷ]', lghost.x + cell / 2 + 4, lghost.y, C.ink3, 10.5);
+    cn(ctx, '历史在固定输出坐标上', leftOrigin.x, top + gh + 20, C.ink3, 11.5);
+
+    /* 右：样本晶格 */
+    var ro = { x: rightOrigin.x + o.x * jScale, y: rightOrigin.y + o.y * jScale };
+    grid(ro.x, ro.y, true, C.cyan);
+    var rc = { x: ro.x + 3.5 * cell, y: ro.y + 3.5 * cell };
+    var correctGhost = { x: rc.x + (m.x + delta.x) * cell, y: rc.y + (m.y + delta.y) * cell };
+    var wrongGhost = { x: rc.x + m.x * cell, y: rc.y + m.y * cell };
+    var useCorrect = warpSel.value === 'correct';
+
+    /* 正确位置始终画出（淡） */
+    dashRect(ctx, correctGhost.x - cell / 2, correctGhost.y - cell / 2, cell, cell, C.cyan, 1.1);
+    if (!useCorrect) {
+      dashRect(ctx, wrongGhost.x - cell / 2, wrongGhost.y - cell / 2, cell, cell, C.rose, 1.3);
+      arrow(ctx, rc.x, rc.y, wrongGhost.x, wrongGhost.y, C.rose, 1.2);
+      mono(ctx, 'm_t', (rc.x + wrongGhost.x) / 2 + 6, (rc.y + wrongGhost.y) / 2 - 8, C.rose, 10.5);
+      mono(ctx, '错位', wrongGhost.x + cell / 2 + 4, wrongGhost.y, C.rose, 10.5);
+    } else {
+      arrow(ctx, rc.x, rc.y, correctGhost.x, correctGhost.y, C.cyan, 1.2);
+      mono(ctx, 'm̃_t', (rc.x + correctGhost.x) / 2 + 6, (rc.y + correctGhost.y) / 2 - 8, C.cyan, 10.5);
+      mono(ctx, '对齐', correctGhost.x + cell / 2 + 4, correctGhost.y, C.cyan, 10.5);
+    }
+
+    /* 抖动相位条 */
+    var barY = top + gh + 30;
+    var bw = gw / 16;
+    for (var q = 0; q < 16; q++) {
+      var on = q === phase;
+      ctx.fillStyle = on ? C.amber : C.line;
+      ctx.globalAlpha = on ? 0.95 : 0.55;
+      ctx.fillRect(rightOrigin.x + q * bw + 1, barY, Math.max(1, bw - 2), 5);
+    }
+    ctx.globalAlpha = 1;
+    mono(ctx, '16 个抖动相位', rightOrigin.x, barY + 16, C.ink3, 10.5);
+    mono(ctx, 'current ' + (phase + 1), rightOrigin.x + gw, barY + 16, C.ink3, 10.5, 'right');
+
+    /* 读数 */
+    var dx = delta.x;
+    var dy = delta.y;
+    var mag = Math.sqrt(dx * dx + dy * dy);
+    deltaO.textContent = dx.toFixed(3) + ', ' + dy.toFixed(3);
+    misalign.textContent = (mag * 4).toFixed(2) + ' px';
+    misalign.classList.toggle('rose', mag > 0.01);
+    misalign.classList.toggle('cyan', mag <= 0.01);
+    phaseVal.textContent = (phase + 1) + ' / 16';
+  }
+
+  phaseRange.addEventListener('input', function () {
+    prevPhase = phase;
+    phase = parseInt(phaseRange.value, 10);
+    drawLattice();
+  });
+
+  warpSel.addEventListener('change', drawLattice);
+
+  playPhase.addEventListener('click', function () {
+    var playing = playPhase.getAttribute('aria-pressed') === 'true';
+    if (playing) {
+      clearInterval(phaseTimer);
+      phaseTimer = null;
+      playPhase.setAttribute('aria-pressed', 'false');
+      playPhase.textContent = '播放抖动';
+      return;
+    }
+    playPhase.setAttribute('aria-pressed', 'true');
+    playPhase.textContent = '暂停抖动';
+    phaseTimer = setInterval(function () {
+      if (document.hidden) return;
+      prevPhase = phase;
+      phase = (phase + 1) % 16;
+      phaseRange.value = String(phase);
+      drawLattice();
+    }, 620);
+  });
+
+  drawLattice();
+
+  document.addEventListener('technotes:theme', function () {
+    drawClock();
+    drawAcc();
+    drawLoss();
+    drawLattice();
+  });
+
+  /* ============================================================
+     8. 尺寸变化时重绘
+     ============================================================ */
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      drawClock();
+      drawAcc();
+      drawLoss();
+      drawLattice();
+    }, 160);
+  });
+
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNGY2YjRhIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSI0LjUiIHk9IjguNSIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiByeD0iMS44Ii8+PHBhdGggZD0iTTguNSA0LjVoOS4yYTEuOCAxLjggMCAwIDEgMS44IDEuOHY5LjIiLz48L2c+PC9zdmc+";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTliOThlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSI0LjUiIHk9IjguNSIgd2lkdGg9IjExIiBoZWlnaHQ9IjExIiByeD0iMS44Ii8+PHBhdGggZD0iTTguNSA0LjVoOS4yYTEuOCAxLjggMCAwIDEgMS44IDEuOHY5LjIiLz48L2c+PC9zdmc+";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

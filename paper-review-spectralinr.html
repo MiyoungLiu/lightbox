@@ -1,0 +1,2943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>论文精读——谱优化的 INR：用 Gabor 激活重建 4D Flow</title>
+<meta name="description" content="Spectral-INR 4D Flow 论文精读：逐受试者无监督 INR、WIRE Gabor 激活、谱偏差网格搜索与 NTK 分析；1.5–2.3 分钟/例、无需配对高分辨率数据。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="论文精读——谱优化的 INR：用 Gabor 激活重建 4D Flow">
+<meta property="og:description" content="Spectral-INR 4D Flow 论文精读：逐受试者无监督 INR、WIRE Gabor 激活、谱偏差网格搜索与 NTK 分析；1.5–2.3 分钟/例、无需配对高分辨率数据。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/paper-review-spectralinr.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/paper-review-spectralinr.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+
+/* ============================================================
+   0. 令牌
+   ============================================================ */
+
+:root {
+  --void: #05070c;
+  --void-2: #090e17;
+  --void-3: #0d1420;
+  --panel: rgba(14, 21, 33, .78);
+  --screen: #080d15;
+  --screen-2: #0c131e;
+  --screen-3: #111b29;
+  --screen-ink: #e8f0fa;
+  --screen-ink-2: #b6c7d9;
+  --screen-ink-3: #8fa3b8;
+  --ink: #e8eef6;
+  --ink-2: #b3c2d3;
+  --ink-3: #8497ac;
+  --rule: #172130;
+  --rule-2: #243246;
+  --ice: #8cc4ff;
+  --cyan: #58e2d6;
+  --teal: #34c9bd;
+  --amber: #ffc266;
+  --rose: #ff6f91;
+  --violet: #b9a1ff;
+  --rose-dim: rgba(255, 111, 145, .12);
+  --cyan-dim: rgba(88, 226, 214, .10);
+  --amber-dim: rgba(255, 194, 102, .10);
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 4px;
+  --max: 1180px;
+  /* 图内配色：深色为默认，浅色主题下由变量切换 */
+  --fig-bg: #0c131e;
+  --fig-bg-deep: #0a111b;
+  --fig-bg-2: #111b29;
+  --fig-bg-3: #08111b;
+  --fig-ink: #e8f0fa;
+  --fig-ink-2: #b6c7d9;
+  --fig-ink-3: #8fa3b8;
+  --fig-muted: #59616e;
+  --fig-line: #243246;
+  --fig-line-2: #1b2a3d;
+  --fig-line-3: #2d4058;
+  --fig-cyan: #58e2d6;
+  --fig-blue: #8cc4ff;
+  --fig-amber: #ffc266;
+  --fig-rose: #ff6f91;
+  --fig-violet: #b9a1ff;
+  --fig-orange: #ff9f6f;
+  --fig-grid: rgba(255,255,255,.012);
+  --fig-tint: rgba(140,196,255,.05);
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --void: #f6f8fb; --void-2: #edf1f6; --void-3: #e4eaf2;
+    --panel: rgba(255,255,255,.82);
+    --ink: #0f1722; --ink-2: #3d4e60; --ink-3: #5d7084;
+    --rule: #dfe6ee; --rule-2: #c9d4e0;
+    --ice: #1b5fc9; --cyan: #0b7d75; --teal: #0a6e67;
+    --amber: #9a5c00; --rose: #b51f45; --violet: #6347c7;
+    --rose-dim: rgba(181,31,69,.07);
+    --cyan-dim: rgba(11,125,117,.07);
+    --amber-dim: rgba(154,92,0,.07);
+    --screen: #f7f9fc;
+    --screen-2: #eef2f8;
+    --screen-3: #e7edf6;
+    --screen-ink: #0f1722;
+    --screen-ink-2: #3d4e60;
+    --screen-ink-3: #5d7084;
+    --fig-bg: #eef2f8;
+    --fig-bg-deep: #f7f9fc;
+    --fig-bg-2: #e7edf6;
+    --fig-bg-3: #f7f9fc;
+    --fig-ink: #0f1722;
+    --fig-ink-2: #3d4e60;
+    --fig-ink-3: #5d7084;
+    --fig-muted: #6b7788;
+    --fig-line: #c9d4e0;
+    --fig-line-2: #dfe6ee;
+    --fig-line-3: #c9d4e0;
+    --fig-cyan: #0b7d75;
+    --fig-blue: #1b5fc9;
+    --fig-amber: #9a5c00;
+    --fig-rose: #b51f45;
+    --fig-violet: #6347c7;
+    --fig-orange: #b45309;
+    --fig-grid: rgba(15,23,34,.03);
+    --fig-tint: rgba(27,95,201,.06);
+  }
+}
+
+[data-theme="light"] {
+  --void: #f6f8fb;
+  --void-2: #edf1f6;
+  --void-3: #e4eaf2;
+  --panel: rgba(255,255,255,.84);
+  --ink: #0f1722;
+  --ink-2: #3d4e60;
+  --ink-3: #5d7084;
+  --rule: #dfe6ee;
+  --rule-2: #c9d4e0;
+  --ice: #1b5fc9;
+  --cyan: #0b7d75;
+  --teal: #0a6e67;
+  --amber: #9a5c00;
+  --rose: #b51f45;
+  --violet: #6347c7;
+  --rose-dim: rgba(181,31,69,.07);
+  --cyan-dim: rgba(11,125,117,.07);
+  --amber-dim: rgba(154,92,0,.07);
+  --screen: #f7f9fc;
+  --screen-2: #eef2f8;
+  --screen-3: #e7edf6;
+  --screen-ink: #0f1722;
+  --screen-ink-2: #3d4e60;
+  --screen-ink-3: #5d7084;
+  --fig-bg: #eef2f8;
+  --fig-bg-deep: #f7f9fc;
+  --fig-bg-2: #e7edf6;
+  --fig-bg-3: #f7f9fc;
+  --fig-ink: #0f1722;
+  --fig-ink-2: #3d4e60;
+  --fig-ink-3: #5d7084;
+  --fig-muted: #6b7788;
+  --fig-line: #c9d4e0;
+  --fig-line-2: #dfe6ee;
+  --fig-line-3: #c9d4e0;
+  --fig-cyan: #0b7d75;
+  --fig-blue: #1b5fc9;
+  --fig-amber: #9a5c00;
+  --fig-rose: #b51f45;
+  --fig-violet: #6347c7;
+  --fig-orange: #b45309;
+  --fig-grid: rgba(15,23,34,.03);
+  --fig-tint: rgba(27,95,201,.06);
+}
+
+/* 浅色主题：仪器、首屏实验台与图框不再保持暗底 */
+:is([data-theme="light"], .is-light) .instrument-head {
+  border-bottom-color: rgba(15,23,34,.10);
+  background: rgba(15,23,34,.02);
+}
+:is([data-theme="light"], .is-light) .instrument canvas {
+  border-color: rgba(15,23,34,.10);
+  background: #f7f9fc;
+}
+:is([data-theme="light"], .is-light) #clockCanvas { background: #f7f9fc; }
+:is([data-theme="light"], .is-light) .hero-lab {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.97), rgba(238,242,248,.99)),
+    var(--screen);
+  box-shadow: 0 24px 60px rgba(15,23,34,.10), inset 0 1px 0 rgba(255,255,255,.85);
+}
+:is([data-theme="light"], .is-light) .lab-readout {
+  background: rgba(15,23,34,.08);
+  border-color: rgba(15,23,34,.10);
+}
+:is([data-theme="light"], .is-light) .lab-readout > div { background: #eef2f8; }
+:is([data-theme="light"], .is-light) .readout {
+  background: rgba(15,23,34,.10);
+  border-color: rgba(15,23,34,.12);
+}
+:is([data-theme="light"], .is-light) .ctl select { border-color: rgba(15,23,34,.16); }
+:is([data-theme="light"], .is-light) .btn {
+  color: var(--screen-ink-2);
+  background: rgba(15,23,34,.03);
+  border-color: rgba(15,23,34,.16);
+}
+:is([data-theme="light"], .is-light) .btn:hover {
+  color: var(--screen-ink);
+  border-color: rgba(15,23,34,.32);
+}
+:is([data-theme="light"], .is-light) .btn[aria-pressed="true"] {
+  color: #fff;
+  background: var(--rose);
+  border-color: var(--rose);
+}
+:is([data-theme="light"], .is-light) .arch-node:hover rect,
+:is([data-theme="light"], .is-light) .arch-node:focus rect,
+:is([data-theme="light"], .is-light) .arch-node.is-active rect {
+  fill: #dce9fb !important;
+}
+
+/* 图内 SVG 的硬编码配色跟随主题 */
+figure svg [fill="#0c131e"] { fill: var(--fig-bg); }
+figure svg [fill="#0a111b"] { fill: var(--fig-bg-deep); }
+figure svg [fill="#111b29"] { fill: var(--fig-bg-2); }
+figure svg [fill="#08111b"] { fill: var(--fig-bg-3); }
+figure svg [fill="#e8f0fa"] { fill: var(--fig-ink); }
+figure svg [fill="#b6c7d9"] { fill: var(--fig-ink-2); }
+figure svg [fill="#8fa3b8"] { fill: var(--fig-ink-3); }
+figure svg [fill="#59616e"] { fill: var(--fig-muted); }
+figure svg [fill="#58e2d6"] { fill: var(--fig-cyan); }
+figure svg [stroke="#58e2d6"] { stroke: var(--fig-cyan); }
+figure svg [fill="#8cc4ff"] { fill: var(--fig-blue); }
+figure svg [stroke="#8cc4ff"] { stroke: var(--fig-blue); }
+figure svg [fill="#ffc266"] { fill: var(--fig-amber); }
+figure svg [stroke="#ffc266"] { stroke: var(--fig-amber); }
+figure svg [fill="#ff6f91"] { fill: var(--fig-rose); }
+figure svg [stroke="#ff6f91"] { stroke: var(--fig-rose); }
+figure svg [fill="#b9a1ff"] { fill: var(--fig-violet); }
+figure svg [stroke="#b9a1ff"] { stroke: var(--fig-violet); }
+figure svg [fill="#ff9f6f"] { fill: var(--fig-orange); }
+figure svg [stroke="#ff9f6f"] { stroke: var(--fig-orange); }
+figure svg [stroke="#243246"] { stroke: var(--fig-line); }
+figure svg [stroke="#1b2a3d"] { stroke: var(--fig-line-2); }
+figure svg [stroke="#2d4058"] { stroke: var(--fig-line-3); }
+figure svg [stroke="#8fa3b8"] { stroke: var(--fig-ink-3); }
+figure svg [fill="rgba(255,255,255,.012)"] { fill: var(--fig-grid); }
+figure svg [fill="rgba(140,196,255,.05)"] { fill: var(--fig-tint); }
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   1. 底纹
+   ============================================================ */
+
+.glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 520px at 8% -8%, rgba(140, 196, 255, .12), transparent 62%),
+    radial-gradient(760px 520px at 96% 2%, rgba(255, 111, 145, .07), transparent 60%),
+    radial-gradient(900px 700px at 50% 110%, rgba(88, 226, 214, .06), transparent 65%);
+}
+
+.glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] .glow { opacity: .55; }
+
+/* 一层很淡的“时间刻度” */
+.tick-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    linear-gradient(90deg, transparent 0 49.7%, rgba(140,196,255,.055) 49.7% 50%, transparent 50% 100%),
+    linear-gradient(0deg, transparent 0 49.7%, rgba(140,196,255,.035) 49.7% 50%, transparent 50% 100%);
+  background-size: 25% 100%, 100% 120px;
+  mask-image: linear-gradient(180deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+}
+
+/* ============================================================
+   2. 顶栏
+   ============================================================ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: color-mix(in srgb, var(--void) 84%, transparent);
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar-in {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: block;
+  opacity: .95;
+  transition: opacity .18s;
+}
+
+.brand:hover .brand-mark { opacity: 1; }
+
+.brand-mark .bm-frame {
+  fill: none;
+  stroke: var(--cool-2, var(--cyan, var(--teal, #4fd1c5)));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.brand-mark .bm-slice {
+  stroke: var(--ice, var(--cool, var(--indigo, #8cc4ff)));
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  opacity: .8;
+}
+
+.brand-mark .bm-dot {
+  fill: var(--rose, var(--paper, #ff6f91));
+}
+
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+a.brand:hover { color: var(--ink-2); }
+
+.nav {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-left: 8px;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 7px 9px;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+}
+
+.nav a:hover { color: var(--ink); background: var(--void-3); }
+
+.nav a.active {
+  color: var(--rose);
+  background: var(--rose-dim);
+}
+
+.spacer { flex: 1; }
+
+.theme-btn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  padding: 7px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .18s, border-color .18s;
+}
+
+.theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.progress {
+  position: absolute;
+  left: 0; bottom: -1px;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, var(--ice), var(--cyan) 48%, var(--rose));
+  transition: width .12s linear;
+}
+
+/* ============================================================
+   3. 版面
+   ============================================================ */
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px 110px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 500px;
+  gap: 40px;
+  align-items: center;
+  padding: 74px 0 52px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--rose);
+  margin: 0 0 20px;
+}
+
+.kicker a {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(140,196,255,.32);
+}
+
+.kicker a:hover { border-bottom-color: var(--ice); }
+
+.h1-prefix {
+  display: block;
+  font-family: var(--mono);
+  font-size: clamp(13px, 1.3vw, 17px);
+  line-height: 1.4;
+  letter-spacing: .14em;
+  color: var(--rose);
+  margin-bottom: 12px;
+  font-weight: 400;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(38px, 5.4vw, 68px);
+  line-height: 1.1;
+  letter-spacing: -.018em;
+  margin: 0 0 22px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+h1 em {
+  font-style: normal;
+  display: block;
+  font-size: .47em;
+  line-height: 1.38;
+  letter-spacing: .005em;
+  margin-top: 14px;
+  background: linear-gradient(96deg, var(--ice), var(--cyan) 54%, var(--rose));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 500;
+}
+
+.lede {
+  font-size: 17.5px;
+  line-height: 1.86;
+  color: var(--ink-2);
+  max-width: 640px;
+  margin: 0 0 10px;
+}
+
+.lede b { color: var(--ink); font-weight: 600; }
+
+.byline {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  line-height: 1.7;
+}
+
+.byline span::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--rule-2);
+}
+
+.byline span:first-child::before { content: ""; margin: 0; }
+
+/* 右侧实时仪器 */
+
+.hero-lab {
+  position: relative;
+  border: 1px solid var(--rule-2);
+  border-radius: 6px;
+  background:
+    linear-gradient(155deg, rgba(20, 32, 48, .92), rgba(6, 10, 17, .96)),
+    var(--screen);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255,255,255,.05);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.hero-lab::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, transparent 35%, rgba(140,196,255,.055) 49.7%, transparent 50.3%),
+    linear-gradient(300deg, transparent 35%, rgba(255,111,145,.045) 49.7%, transparent 50.3%);
+}
+
+.lab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--screen-ink-2);
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cyan);
+}
+
+.live.frozen { color: var(--rose); }
+
+.live.frozen::before {
+  background: var(--rose);
+  box-shadow: 0 0 0 3px rgba(255,111,145,.12);
+}
+
+.live::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(88,226,214,.12);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+#clockCanvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  border-radius: 3px;
+  background: #070b12;
+  position: relative;
+  z-index: 1;
+}
+
+.lab-readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.07);
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.lab-readout > div {
+  background: #0a1019;
+  padding: 9px 10px;
+}
+
+.lab-readout .k {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.lab-readout .v {
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--screen-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lab-readout .v.rose { color: var(--rose); }
+.lab-readout .v.cyan { color: var(--cyan); }
+
+.lab-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.btn {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--screen-ink-2);
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 3px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.btn:hover { color: var(--screen-ink); border-color: rgba(255,255,255,.3); }
+
+.btn[aria-pressed="true"] {
+  color: #1a0a10;
+  background: var(--rose);
+  border-color: var(--rose);
+}
+
+.btn:focus-visible, .theme-btn:focus-visible, .nav a:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.lab-note {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--screen-ink-2);
+  margin: 10px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.lab-note b { color: var(--screen-ink-2); font-weight: 600; }
+.scroll-hint { display: none; }
+
+/* 论文卡片 */
+
+.paper-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 34px;
+  margin: 30px 0 0;
+  padding: 24px 26px;
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--rose);
+  border-radius: 0 var(--r) var(--r) 0;
+  background: var(--panel);
+}
+
+.paper-card h2 {
+  font-family: var(--serif);
+  font-size: 21px;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.paper-card h2 a { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
+.paper-card h2 a:hover { border-bottom-color: var(--rule-2); }
+
+.paper-card .sub {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.paper-card .why {
+  font-size: 14px;
+  line-height: 1.78;
+  color: var(--ink-2);
+  margin: 12px 0 0;
+}
+
+.paper-card .why b { color: var(--ink); }
+
+.paper-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.paper-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .03em;
+  color: var(--ice);
+  text-decoration: none;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  padding: 7px 10px;
+  transition: border-color .18s, background .18s;
+}
+
+.paper-link:hover {
+  border-color: var(--ice);
+  background: var(--cyan-dim);
+}
+
+.kv {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.kv div {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kv div:last-child { border-bottom: 0; }
+
+.kv dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+
+.kv dd { margin: 0; color: var(--ink-2); }
+.kv dd b { color: var(--ink); font-weight: 600; }
+.kv a { color: var(--ice); text-decoration: none; border-bottom: 1px solid rgba(140,196,255,.25); }
+.kv a:hover { border-bottom-color: var(--ice); }
+
+/* 章节 */
+
+section { padding: 62px 0 8px; border-bottom: 1px solid var(--rule); scroll-margin-top: 72px; }
+section:last-of-type { border-bottom: 0; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--rose);
+  letter-spacing: .12em;
+  flex: none;
+  padding-top: 6px;
+}
+
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(24px, 2.7vw, 32px);
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+
+.dek {
+  color: var(--ink-3);
+  font-size: 14.5px;
+  margin: 0 0 30px;
+}
+
+.paper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1132px;
+  align-items: start;
+}
+
+.paper > * { grid-column: 1; }
+.paper > .mnote { grid-column: 1; }
+.paper > .wide { grid-column: 1 / -1; }
+
+.overview-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  column-gap: 44px;
+  align-items: start;
+  margin: 26px 0;
+}
+
+.overview-grid .stats { margin: 0; }
+.overview-grid .mnote { margin: 0; }
+
+h3 {
+  font-size: 16.5px;
+  letter-spacing: .01em;
+  margin: 32px 0 10px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+p { margin: 0 0 15px; color: var(--ink-2); }
+p b, p strong { color: var(--ink); font-weight: 600; }
+
+a.inline {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(140,196,255,.3);
+}
+
+a.inline:hover { border-bottom-color: var(--ice); }
+
+sup.cite {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--rose);
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+sup.cite a { color: inherit; text-decoration: none; }
+
+/* 边注 */
+
+.mnote {
+  font-size: 12.5px;
+  line-height: 1.72;
+  color: var(--ink-3);
+  border-left: 1px solid var(--rule-2);
+  padding: 2px 0 2px 14px;
+  margin: 6px 0 18px;
+}
+
+.mnote b { color: var(--ink-2); font-weight: 600; }
+
+.mnote .tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--rose);
+  margin-bottom: 5px;
+}
+
+/* ============================================================
+   4. 组件
+   ============================================================ */
+
+.callout {
+  border: 1px solid var(--rule-2);
+  border-left: 2px solid var(--cyan);
+  background: var(--panel);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 16px 20px;
+  margin: 24px 0;
+}
+
+.callout .tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.callout p { margin: 0; font-size: 14.5px; }
+.callout p + p { margin-top: 9px; }
+
+.callout.warn { border-left-color: var(--rose); }
+.callout.warn .tag { color: var(--rose); }
+
+.callout.amber { border-left-color: var(--amber); }
+.callout.amber .tag { color: var(--amber); }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 26px 0;
+}
+
+.stat {
+  background: var(--void-2);
+  padding: 17px 18px;
+}
+
+.stat .n {
+  font-family: var(--mono);
+  font-size: 25px;
+  color: var(--ink);
+  line-height: 1.15;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat .n small { font-size: 12px; color: var(--ink-3); margin-left: 2px; letter-spacing: 0; }
+.stat .l { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; line-height: 1.55; }
+.stat .l b { color: var(--ink-2); font-weight: 600; }
+
+.tbl-wrap { overflow-x: auto; margin: 22px 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 540px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 14px 10px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  color: var(--ink-2);
+}
+
+th {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 400;
+  border-bottom-color: var(--rule-2);
+}
+
+td b { color: var(--ink); }
+
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .94em; }
+
+ol.quick {
+  list-style: none;
+  counter-reset: q;
+  margin: 22px 0 26px;
+  padding: 0;
+}
+
+ol.quick > li {
+  counter-increment: q;
+  position: relative;
+  padding: 2px 0 2px 38px;
+  margin-bottom: 15px;
+  font-size: 14.5px;
+  line-height: 1.78;
+  color: var(--ink-2);
+}
+
+ol.quick > li::before {
+  content: counter(q, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--rose);
+  letter-spacing: .06em;
+}
+
+ol.quick > li b { color: var(--ink); font-weight: 600; }
+
+ul.dot {
+  list-style: none;
+  margin: 18px 0 22px;
+  padding: 0;
+}
+
+ul.dot li {
+  position: relative;
+  padding-left: 17px;
+  margin-bottom: 8px;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+
+ul.dot li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .72em;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--rose);
+  opacity: .7;
+}
+
+ul.dot li b { color: var(--ink); font-weight: 600; }
+
+/* 公式 */
+
+.eq {
+  margin: 26px 0;
+  padding: 19px 22px;
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--ice);
+  background: var(--void-2);
+  border-radius: 0 4px 4px 0;
+  font-family: var(--mono);
+  font-size: 14.5px;
+  line-height: 2.05;
+  overflow-x: auto;
+  color: var(--ink);
+}
+
+.eq .lbl {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.eq i { font-style: normal; color: var(--ice); }
+.eq .sub { font-size: .72em; vertical-align: -.22em; }
+.eq .sup { font-size: .72em; vertical-align: .42em; }
+.eq small {
+  display: block;
+  margin-top: 11px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+.eq small b { color: var(--ink); }
+.eq .var { color: var(--ice); }
+
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: -.5em;
+  text-align: center;
+  margin: 0 .18em;
+  font-size: .82em;
+  line-height: 1.3;
+}
+
+.frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 .22em; }
+
+/* 图 */
+
+figure { margin: 28px 0; }
+
+.fig-frame {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  padding: 18px;
+  overflow-x: auto;
+}
+
+figure svg { display: block; width: 100%; height: auto; min-width: 520px; }
+
+figcaption {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+figcaption b { color: var(--ink-2); font-weight: 600; }
+
+/* 屏幕面板（浅色主题下同步换浅底） */
+
+.instrument {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  color: var(--screen-ink);
+  margin: 28px 0;
+  overflow: hidden;
+}
+
+.instrument-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+}
+
+.instrument-head .t {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.instrument-head .s {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  color: var(--screen-ink-3);
+}
+
+.instrument-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, .75fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.instrument-body.single { grid-template-columns: 1fr; }
+
+.instrument canvas {
+  display: block;
+  width: 100%;
+  background: #070b12;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 3px;
+}
+
+.instrument .side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ctl {
+  display: grid;
+  gap: 6px;
+}
+
+.ctl label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .07em;
+  color: var(--screen-ink-3);
+}
+
+.ctl label b {
+  color: var(--screen-ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.ctl input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan);
+  height: 18px;
+  cursor: pointer;
+}
+
+.ctl select {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--screen-ink);
+  background: var(--screen-3);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 3px;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.07);
+}
+
+.readout > div {
+  background: var(--screen-2);
+  padding: 9px 10px;
+}
+
+.readout .k {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-3);
+}
+
+.readout .v {
+  font-family: var(--mono);
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--screen-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout .v.cyan { color: var(--cyan); }
+.readout .v.rose { color: var(--rose); }
+.readout .v.amber { color: var(--amber); }
+
+.inst-note {
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--screen-ink-3);
+  margin: 0;
+}
+
+/* 架构图交互 */
+
+.arch-node { cursor: pointer; }
+.arch-node rect { transition: stroke .18s, fill .18s; }
+.arch-node:hover rect, .arch-node:focus rect {
+  stroke: var(--cyan) !important;
+  fill: #13243a !important;
+}
+.arch-node.is-active rect {
+  stroke: var(--cyan) !important;
+  fill: #13243a !important;
+}
+.arch-node:focus { outline: none; }
+
+.arch-detail {
+  border: 1px solid var(--rule-2);
+  border-left: 2px solid var(--cyan);
+  background: var(--panel);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 13px 17px;
+  margin: 0 0 24px;
+  min-height: 72px;
+}
+
+.arch-detail .tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.arch-detail p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.arch-detail b { color: var(--ink); }
+
+.inst-note b { color: var(--screen-ink-2); font-weight: 600; }
+
+/* 指标仪表盘 */
+
+.metric-dash {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 24px 0;
+}
+
+.metric {
+  background: var(--void-2);
+  padding: 15px 16px;
+}
+
+.metric .k {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.metric .v {
+  font-family: var(--mono);
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+}
+
+.metric .v small {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.metric .d {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  margin-top: 3px;
+}
+
+.metric .d.bad { color: var(--rose); }
+.metric .d.good { color: var(--cyan); }
+.metric .d.neutral { color: var(--amber); }
+
+.metric .bar {
+  height: 3px;
+  background: var(--rule);
+  margin-top: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.metric .bar i {
+  display: block;
+  height: 100%;
+  background: var(--rose);
+  border-radius: 2px;
+}
+
+.metric .bar i.cyan { background: var(--cyan); }
+.metric .bar i.amber { background: var(--amber); }
+
+/* 四类错误 */
+
+.err-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.err-card {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.err-card summary {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 18px;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.err-card summary::-webkit-details-marker { display: none; }
+
+.err-card summary .no {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--rose);
+  letter-spacing: .06em;
+}
+
+.err-card summary .tt {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.err-card summary .mx {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--amber);
+  white-space: nowrap;
+}
+
+.err-card summary::after {
+  content: "+";
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink-3);
+  grid-column: 4;
+  margin-left: 4px;
+}
+
+.err-card[open] summary::after { content: "−"; }
+
+.err-card .body {
+  padding: 0 14px 14px 58px;
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+
+.err-card .body p { font-size: 13px; margin: 0 0 8px; }
+.err-card .body .fix {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--cyan);
+  border-left: 1px solid var(--cyan);
+  padding-left: 8px;
+  margin-top: 8px;
+}
+
+/* 对照栏 */
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.compare > div {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 15px 17px;
+  background: var(--panel);
+}
+
+.compare h4 {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin: 0 0 9px;
+  color: var(--cyan);
+}
+
+.compare .neg h4 { color: var(--rose); }
+
+.compare ul {
+  margin: 0;
+  padding-left: 15px;
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+
+.compare li { margin-bottom: 6px; }
+.compare li:last-child { margin-bottom: 0; }
+.compare b { color: var(--ink); font-weight: 600; }
+
+/* 清单 */
+
+.checklist {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--void-2);
+  padding: 11px 14px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.check input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  background: var(--void);
+  margin-top: 4px;
+  flex: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.check input:checked {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.check input:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px; top: 0;
+  width: 5px; height: 9px;
+  border: solid #04110f;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.check b { color: var(--ink); font-weight: 600; }
+
+/* 系列 */
+
+.series {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 22px 0;
+}
+
+.series a, .series div.row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--void-2);
+  padding: 12px 15px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.series a:hover { background: var(--void-3); }
+
+.series .no {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.series .tt {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.series .tt small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--rule-2);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.pill.on {
+  color: var(--cyan);
+  border-color: rgba(88,226,214,.35);
+  background: var(--cyan-dim);
+}
+
+.pill.plan {
+  color: var(--amber);
+  border-color: rgba(255,194,102,.3);
+  background: var(--amber-dim);
+}
+
+/* 参考 */
+
+.refs {
+  margin: 18px 0 0;
+  padding-left: 26px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.refs li { margin-bottom: 9px; }
+.refs li:target { background: var(--amber-dim); }
+.refs a { color: var(--ice); text-decoration: none; border-bottom: 1px solid rgba(140,196,255,.25); }
+.refs a:hover { border-bottom-color: var(--ice); }
+.refs .j { color: var(--ink-3); }
+
+/* 页脚 */
+
+.foot {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 30px 24px 40px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 30px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+.foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+.foot a:hover { color: var(--ink); }
+
+/* 渐进显现：JS 可用时才隐藏，JS 失败不影响阅读 */
+
+.js-reveal .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+
+.js-reveal .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .js-reveal .reveal { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   5. 响应式
+   ============================================================ */
+
+@media (max-width: 1020px) {
+  .hero { grid-template-columns: 1fr; gap: 36px; }
+  .hero-lab { max-width: 620px; }
+  .paper-card { grid-template-columns: 1fr; gap: 18px; }
+  .metric-dash { grid-template-columns: 1fr 1fr; }
+  .overview-grid { grid-template-columns: minmax(0, 1fr); row-gap: 18px; }
+  .overview-grid .mnote {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding: 12px 0 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .paper { grid-template-columns: minmax(0, 1fr); column-gap: 0; }
+  .paper > .mnote {
+    grid-column: 1;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding: 12px 0 0;
+    margin: 8px 0 18px;
+  }
+  .paper > .wide { grid-column: 1; }
+  .instrument-body { grid-template-columns: 1fr; }
+  .err-grid { grid-template-columns: 1fr; }
+  .compare { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  body { font-size: 16px; }
+  .wrap { padding: 0 16px 80px; }
+  .topbar-in { padding: 0 16px; height: 52px; gap: 10px; }
+  .brand { font-size: 10px; letter-spacing: .1em; }
+  .nav { margin-left: 0; }
+  .nav a { padding: 6px 7px; font-size: 9.5px; }
+  .hero { padding: 48px 0 36px; }
+  h1 { font-size: clamp(34px, 10vw, 48px); }
+  .lede { font-size: 16px; }
+  .paper-card { padding: 18px; }
+  .sec-head { gap: 10px; }
+  .dek { padding-left: 0; font-size: 13.5px; }
+  .metric-dash { grid-template-columns: 1fr 1fr; }
+  .metric .v { font-size: 18px; }
+  .instrument-body { padding: 12px; gap: 12px; }
+  .instrument-head { padding: 12px 14px; flex-wrap: wrap; }
+  .lab-readout .v { font-size: 15px; }
+  .foot { flex-direction: column; gap: 8px; }
+  figure svg { min-width: 460px; }
+}
+
+@media print {
+  .topbar, .glow, .tick-field, .hero-lab, .instrument, .nav { display: none !important; }
+  body { background: #fff; color: #111; }
+  .wrap { max-width: none; padding: 0; }
+  .paper { grid-template-columns: 1fr; }
+  .mnote { grid-column: 1; }
+  a { color: #111; }
+}
+
+.hero-sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin-top: 10px;
+  position: relative;
+  z-index: 1;
+}
+.hero-sliders label {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--screen-ink-2);
+  letter-spacing: .04em;
+}
+.hero-sliders input[type="range"] {
+  width: 100%;
+  margin: 3px 0 0;
+  accent-color: var(--cyan);
+}
+.hero-sliders .v { color: var(--cyan); font-variant-numeric: tabular-nums; }
+.hero-lab canvas { width: 100%; height: auto; display: block; }
+
+.lab-readout .v#sState { font-size: 13px; }
+
+@media (max-width: 760px) {
+  .hero-sliders { grid-template-columns: 1fr; }
+  .hero-lab { overflow-x: auto; }
+  .hero-lab canvas { min-width: 520px; }
+  .scroll-hint { display: inline; color: var(--screen-ink-3); }
+}
+
+</style>
+<style id="layout-contract">
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+  --mnote-rule: var(--line-2, var(--rule-2, var(--line, var(--rule, currentColor))));
+}
+
+.paper { grid-template-columns:minmax(0,1fr); max-width:1132px; }
+.paper > :not(.wide):not(.overview-grid) { max-width:852px; }
+.paper > .wide { max-width:1132px; }
+.paper > .overview-grid { max-width:1132px; }
+.overview-grid {
+  display:grid; grid-template-columns:minmax(0,1fr) 236px;
+  column-gap:44px; align-items:start; max-width:1132px;
+}
+.overview-grid > .stats { margin-bottom:0; }
+.overview-grid > .mnote {
+  align-self:end; margin:0 0 14px; padding:0 0 0 16px;
+  border-left:1.6px dashed var(--mnote-rule); background:transparent;
+}
+@media (max-width:1179px) {
+  .overview-grid { grid-template-columns:1fr; }
+  .overview-grid > .mnote {
+    align-self:auto; margin:18px 0 0; padding:11px 0 0;
+    border-left:0; border-top:1.6px dashed var(--mnote-rule);
+  }
+}
+
+figure.wide > figcaption, .wide > figcaption,
+.wide figure > figcaption { max-width:852px; }
+
+.paper > .stats + p,
+.paper > .cards + p,
+.paper > .papers + p,
+.paper > .err-grid + p,
+.paper > .metric-dash + p,
+.paper > .factor-grid + p,
+.paper > .zones + p,
+.paper > .appliance-grid + p,
+.paper > .meter-grid + p { margin-top:32px; }
+
+.paper > .refs { max-width:852px; columns:1; }
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTliOThlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMy41IDljMi0zLjIgNC0zLjIgNiAwczQgMy4yIDYgMCAzLjItMi44IDUtMi40Ii8+PHBhdGggZD0iTTMuNSAxNS41YzItMy4yIDQtMy4yIDYgMHM0IDMuMiA2IDAgMy4yLTIuOCA1LTIuNCIvPjwvZz48L3N2Zz4=">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+<div class="tick-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="文章目录"></nav>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">主题：深色</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="reveal">
+    <p class="kicker">Paper Review · <a href="https://arxiv.org/abs/2610.33124" target="_blank" rel="noopener">arXiv:2610.33124 ↗</a></p>
+    <h1><span class="h1-prefix">论文精读——</span>谱优化的 INR<em>用 Gabor 激活重建颅内 4D Flow</em></h1>
+    <p class="lede">
+      这篇论文不训练一个通用超分网络。它为每个受试者单独拟合一个坐标式神经场：输入 (x,y,z,t)，数据驱动 INR 输出三个速度分量（PINN 变体额外输出压力 p）；
+      用 WIRE 的 Gabor 激活 <span class="num">sin(ω<sub>0</sub>x)·exp(−(s<sub>0</sub>x)²)</span> 控制谱偏差。
+      在 9 例颅内 4D Flow 上，逐例优化 1.5–2.3 分钟（组均 1.6–1.8），MAE 低于 tricubic 与两个监督 CNN；
+      更有迁移价值的是：在这 9 例上，队列级最优 (ω₀,s₀) 可跨健康/中度/重度 ICAD 共享，平均误差只增 0.41 个百分点（SD 0.60）。
+    </p>
+    <div class="byline">
+      <span>原文 36 页</span>
+      <span>阅读约 20 分钟</span>
+      <span>代码已开源</span>
+      <span>arXiv 预印本</span>
+    </div>
+  </div>
+
+  <aside class="hero-lab reveal" aria-label="谱偏差对 4D Flow 速度场重建的影响">
+    <div class="lab-head">
+      <span><span class="live" id="sLive">INR</span> · spectral bias</span>
+      <span id="sStatus">(ω₀, s₀) = (20, 20)</span>
+    </div>
+    <canvas id="sCanvas" width="520" height="420" aria-label="左侧为含噪声的目标速度场，右侧为当前谱偏差参数下的重建；下方为中心线速度剖面"></canvas>
+    <div class="lab-readout">
+      <div><div class="k">相对误差</div><div class="v cyan" id="sErr">—</div></div>
+      <div><div class="k">k=24 保留</div><div class="v amber" id="sRet">—</div></div>
+      <div><div class="k">状态</div><div class="v" id="sState" style="font-size:13px">—</div></div>
+    </div>
+    <div class="hero-sliders">
+      <label for="sOmega"><span>ω₀ · 振荡频率</span><span class="v" id="sOmegaVal">20</span></label>
+      <label for="sSigma"><span>s₀ · 频带宽度</span><span class="v" id="sSigmaVal">20</span></label>
+      <input id="sOmega" type="range" min="0" max="100" step="5" value="20">
+      <input id="sSigma" type="range" min="5" max="100" step="5" value="20">
+    </div>
+    <p class="lab-note">
+      示意图：目标场由若干低频基座 + 中高频细节 + 少量高频噪声合成；重建按 Gabor 的谱响应 <b>exp(−½((k−ω₀)/s₀)²)</b> 衰减各频率分量。
+      这不是实际训练结果，而是用来建立“ω₀ 选频带、s₀ 选带宽”的直觉。论文数据驱动 INR 的队列最优是 (20,20)。<span class="scroll-hint"> 窄屏可左右滑动查看完整示意图。</span>
+    </p>
+  </aside>
+</section>
+
+<div class="paper-card reveal">
+  <div>
+    <p class="kicker">Paper Review · arXiv:2610.33124</p>
+    <h2><a href="https://arxiv.org/abs/2610.33124" target="_blank" rel="noopener">Spectrally optimized implicit neural representations mitigate acquisition-related image quality trade-offs in intracranial 4D Flow MRI</a></h2>
+    <p class="sub">Oliver Welin Odeback, Nerea González-Aranceta, Sebastián Jofre, et al. · Karolinska Institutet / University of Michigan 等 · arXiv 2026-10-23</p>
+    <p class="why">
+      <b>推荐理由：</b>它把“无配对高分辨率数据”做成了一个可执行的逐例流程：只用当前采集的 LR 数据拟合 INR，不需要任何 HR 监督；
+      更关键的是用 NTK 与 (ω₀,s₀) 网格搜索表明，<b>谱偏差参数在这 9 例上可以跨人群共享</b>，平均代价为 0.41±0.60 个百分点。
+      对没有配对数据、又不想逐例盲调超参的医学重建任务，这套调参协议比 4D Flow 的具体分数更值得借鉴。
+    </p>
+    <p class="paper-links">
+      <a class="paper-link" href="https://arxiv.org/abs/2610.33124" target="_blank" rel="noopener">阅读原文 · arXiv ↗</a>
+      <a class="paper-link" href="https://arxiv.org/pdf/2610.33124" target="_blank" rel="noopener">PDF ↗</a>
+      <a class="paper-link" href="https://github.com/oliverwelinodeback/4DFlowINR" target="_blank" rel="noopener">代码 · GitHub ↗</a>
+    </p>
+  </div>
+  <dl class="kv">
+    <div><dt>发表</dt><dd><a href="https://arxiv.org/abs/2610.33124" target="_blank" rel="noopener">arXiv:2610.33124</a> · 2026-10-23 · eess.IV</dd></div>
+    <div><dt>篇幅</dt><dd>36 页 · arXiv 预印本</dd></div>
+    <div><dt>代码</dt><dd><a href="https://github.com/oliverwelinodeback/4DFlowINR" target="_blank" rel="noopener">oliverwelinodeback/4DFlowINR</a></dd></div>
+    <div><dt>任务</dt><dd>颅内 4D Flow 速度场 2× 空间 + 2× 时间超分</dd></div>
+    <div><dt>关键量</dt><dd><b>(ω₀,s₀)</b>：Gabor 的谱偏差参数</dd></div>
+    <div><dt>核心结论</dt><dd>逐例 1.5–2.3 min（组均 1.6–1.8）；队列共享参数平均只增 0.41 pp（SD 0.60）。</dd></div>
+  </dl>
+</div>
+
+<section id="s0" data-nav="速览">
+  <div class="sec-head"><span class="sec-num">00</span><h2>结论速览：可迁移的是调参协议，不是分数</h2></div>
+  <div class="paper">
+    <p class="dek">先明确它解决的不是渲染 SR，再看五个可核对的结论。</p>
+
+    <ol class="quick">
+      <li><b>逐例、无监督、坐标式。</b>输入 (x,y,z,t)，输出 (v<sub>x</sub>,v<sub>y</sub>,v<sub>z</sub>)；只用当前采集的 LR 数据拟合，不需要配对 HR。</li>
+      <li><b>核心变量是谱偏差。</b>Gabor 激活的 ω₀ 控制振荡频率；s₀ 控制高斯包络的尺度，决定频带宽度（s₀ 越大，包络越窄、频带越宽）。两者共同决定网络偏好哪一段空间频率。</li>
+      <li><b>队列级参数可共享。</b>数据驱动 INR 的最优 (ω₀,s₀)=(20,20)，PINN 为 (60,30)；跨健康/中度/重度 ICAD 的低误差区域大幅重叠，共享参数只增 <b>0.41±0.60 pp</b>（PINN 0.26±0.29 pp）。</li>
+      <li><b>组均 1.6–1.8 分钟/例。</b>数据驱动 INR 在 A100 上逐例优化 1.5–2.3 分钟；PINN 要 125–182 分钟，MAE 只差约 0.2 cm/s，但方向误差明显更好。</li>
+      <li><b>不是实时，也不是图像 SR。</b>1.6 min vs 24 fps 的 41.7 ms 相差约 2300–2600 倍；建模对象是速度场，不是灰度/密度图像。</li>
+    </ol>
+
+    <div class="overview-grid">
+      <div class="stats">
+        <div class="stat"><div class="n">0.100<small> m/s</small></div><div class="l"><b>三组等权 MAE</b><br>INR，Table 4</div></div>
+        <div class="stat"><div class="n">0.41<small> pp</small></div><div class="l"><b>共享参数的代价</b><br>平均 ± SD，相对逐例最优</div></div>
+        <div class="stat"><div class="n">1.5–2.3<small> min</small></div><div class="l"><b>逐例优化</b><br>组均 1.6–1.8 · A100</div></div>
+        <div class="stat"><div class="n">2×2</div><div class="l"><b>唯一实测倍数</b><br>空间 × 时间</div></div></div><aside class="mnote">
+        <span class="tag">阅读提示</span>
+        如果你关心“没有配对数据怎么做超分”，重点看 <a class="inline" href="#s2">§2 的逐例拟合</a> 与 <a class="inline" href="#s4">§4 的队列参数共享</a>；如果你关心渲染 SR，先看 <a class="inline" href="#s5">§5 的任务错配</a>。
+      </aside></div>
+  </div>
+</section>
+
+<section id="s1" data-nav="背景">
+  <div class="sec-head"><span class="sec-num">01</span><h2>背景：4D Flow 的分辨率—噪声—扫描时间三角</h2></div>
+  <div class="paper">
+    <p class="dek">提高时空分辨率会拉长扫描、降低 SNR；4D Flow 还多一个 VENC 导致的相位混叠。三者互相牵制。</p>
+
+    <p>
+      颅内 4D Flow 同时编码三个速度分量与心动周期，采集时间长、体素不能太小。临床常见的折中是 2 mm 级空间分辨率、40–90 ms 时间分辨率；
+      在狭窄段，低分辨率会把射流抹平，相位噪声又会污染速度方向。
+      传统做法是三线性/tricubic 插值，或者用监督 CNN 从大量配对数据里学一个先验。
+    </p>
+    <p>
+      监督 CNN 的问题是：配对 HR 数据难获得，且训练分布一旦偏离（不同 VENC、不同狭窄程度）就可能失效。
+      逐例 INR 的思路相反：不学跨受试者的映射，而是<b>为当前这一个受试者拟合一个连续函数</b>，把 LR 测量当作唯一的监督信号。
+      代价是每个新数据都要重新优化，但换来的是无需配对数据、天然支持任意坐标查询。
+    </p>
+
+    <figure class="wide">
+      <div class="fig-frame">
+        <svg viewBox="0 0 920 300" role="img" aria-label="左侧为高分辨率速度场经过 k 空间中心裁剪、加噪、时间降采样得到低分辨率输入；右侧为逐例 INR 拟合低分辨率数据后在任意高分辨率网格查询">
+          <defs>
+            <marker id="sm1" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#58e2d6"/></marker>
+            <marker id="sm2" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#ffc266"/></marker>
+          </defs>
+          <text x="24" y="26" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">A · 合成降质（仅评估用）</text>
+          <text x="500" y="26" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">B · 逐例 INR 拟合</text>
+
+          <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">
+            <rect x="24" y="52" width="120" height="46" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+            <text x="38" y="80" fill="#e8f0fa">CFD HR 速度场</text>
+            <rect x="184" y="52" width="120" height="46" rx="3" fill="#0c131e" stroke="#ffc266"/>
+            <text x="198" y="80" fill="#e8f0fa">k 空间中心裁剪</text>
+            <rect x="344" y="52" width="120" height="46" rx="3" fill="#0c131e" stroke="#ffc266"/>
+            <text x="358" y="80" fill="#e8f0fa">加复高斯噪声</text>
+            <rect x="504" y="52" width="120" height="46" rx="3" fill="#0c131e" stroke="#ff9f6f"/>
+            <text x="518" y="80" fill="#e8f0fa">时间 2× 降采样</text>
+            <rect x="664" y="52" width="110" height="46" rx="3" fill="#0c131e" stroke="#58e2d6"/>
+            <text x="678" y="80" fill="#e8f0fa">LR 测量</text>
+          </g>
+          <g stroke="#ffc266" stroke-width="1.2" fill="none">
+            <path d="M144 75H184" marker-end="url(#sm2)"/>
+            <path d="M304 75H344" marker-end="url(#sm2)"/>
+            <path d="M464 75H504" marker-end="url(#sm2)"/>
+            <path d="M624 75H664" marker-end="url(#sm2)"/>
+          </g>
+          <text x="24" y="128" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="10.5">2× 空间中心裁剪 · SNR=10 · 每两层保留一帧</text>
+
+          <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">
+            <rect x="500" y="160" width="130" height="46" rx="3" fill="#0c131e" stroke="#58e2d6"/>
+            <text x="514" y="188" fill="#e8f0fa">LR 测量</text>
+            <rect x="660" y="160" width="120" height="46" rx="3" fill="#0c131e" stroke="#58e2d6"/>
+            <text x="674" y="188" fill="#e8f0fa">逐例 INR</text>
+            <rect x="810" y="160" width="90" height="46" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+            <text x="824" y="188" fill="#e8f0fa">HR 查询</text>
+          </g>
+          <g stroke="#58e2d6" stroke-width="1.2" fill="none">
+            <path d="M630 183H660" marker-end="url(#sm1)"/>
+            <path d="M780 183H810" marker-end="url(#sm1)"/>
+          </g>
+          <text x="500" y="234" fill="#8fa3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="10.5">坐标 (x,y,z,t) → Gabor MLP → (vx,vy,vz)</text>
+          <text x="500" y="252" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="10">每例 1.5–2.3 min · A100</text>
+
+          <text x="24" y="278" fill="#b6c7d9" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11">关键：训练只用 LR 测量；HR 参考只用于评估，不参与优化。</text>
+        </svg>
+      </div>
+      <figcaption><b>图 1 · 数据流。</b>上：评估时用 CFD HR 场合成 LR 输入（中心裁剪 + 噪声 + 时间降采样）。下：INR 只用 LR 测量逐例拟合，再在任意 HR 坐标查询。真实部署不需要 HR 参考。</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="s2" data-nav="方法">
+  <div class="sec-head"><span class="sec-num">02</span><h2>方法：坐标、Gabor 激活与逐例优化</h2></div>
+  <div class="paper">
+    <p class="dek">没有编码器、没有解码器，也没有跨受试者的训练集或预训练权重；只有一个 MLP，并仅在单个受试者的 LR 数据上逐例拟合。</p>
+
+    <h3>2.1 坐标式速度场</h3>
+    <p>
+      INR 把重建表示成一个连续函数 <span class="num">f<sub>θ</sub>: (x,y,z,t) → (v<sub>x</sub>,v<sub>y</sub>,v<sub>z</sub>)</span>。
+      训练时在 LR 网格的时空坐标上采样，最小化预测速度与测量速度的差异；推理时在任意 HR 网格上查询。这是数据驱动变体；PINN 把输出扩展为 (v<sub>x</sub>,v<sub>y</sub>,v<sub>z</sub>,p)，压力用于动量方程残差。
+      因为时间 t 是坐标的一维，时空是联合建模的，不是逐帧独立超分。
+    </p>
+
+    <h3>2.2 Gabor 激活：ω₀ 选频带，s₀ 选带宽</h3>
+    <p>
+      论文采用 WIRE 的<b>实值</b> Gabor 激活，而不是 WIRE 原文的复值形式；原因是 PINN 变体要对网络输出反复自动微分求 Navier–Stokes 残差，实值更便于自动微分：
+    </p>
+    <div class="eq">
+      <span class="lbl">式 7 · Gabor 激活</span>
+      σ(<i>x</i>; <i>ω</i><span class="sub">0</span>, <i>s</i><span class="sub">0</span>) = sin(<i>ω</i><span class="sub">0</span><i>x</i>) · exp(−(<i>s</i><span class="sub">0</span><i>x</i>)<sup>2</sup>)
+      <small><span class="var">ω<sub>0</sub></span> 控制正弦振荡的频率，<span class="var">s<sub>0</sub></span> 控制高斯包络的尺度（越大包络越窄、频带越宽）。s<sub>0</sub>→0 退化为纯正弦（SIREN）。</small>
+    </div>
+    <p>
+      论文正文把 ω<sub>0</sub>=0 描述为“纯高斯”，但按式 (7) 字面，sin(0·x)≡0，激活恒为零，并不会产生高斯。这个极限应来自另一支把正弦项替换为高斯激活的变体（其引用的坐标-MLP 激活框架 [21] 包含该选择），式 (7) 本身不覆盖。更准确的表述是：“s<sub>0</sub>=0 退化为 SIREN；高斯激活是另一个独立选择”。
+    </p>
+    <p>
+      这两个参数不是普通超参，而是<b>谱偏差的可调参数</b>：ω₀ 把网络的偏好频带移到更高频，s₀ 决定这个频带有多宽。
+      ω₀ 太低，网络只能表达平滑的大尺度结构，细节被抹平；ω₀ 太高或 s₀ 过大（包络过窄、频带过宽），网络会拟合噪声，HR 参考上的误差反而上升。
+    </p>
+
+    <h3>2.3 两种变体：数据驱动与 PINN</h3>
+    <p>
+      <b>数据驱动 INR</b> 只用 LR 测量做数据拟合；<b>PINN</b> 在同一坐标架构上增加不可压 Navier–Stokes 残差正则，用自动微分计算速度场的空间导数。
+      两者都逐例优化：Adam 做鲁棒热启动，L-BFGS 在接近最优时加速收敛。
+    </p>
+    <div class="eq">
+      <span class="lbl">损失结构</span>
+      <i>L</i> = <i>L</i><span class="sub">data</span>(<i>f</i><span class="sub">θ</span>; LR) &nbsp; [+&nbsp; <i>λ</i><span class="sub">D</span> · <i>L</i><span class="sub">NS</span>(<i>f</i><span class="sub">θ</span>)]
+      <small>方括号仅 PINN 启用。数据驱动变体的队列最优 (ω₀,s₀)=(20,20)；PINN 为 (60,30)。PINN 的低误差区域更宽，说明它对谱偏差选择更不敏感。</small>
+    </div>
+
+    <h3>2.4 为什么用 NTK 解释</h3>
+    <p>
+      论文在初始化时计算经验神经正切核（NTK），取 4096 个输入点构成 4D NTK 的二维截面，用 <span class="num">torch.func</span> 向量化参数雅可比。
+      NTK 的特征函数反映网络在训练前偏好哪些空间模式：SIREN 随 ω₀ 增大从低频转向高频；WIRE 因为多了一个高斯包络，偏好更局部的模式。
+      这是“为什么某个 (ω₀,s₀) 更好”的机理解释，而不是事后附会。
+    </p>
+  </div>
+</section>
+
+<section id="s3" data-nav="架构">
+  <div class="sec-head"><span class="sec-num">03</span><h2>架构：一个 MLP，两条损失</h2></div>
+  <div class="paper">
+    <p class="dek">网络本身极简；真正的设计在“怎么选 (ω₀,s₀)”与“怎么在 LR 数据上优化”。</p>
+
+    <figure class="wide">
+      <div class="fig-frame">
+        <svg viewBox="0 0 1000 380" role="img" aria-label="SpectralINR 架构：时空坐标输入 Gabor MLP，数据驱动变体输出三个速度分量，PINN 额外输出压力；数据损失来自低分辨率测量，PINN 另加 Navier-Stokes 残差；Adam 与 L-BFGS 逐例优化">
+          <defs>
+            <marker id="sm3" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#58e2d6"/></marker>
+            <marker id="sm4" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#ffc266"/></marker>
+          </defs>
+          <text x="24" y="28" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">PER-SUBJECT · NO PAIRED HR</text>
+
+          <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12">
+            <g class="arch-node" data-detail="输入是连续的时空坐标 (x,y,z,t)，不是体素网格。训练时在 LR 网格上采样，推理时可查询任意 HR 坐标。">
+              <rect x="24" y="58" width="130" height="56" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+              <text x="38" y="82" fill="#e8f0fa">(x, y, z, t)</text>
+              <text x="38" y="100" fill="#8fa3b8" font-size="10">连续坐标</text>
+            </g>
+            <g class="arch-node" data-detail="多层感知机，隐藏层使用 Gabor 激活 sin(ω0·)exp(−(s0·)²)。论文未披露层宽/层数/参数量；复现需从开源代码反推。">
+              <rect x="184" y="58" width="200" height="56" rx="3" fill="#0c131e" stroke="#58e2d6"/>
+              <text x="198" y="82" fill="#e8f0fa">Gabor MLP</text>
+              <text x="198" y="100" fill="#8fa3b8" font-size="10">sin(ω0·)exp(−(s0·)²)</text>
+            </g>
+            <g class="arch-node" data-detail="数据驱动 INR 输出三个速度分量 (vx,vy,vz)；PINN 变体额外输出压力 p，用于动量方程残差。可以选择在任意 HR 时空网格上查询，但论文只验证了 2× 空间 + 2× 时间。">
+              <rect x="414" y="58" width="150" height="56" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+              <text x="428" y="82" fill="#e8f0fa">(vx, vy, vz)</text>
+              <text x="428" y="100" fill="#8fa3b8" font-size="10">任意坐标查询 · PINN +p</text>
+            </g>
+            <g class="arch-node" data-detail="数据损失：在 LR 网格的时空坐标上比较预测速度与测量速度。不需要配对 HR；HR 参考只用于评估。">
+              <rect x="614" y="58" width="160" height="56" rx="3" fill="#0c131e" stroke="#ffc266"/>
+              <text x="628" y="82" fill="#e8f0fa">L_data</text>
+              <text x="628" y="100" fill="#8fa3b8" font-size="10">LR 测量 · 无配对 HR</text>
+            </g>
+            <g class="arch-node" data-detail="仅 PINN 启用：不可压 Navier–Stokes 残差，用自动微分计算速度场导数；自适应权重 λ_D。训练时间从分钟级升到 125–182 分钟。">
+              <rect x="614" y="150" width="160" height="56" rx="3" fill="#0a111b" stroke="#ff6f91"/>
+              <text x="628" y="174" fill="#e8f0fa">L_NS · 仅 PINN</text>
+              <text x="628" y="192" fill="#8fa3b8" font-size="10">不可压残差 · λ_D</text>
+            </g>
+            <g class="arch-node" data-detail="优化器：Adam 热启动，L-BFGS 收尾。数据驱动 INR 每例 1.5–2.3 分钟；PINN 125–182 分钟（A100 40 GB）。">
+              <rect x="824" y="58" width="150" height="56" rx="3" fill="#0a111b" stroke="#58e2d6"/>
+              <text x="838" y="82" fill="#e8f0fa">Adam → L-BFGS</text>
+              <text x="838" y="100" fill="#8fa3b8" font-size="10">逐例优化</text>
+            </g>
+          </g>
+          <g stroke="#58e2d6" stroke-width="1.2" fill="none">
+            <path d="M154 86H184" marker-end="url(#sm3)"/>
+            <path d="M384 86H414" marker-end="url(#sm3)"/>
+            <path d="M564 86H614" marker-end="url(#sm3)"/>
+            <path d="M774 86H824" marker-end="url(#sm3)"/>
+            <path d="M694 150V114" marker-end="url(#sm4)"/>
+          </g>
+
+          <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">
+            <g class="arch-node" data-detail="评估：在 2× 空间 + 2× 时间的 HR 网格上查询，与 CFD HR 参考比较 MAE/DE/MRE/vNRMSE；并与 tricubic、4DFlowNet、GAN-Gen 对比。">
+              <rect x="614" y="270" width="160" height="56" rx="3" fill="#0c131e" stroke="#8cc4ff"/>
+              <text x="628" y="294" fill="#e8f0fa">HR 网格评估</text>
+              <text x="628" y="312" fill="#8fa3b8" font-size="10">MAE · DE · MRE · vNRMSE</text>
+            </g>
+            <g class="arch-node" data-detail="队列级谱偏差选择：在 (ω0,s0) 网格上搜索，数据驱动最优 (20,20)，PINN 最优 (60,30)；共享参数相对逐例最优平均增 0.41±0.60 pp。">
+              <rect x="824" y="270" width="150" height="56" rx="3" fill="#0a111b" stroke="#ffc266"/>
+              <text x="838" y="294" fill="#e8f0fa">(ω0, s0) 选择</text>
+              <text x="838" y="312" fill="#8fa3b8" font-size="10">网格 + NTK</text>
+            </g>
+          </g>
+          <path d="M694 326V326" stroke="#58e2d6" stroke-width="0"/>
+          <path d="M774 298H824" stroke="#58e2d6" stroke-width="1.2" fill="none" marker-end="url(#sm3)"/>
+          <path d="M694 270V206" stroke="#8cc4ff" stroke-width="1.2" fill="none"/>
+          <text x="704" y="238" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="9.5">查询</text>
+
+          <g font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa3b8">
+            <text x="24" y="164">输入：4D 坐标，无位置编码</text>
+            <text x="24" y="182">激活：实值 Gabor，便于 PINN 自动微分</text>
+            <text x="24" y="200">初始化：WIRE 化的 SIREN 式缩放</text>
+            <text x="24" y="238">数据驱动：1.5–2.3 min/例</text>
+            <text x="24" y="256">PINN：125–182 min/例（约 80×）</text>
+            <text x="24" y="292">实测倍数：仅 2× 空间 × 2× 时间</text>
+            <text x="24" y="310">未披露：层宽、参数量、显存、FP16</text>
+          </g>
+          <text x="24" y="356" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="9.5">点击任一模块查看说明 · 网络本身极简，设计重点在谱偏差与逐例优化</text>
+        </svg>
+      </div>
+      <figcaption><b>图 2 · 架构与训练。</b>坐标输入经 Gabor MLP，数据驱动变体输出三通道速度；PINN 额外输出压力并加 NS 残差；Adam 热启动、L-BFGS 收尾。图按论文 §2.4–2.8 重绘。</figcaption>
+    </figure>
+
+    <div class="arch-detail" id="archDetail">
+      <span class="tag">模块说明</span>
+      <p>点击上方图中的任一模块，查看它在论文中的具体作用。</p>
+    </div>
+
+    <h3>初始化与优化</h3>
+    <p>
+      初始化沿用 WIRE 化的 SIREN 方案：第一层权重/偏置 <span class="num">U(−1/d<sub>in</sub>, 1/d<sub>in</sub>)</span>；
+      隐藏层 <span class="num">U(−√(6/d<sub>in</sub>)/ω<sub>0</sub>, √(6/d<sub>in</sub>)/ω<sub>0</sub>)</span>，ω₀=0 时改用 s₀ 缩放。
+      论文还探索了元学习初始化：外环学习一个数据驱动先验，内环对新受试者微调；这不是主结果，但为“减少逐例优化时间”提供了另一条路。
+    </p>
+    <p>
+      优化用 Adam 做鲁棒热启动，L-BFGS 在接近收敛时加速。数据驱动 INR 的组均训练时间为健康 1.6 min、中度 1.8 min、重度 1.8 min；
+      PINN 为 129 / 134 / 147 min。注意这里的“推理时间”等于训练时间：每个新受试者都要重新优化，没有独立的前向推理阶段。
+    </p>
+  </div>
+</section>
+
+<section id="s4" data-nav="结果">
+  <div class="sec-head"><span class="sec-num">04</span><h2>结果：MAE 领先，但并非全面领先</h2></div>
+  <div class="paper">
+    <p class="dek">先看三组等权平均，再看分人群的 MAE 与方向误差。所有参考都是 CFD 仿真，不是实测 HR。</p>
+
+    <h3>4.1 三组等权平均（Table 4）</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>方法</th><th>MAE ↓</th><th>vNRMSE ↓</th><th>训练</th><th>推理</th></tr></thead>
+        <tbody>
+          <tr><td>Tricubic</td><td class="num">0.143</td><td class="num">0.111</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr><td>4DFlowNet</td><td class="num">0.145</td><td class="num">0.112</td><td class="num">30 h</td><td class="num">11.8–15.0 s</td></tr>
+          <tr><td>GAN-Gen</td><td class="num">0.113</td><td class="num">0.096</td><td class="num">49 h</td><td class="num">12.1–15.0 s</td></tr>
+          <tr><td><b>INR</b></td><td class="num"><b>0.100</b></td><td class="num"><b>0.081</b></td><td class="num">1.5–2.3 min/例</td><td class="num">同训练</td></tr>
+          <tr><td>PINN</td><td class="num">≈0.098</td><td class="num">≈0.076</td><td class="num">125–182 min/例</td><td class="num">同训练</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      INR 的三组等权平均 MAE 0.100，低于 tricubic 0.143、4DFlowNet 0.145、GAN-Gen 0.113；vNRMSE 0.081 也是最低。
+      按 9 例受试者级平均，PINN 10.2 vs INR 10.4 cm/s、DE 3.9% vs 5.3%；PINN 的三组等权均值为 0.098 / 0.076，略好于 INR，代价是 80 倍训练时间。
+    </p>
+
+    <h3>4.2 分人群 MAE</h3>
+    <figure class="wide">
+      <div class="fig-frame">
+        <svg viewBox="0 0 900 320" role="img" aria-label="健康、中度 ICAD、重度 ICAD 三组中五种方法的 MAE 柱状图：INR 与 PINN 在三组均低于 tricubic 与 4DFlowNet，中度组 GAN 与 INR 接近">
+          <text x="24" y="26" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="10" letter-spacing="2">MAE · m/s · 越低越好</text>
+          <g stroke="#1b2a3d" stroke-width="1">
+            <path d="M80 60H860"/><path d="M80 120H860"/><path d="M80 180H860"/><path d="M80 240H860"/>
+          </g>
+          <g font-family="ui-monospace, monospace" font-size="9.5" fill="#8fa3b8">
+            <text x="72" y="244" text-anchor="end">0</text>
+            <text x="72" y="184" text-anchor="end">0.06</text>
+            <text x="72" y="124" text-anchor="end">0.12</text>
+            <text x="72" y="64" text-anchor="end">0.18</text>
+          </g>
+
+          <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="11.5">
+            <text x="170" y="278" text-anchor="middle" fill="#b6c7d9">健康</text>
+            <text x="470" y="278" text-anchor="middle" fill="#b6c7d9">中度 ICAD</text>
+            <text x="770" y="278" text-anchor="middle" fill="#b6c7d9">重度 ICAD</text>
+          </g>
+
+          <g>
+            <rect x="90" y="203" width="28" height="37" fill="#59616e"/><text x="104" y="196" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.117</text>
+            <rect x="122" y="197" width="28" height="43" fill="#ff6f91"/><text x="136" y="190" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.128</text>
+            <rect x="154" y="205" width="28" height="35" fill="#ffc266"/><text x="168" y="198" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.112</text>
+            <rect x="186" y="208" width="28" height="32" fill="#58e2d6"/><text x="200" y="201" text-anchor="middle" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="8.5">.103</text>
+            <rect x="218" y="207" width="28" height="33" fill="#8cc4ff"/><text x="232" y="200" text-anchor="middle" fill="#8cc4ff" font-family="ui-monospace, monospace" font-size="8.5">.104</text>
+
+            <rect x="390" y="194" width="28" height="46" fill="#59616e"/><text x="404" y="187" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.146</text>
+            <rect x="422" y="199" width="28" height="41" fill="#ff6f91"/><text x="436" y="192" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.130</text>
+            <rect x="454" y="212" width="28" height="28" fill="#ffc266"/><text x="468" y="205" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.091</text>
+            <rect x="486" y="214" width="28" height="26" fill="#58e2d6"/><text x="500" y="207" text-anchor="middle" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="8.5">.082</text>
+            <rect x="518" y="215" width="28" height="25" fill="#8cc4ff"/><text x="532" y="208" text-anchor="middle" fill="#8cc4ff" font-family="ui-monospace, monospace" font-size="8.5">.079</text>
+
+            <rect x="690" y="188" width="28" height="52" fill="#59616e"/><text x="704" y="181" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.165</text>
+            <rect x="722" y="184" width="28" height="56" fill="#ff6f91"/><text x="736" y="177" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.176</text>
+            <rect x="754" y="197" width="28" height="43" fill="#ffc266"/><text x="768" y="190" text-anchor="middle" fill="#8fa3b8" font-family="ui-monospace, monospace" font-size="8.5">.135</text>
+            <rect x="786" y="203" width="28" height="37" fill="#58e2d6"/><text x="800" y="196" text-anchor="middle" fill="#58e2d6" font-family="ui-monospace, monospace" font-size="8.5">.116</text>
+            <rect x="818" y="205" width="28" height="35" fill="#8cc4ff"/><text x="832" y="198" text-anchor="middle" fill="#8cc4ff" font-family="ui-monospace, monospace" font-size="8.5">.111</text>
+          </g>
+
+          <g font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="9.5">
+            <rect x="90" y="300" width="9" height="9" fill="#59616e"/><text x="104" y="309" fill="#8fa3b8">Tricubic</text>
+            <rect x="184" y="300" width="9" height="9" fill="#ff6f91"/><text x="198" y="309" fill="#8fa3b8">4DFlowNet</text>
+            <rect x="298" y="300" width="9" height="9" fill="#ffc266"/><text x="312" y="309" fill="#8fa3b8">GAN-Gen</text>
+            <rect x="392" y="300" width="9" height="9" fill="#58e2d6"/><text x="406" y="309" fill="#8fa3b8">INR</text>
+            <rect x="462" y="300" width="9" height="9" fill="#8cc4ff"/><text x="476" y="309" fill="#8fa3b8">PINN</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption><b>图 3 · 分人群 MAE。</b>INR 在三组都低于 tricubic 与 4DFlowNet；中度组 GAN-Gen 的 MAE 0.091 高于 INR 0.082，但 vNRMSE 0.065 优于 INR 0.071。INR 并非全面领先。</figcaption>
+    </figure>
+
+    <h3>4.3 方向误差：PINN 的优势项</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>人群</th><th>INR DE</th><th>PINN DE</th><th>GAN-Gen DE</th><th>读数</th></tr></thead>
+        <tbody>
+          <tr><td>健康</td><td class="num">3.2%</td><td class="num"><b>2.8%</b></td><td class="num">4.0%</td><td>PINN 最好</td></tr>
+          <tr><td>中度 ICAD</td><td class="num">6.0%</td><td class="num"><b>4.3%</b></td><td class="num">5.3%</td><td>PINN 领先 1.7 pp</td></tr>
+          <tr><td>重度 ICAD</td><td class="num">6.8%</td><td class="num"><b>4.8%</b></td><td class="num">5.7%</td><td>PINN 领先 2.0 pp</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      MAE 上 PINN 只比 INR 好约 0.2 cm/s，但方向误差的改善更稳定：三组分别低 0.4 / 1.7 / 2.0 个百分点。
+      如果下游关心的是血流方向（狭窄段射流、壁面剪切），PINN 的 80 倍时间可能值得；如果只关心速度幅值，数据驱动 INR 的性价比更高。
+    </p>
+  </div>
+</section>
+
+<section id="s5" data-nav="边界">
+  <div class="sec-head"><span class="sec-num">05</span><h2>批判性阅读：任务错配与证据边界</h2></div>
+  <div class="paper">
+    <p class="dek">这篇论文的调参协议可迁移，但它的应用域与渲染 SR 相距很远。</p>
+
+    <div class="compare">
+      <div>
+        <h4>成立</h4>
+        <ul>
+          <li><b>无配对数据。</b>只用当前采集的 LR 测量逐例拟合；不需要 HR 监督或大规模训练集。</li>
+          <li><b>谱偏差可共享。</b>最优 (ω₀,s₀) 跨健康/中度/重度重叠；共享参数只增 0.41±0.60 pp，PINN 0.26±0.29 pp。</li>
+          <li><b>逐例成本低。</b>数据驱动 INR 1.5–2.3 min/例（A100），远低于 CNN 的 30–49 h 训练。</li>
+          <li><b>精度有竞争力。</b>三组等权平均 MAE 0.100，低于 tricubic/4DFlowNet/GAN-Gen；vNRMSE 0.081 最低。</li>
+          <li><b>重度 ICAD 的 MAE 改善更明显。</b>相对 4DFlowNet 的改善在健康/中度/重度为 2.5 / 4.8 / 6.0 cm/s。</li>
+        </ul>
+      </div>
+      <div class="neg">
+        <h4>不成立</h4>
+        <ul>
+          <li><b>不是图像 SR。</b>建模对象是 4D 速度矢量场；迁到灰度/密度图像要换输出层并重验全部结论。</li>
+          <li><b>参考是 CFD。</b>不是实测 HR；体内数据只做定性分析，没有无噪声 HR 参考。</li>
+          <li><b>只测 2×2。</b>空间 2× + 时间 2×；3×/4×/各向异性均未验证，任意倍数只是架构性质。</li>
+          <li><b>逐例重新训练。</b>没有跨受试者共享权重；每个新数据都要等 1.5–2.3 min，不能“训练一次部署多次”。</li>
+          <li><b>降质模型简化。</b>仅 k-space 中心裁剪、加噪（SNR=10）与时间抽帧；未建模运动伪影、场不均匀、部分容积。</li>
+          <li><b>实现细节缺失。</b>层宽、参数量、峰值显存、FP16 全文未披露；复现需从代码反推。</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>实时性：相差约 2300–2600 倍</h3>
+    <p>
+      24 fps 的帧预算是 41.7 ms；数据驱动 INR 每例 1.6–1.8 min（组均，96–108 s），相差约 2300–2600 倍。
+      这不是工程优化能弥补的差距，而是范式差异：它是“每个新采集离线重建一次”，不是逐帧推理。
+      监督 CNN 的推理只要 12–15 s，但需要 30–49 h 训练与配对数据；两者不在同一个成本结构里。
+    </p>
+
+    <h3>三个容易误读的数字</h3>
+    <ul class="dot">
+      <li><b>“1.6 分钟”</b>：是逐例优化时间，不是推理时间；每个新受试者都要重新优化，且没有独立前向阶段。</li>
+      <li><b>“优于监督 CNN”</b>：MAE/vNRMSE 的三组等权平均领先，但中度组 GAN-Gen 的 vNRMSE 更好；方向误差上 PINN 才稳定最优。</li>
+      <li><b>“任意倍数”</b>：架构上可在任意坐标查询，实验只做了 2× 空间 + 2× 时间；不能外推到 4× 或各向异性。</li>
+    </ul>
+
+    <div class="checklist">
+      <label class="check"><input type="checkbox"><span><b>是否有配对 HR 数据？</b>有的话，监督 CNN 的推理成本低得多；逐例 INR 的优势主要在无配对场景。</span></label>
+      <label class="check"><input type="checkbox"><span><b>是否接受每例 1.5–2.3 min？</b>离线后处理可以；交互/实时不可以。</span></label>
+      <label class="check"><input type="checkbox"><span><b>目标是不是速度场？</b>迁到灰度图像要改输出层与降质模型，不能直接套结果。</span></label>
+      <label class="check"><input type="checkbox"><span><b>是否需要方向误差？</b>需要就评估 PINN 的 80 倍时间；只看幅值则数据驱动 INR 足够。</span></label>
+      <label class="check"><input type="checkbox"><span><b>是否有实测 HR 参考？</b>论文只有 CFD；临床落地前要前瞻验证。</span></label>
+    </div>
+  </div>
+</section>
+
+<section id="s6" data-nav="结论">
+  <div class="sec-head"><span class="sec-num">06</span><h2>结论：三条可执行判断</h2></div>
+  <div class="paper">
+    <p class="dek">读这篇论文，最终要落成三条判断。</p>
+
+    <ol class="quick">
+      <li><b>可迁移的是“队列级谱偏差共享”，不是 4D Flow 分数。</b>在少量病例上网格搜索 (ω₀,s₀)，把低误差区域的重叠部分作为共享参数；平均代价 0.41±0.60 pp，比逐例盲调更可维护。</li>
+      <li><b>数据驱动 INR 是默认选项，PINN 是方向误差的专用工具。</b>PINN 的 MAE 只改善约 0.2 cm/s，方向误差改善 0.4–2.0 pp（中重度 1.7–2.0），但时间从分钟级升到 125–182 min；除非方向是瓶颈，否则不默认启用。</li>
+      <li><b>它不是渲染 SR 方案。</b>任务是 4D 速度场、逐例重新训练、离线分钟级；与 24 fps 的逐帧 SR 相差约 2300–2600 倍。借鉴它的训练范式可以，直接套用其结果则不可。</li>
+    </ol>
+
+    <div class="callout">
+      <span class="tag">核心结论</span>
+      <p>SpectralINR 用 WIRE 的 Gabor 激活把谱偏差变成两个可搜索的参数，并表明队列级最优参数可以跨人群共享（0.41±0.60 pp）。它的价值不在“又一个 4D Flow 超分”，而在“无配对数据时，如何用逐例 INR + 共享谱偏差参数”这套可复用的流程。</p>
+    </div>
+
+    <h3>本系列：11 月六篇深度报告</h3>
+    <div class="series">
+      <a href="paper-review-frozen-history.html">
+        <span class="no">01</span>
+        <span class="tt">Frozen History<small>时序损失让实时超采样停止累积 · 渲染超采样 · P0</small></span>
+        <span class="pill">已发布</span>
+      </a>
+      <a href="paper-review-gsmr3d.html">
+        <span class="no">02</span>
+        <span class="tt">GSMR3D<small>任意各向异性尺度 3D MRI 超分 · 高斯原型 · P0</small></span>
+        <span class="pill">已发布</span>
+      </a>
+      <a href="paper-review-ctbakegs.html">
+        <span class="no">03</span>
+        <span class="tt">CTBakeGS<small>14 秒把 CT 体渲染烘焙到 3DGS · 实时显示 · P1</small></span>
+        <span class="pill">已发布</span>
+      </a>
+      <a href="paper-review-spectralinr.html" aria-current="page">
+        <span class="no">04</span>
+        <span class="tt">SpectralINR-4DFlow<small>逐例无监督 INR 做 4D Flow MRI · 1.6 分钟收敛 · P1</small></span>
+        <span class="pill on">本篇</span>
+      </a>
+          <a href="paper-review-factorsplat.html">
+        <span class="no">05</span>
+        <span class="tt">FactorSplat<small>传递函数可编辑的医学体渲染代理 · 3DGS · P0</small></span>
+        <span class="pill">已发布</span>
+      </a>
+      <a href="paper-review-xiao-tr-gs-sparse-ct.html">
+        <span class="no">06</span>
+        <span class="tt">TR-GS<small>厚尾基元 + 射线置信度做稀疏视角 CT · 0.38→0.09 dB · P1</small></span>
+        <span class="pill">已发布</span>
+      </a>
+</div>
+
+    <h3>参考</h3>
+    <ol class="refs">
+      <li id="r1">O. Welin Odeback, N. González-Aranceta, S. Jofre, et al. <a href="https://arxiv.org/abs/2610.33124" target="_blank" rel="noopener">Spectrally optimized implicit neural representations mitigate acquisition-related image quality trade-offs in intracranial 4D Flow MRI</a>. arXiv:2610.33124, 2026.</li>
+      <li id="r2">V. Sitzmann, J. Martel, A. Bergman, D. Lindell, G. Wetzstein. Implicit Neural Representations with Periodic Activation Functions. NeurIPS 2020. SIREN。</li>
+      <li id="r3">S. Saragadam, D. LeJeune, J. Tan, G. Balakrishnan, A. Veeraraghavan, R. Baraniuk. WIRE: Wavelet Implicit Neural Representations. CVPR 2023. Gabor 激活来源。</li>
+      <li id="r4">4DFlowNet / GAN-Gen：论文使用的两个监督 CNN 基线；训练 30 h / 49 h，推理 11.8–15.0 s。</li>
+      <li id="r5">J. Yu et al. Neural Tangent Kernel: Convergence and Generalization in Neural Networks. NeurIPS 2018. NTK 分析背景。</li>
+      <li id="r6"><a href="https://github.com/oliverwelinodeback/4DFlowINR" target="_blank" rel="noopener">oliverwelinodeback/4DFlowINR</a> 参考实现：数据驱动/PINN 训练、合成数据生成、评估与可视化。</li>
+    </ol>
+
+    <p class="dek" style="padding-left:0;margin-top:24px">
+      文中的数字取自论文 Table 3 / Table 4 与 §3.2；0.100 为 Table 4 三组等权平均，PINN 的 ≈0.098/≈0.076 同为三组等权均值；10.2 / 10.4 cm/s 为 Table 3 的 9 例受试者级平均，两种口径不可混用。
+      本文没有复现训练；谱偏差仪器为示意，不是实际 INR 输出。
+    </p>
+  </div>
+</section>
+
+</div>
+
+<footer class="foot">
+  <span>© 2026 灯箱 · LIGHTBOX</span>
+  <span><a href="paper-review-ctbakegs.html">← 上一篇</a> · <a href="index.html">系列目录 →</a> · 单文件 · 零外部请求</span>
+</footer>
+
+<script>
+
+(function () {
+  'use strict';
+
+  /* ============================================================
+     0. 主题
+     ============================================================ */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var KEY = 'technotes-theme';
+  var order = ['auto', 'dark', 'light'];
+  var mode = 'auto';
+
+  try { mode = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
+  if (order.indexOf(mode) < 0) mode = 'auto';
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function syncLightClass() {
+    var light = mode === 'light' || (mode === 'auto' && systemLight());
+    root.classList.toggle('is-light', light);
+  }
+
+  function applyTheme(next) {
+    mode = next;
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    syncLightClass();
+    var text = mode === 'auto' ? '跟随系统' : (mode === 'dark' ? '深色' : '浅色');
+    themeBtn.textContent = '主题：' + text;
+    document.dispatchEvent(new CustomEvent('technotes:theme'));
+  }
+
+  applyTheme(mode);
+
+  themeBtn.addEventListener('click', function () {
+    var i = order.indexOf(mode);
+    var next = order[(i + 1) % order.length];
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    applyTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (mode !== 'auto') return;
+      syncLightClass();
+      document.dispatchEvent(new CustomEvent('technotes:theme'));
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  /* ============================================================
+     1. 目录、进度、显现
+     ============================================================ */
+
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[data-nav]'));
+  var links = [];
+
+  sections.forEach(function (section) {
+    var a = document.createElement('a');
+    a.href = '#' + section.id;
+    a.textContent = section.getAttribute('data-nav');
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function updateScroll() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.min(100, Math.max(0, y / max * 100)) : 0;
+    progress.style.width = pct + '%';
+
+    var current = sections[0];
+    sections.forEach(function (section) {
+      if (section.getBoundingClientRect().top <= 130) current = section;
+    });
+    links.forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  setInterval(updateScroll, 450);
+  updateScroll();
+
+  /* 不依赖 IntersectionObserver / rAF 的显现兜底：滚动检查 + 定时检查 */
+  document.body.classList.add('js-reveal');
+  var reveals = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+
+  function revealVisible() {
+    reveals.forEach(function (el) {
+      if (el.classList.contains('is-visible')) return;
+      if (el.getBoundingClientRect().top < window.innerHeight - 36) {
+        el.classList.add('is-visible');
+      }
+    });
+  }
+
+  window.addEventListener('scroll', revealVisible, { passive: true });
+  window.addEventListener('resize', revealVisible);
+  setInterval(revealVisible, 550);
+  revealVisible();
+  setTimeout(revealVisible, 1200);
+
+  /* ============================================================
+     2. 架构图点击说明
+     ============================================================ */
+
+  var archDetail = document.getElementById('archDetail');
+  var archNodes = Array.prototype.slice.call(document.querySelectorAll('.arch-node'));
+
+  function selectArch(node) {
+    archNodes.forEach(function (n) { n.classList.remove('is-active'); });
+    node.classList.add('is-active');
+    var detail = node.getAttribute('data-detail');
+    if (detail && archDetail) archDetail.querySelector('p').textContent = detail;
+  }
+
+  archNodes.forEach(function (node) {
+    node.setAttribute('tabindex', '0');
+    node.setAttribute('role', 'button');
+    node.setAttribute('aria-label', '查看该模块的说明');
+    node.addEventListener('click', function () { selectArch(node); });
+    node.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectArch(node);
+      }
+    });
+  });
+
+  /* ============================================================
+     3. 画布工具
+     ============================================================ */
+
+  var C = {
+    bg: '#070b12',
+    panel: '#0c131e',
+    panel2: '#111b29',
+    line: '#1b2a3d',
+    line2: '#243246',
+    ink: '#e8f0fa',
+    ink2: '#b6c7d9',
+    ink3: '#8fa3b8',
+    cyan: '#58e2d6',
+    ice: '#8cc4ff',
+    amber: '#ffc266',
+    rose: '#ff6f91'
+  };
+
+  /* 浅色主题下把画布里的深色“屏幕”配色映射到浅色。
+     只映射界面色，不碰 CT 灰度、热力图等内容色。 */
+  var CANVAS_LIGHT = {
+    '#070b12': '#f7f9fc',
+    '#0c131e': '#eef2f8',
+    '#111b29': '#e7edf6',
+    '#1b2a3d': '#dfe6ee',
+    '#243246': '#c9d4e0',
+    '#2d4058': '#c9d4e0',
+    '#e8f0fa': '#0f1722',
+    '#b6c7d9': '#3d4e60',
+    '#8fa3b8': '#5d7084',
+    '#59616e': '#6b7788',
+    '#58e2d6': '#0b7d75',
+    '#8cc4ff': '#1b5fc9',
+    '#ffc266': '#9a5c00',
+    '#ff6f91': '#b51f45',
+    '#ff9f6f': '#b45309',
+    '#b9a1ff': '#6347c7',
+    'rgba(255,255,255,.018)': 'rgba(15,23,34,.025)',
+    'rgba(255,255,255,.006)': 'rgba(15,23,34,.012)',
+    'rgba(255,255,255,.012)': 'rgba(15,23,34,.02)',
+    'rgba(140,196,255,.025)': 'rgba(27,95,201,.05)',
+    'rgba(232,240,250,.78)': 'rgba(15,23,34,.78)',
+    'rgba(88,226,214,.35)': 'rgba(11,125,117,.35)',
+    'rgba(12,19,30,.55)': 'rgba(15,23,34,.10)',
+    'rgba(255,194,102,.13)': 'rgba(154,92,0,.10)',
+    'rgba(255,194,102,.62)': 'rgba(154,92,0,.62)',
+    'rgba(255,194,102,.7)': 'rgba(154,92,0,.70)',
+    'rgba(88,226,214,.38)': 'rgba(11,125,117,.38)',
+    'rgba(255,111,145,.07)': 'rgba(181,31,69,.07)',
+    'rgba(88,226,214,.10)': 'rgba(11,125,117,.10)'
+  };
+
+  function isLightTheme() {
+    var attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'light') return true;
+    if (attr === 'dark') return false;
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function mapCanvasColor(value) {
+    if (!isLightTheme() || typeof value !== 'string') return value;
+    var key = value.toLowerCase().replace(/\s+/g, '');
+    return CANVAS_LIGHT[key] || value;
+  }
+
+  function ensureCanvas(canvas) {
+    if (!canvas.dataset.baseW) {
+      canvas.dataset.baseW = String(canvas.getAttribute('width') || 720);
+      canvas.dataset.baseH = String(canvas.getAttribute('height') || 420);
+    }
+    var bw = parseFloat(canvas.dataset.baseW);
+    var bh = parseFloat(canvas.dataset.baseH);
+    var cw = canvas.clientWidth || bw;
+    var ch = cw * bh / bw;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var pw = Math.round(cw * dpr);
+    var ph = Math.round(ch * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) {
+      canvas.width = pw;
+      canvas.height = ph;
+    }
+    var ctx = canvas.getContext('2d');
+    if (!ctx.__tnTheme) {
+      ctx.__tnTheme = true;
+      ['fillStyle', 'strokeStyle'].forEach(function (prop) {
+        var proto = Object.getPrototypeOf(ctx);
+        var desc = Object.getOwnPropertyDescriptor(proto, prop);
+        if (!desc || !desc.set) return;
+        Object.defineProperty(ctx, prop, {
+          configurable: true,
+          get: function () { return desc.get.call(ctx); },
+          set: function (value) { desc.set.call(ctx, mapCanvasColor(value)); }
+        });
+      });
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: cw, h: ch };
+  }
+
+  function mono(ctx, text, x, y, color, size, align) {
+    ctx.fillStyle = color || C.ink3;
+    ctx.font = (size || 10) + 'px ui-monospace, "Cascadia Mono", Consolas, monospace';
+    ctx.textAlign = align || 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  }
+
+  function cn(ctx, text, x, y, color, size, align) {
+    ctx.fillStyle = color || C.ink2;
+    ctx.font = (size || 12) + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = align || 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  }
+
+  function line(ctx, x1, y1, x2, y2, color, width, dash) {
+    ctx.strokeStyle = color || C.line;
+    ctx.lineWidth = width || 1;
+    if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function rect(ctx, x, y, w, h, fill, stroke, width, radius) {
+    var r = radius === undefined ? 2 : radius;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+    }
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = width || 1; ctx.stroke(); }
+  }
+
+  function arrow(ctx, x1, y1, x2, y2, color, width) {
+    var w = width || 1.2;
+    line(ctx, x1, y1, x2, y2, color, w);
+    var a = Math.atan2(y2 - y1, x2 - x1);
+    var s = 6;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - s * Math.cos(a - 0.42), y2 - s * Math.sin(a - 0.42));
+    ctx.lineTo(x2 - s * Math.cos(a + 0.42), y2 - s * Math.sin(a + 0.42));
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function dashRect(ctx, x, y, w, h, color, width) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width || 1.2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+  }
+
+  function fmt(x, digits) {
+    var n = Number(x);
+    if (!isFinite(n)) return '—';
+    var d = digits === undefined ? 3 : digits;
+    return n.toFixed(d).replace(/0+$/, '').replace(/\.$/, '') || '0';
+  }
+
+
+
+/* ============================================================
+   SpectralINR · hero canvas
+   ============================================================ */
+
+(function () {
+  var canvas = document.getElementById('sCanvas');
+  if (!canvas) return;
+
+  var omega = document.getElementById('sOmega');
+  var sigma = document.getElementById('sSigma');
+  var omegaVal = document.getElementById('sOmegaVal');
+  var sigmaVal = document.getElementById('sSigmaVal');
+  var errEl = document.getElementById('sErr');
+  var retEl = document.getElementById('sRet');
+  var stateEl = document.getElementById('sState');
+  var statusEl = document.getElementById('sStatus');
+
+  var DETAILS = [
+    { k: 3, amp: 0.055, ax: 0.80, ay: 0.60, ph: 0.30 },
+    { k: 5, amp: 0.045, ax: -0.50, ay: 0.866, ph: 1.70 },
+    { k: 8, amp: 0.035, ax: 0.95, ay: -0.30, ph: 2.40 },
+    { k: 12, amp: 0.025, ax: 0.60, ay: 0.80, ph: 0.90 },
+    { k: 18, amp: 0.018, ax: -0.70, ay: 0.70, ph: 1.10 },
+    { k: 24, amp: 0.012, ax: 0.80, ay: 0.60, ph: 2.80 }
+  ];
+
+  var NOISE = [
+    { k: 30, amp: 0.007, ax: 0.30, ay: 0.95, ph: 0.40 },
+    { k: 34, amp: 0.007, ax: -0.90, ay: 0.43, ph: 1.90 },
+    { k: 38, amp: 0.007, ax: 0.70, ay: -0.71, ph: 2.60 }
+  ];
+
+  function base(x, y) {
+    return 0.40
+      + 0.16 * Math.sin(2 * Math.PI * (1.00 * x + 0.15 * Math.cos(2 * Math.PI * 1.20 * y)))
+      + 0.10 * Math.sin(2 * Math.PI * 2.00 * y + 0.40)
+      + 0.06 * Math.cos(2 * Math.PI * 2.00 * x - 0.80);
+  }
+
+  function component(c, x, y) {
+    return c.amp * Math.sin(2 * Math.PI * c.k * (c.ax * x + c.ay * y) + c.ph);
+  }
+
+  function cleanAt(x, y) {
+    var v = base(x, y);
+    DETAILS.forEach(function (c) { v += component(c, x, y); });
+    return v;
+  }
+
+  function targetAt(x, y) {
+    var v = cleanAt(x, y);
+    NOISE.forEach(function (c) { v += component(c, x, y); });
+    return v;
+  }
+
+  function response(k, w, s) {
+    var z = (k - w) / Math.max(1, s);
+    return Math.exp(-0.5 * z * z);
+  }
+
+  function reconAt(x, y, w, s) {
+    var v = base(x, y);
+    DETAILS.forEach(function (c) { v += component(c, x, y) * response(c.k, w, s); });
+    NOISE.forEach(function (c) { v += component(c, x, y) * response(c.k, w, s); });
+    return v;
+  }
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  var STOPS = [
+    { t: 0.00, c: [7, 13, 22] },
+    { t: 0.30, c: [15, 55, 78] },
+    { t: 0.55, c: [34, 140, 158] },
+    { t: 0.76, c: [88, 226, 214] },
+    { t: 0.90, c: [255, 194, 102] },
+    { t: 1.00, c: [255, 240, 214] }
+  ];
+
+  function color(v) {
+    var t = clamp(v, 0, 1);
+    for (var i = 1; i < STOPS.length; i++) {
+      if (t <= STOPS[i].t) {
+        var a = STOPS[i - 1], b = STOPS[i];
+        var u = (t - a.t) / (b.t - a.t);
+        return 'rgb(' + Math.round(a.c[0] + (b.c[0] - a.c[0]) * u) + ',' +
+          Math.round(a.c[1] + (b.c[1] - a.c[1]) * u) + ',' +
+          Math.round(a.c[2] + (b.c[2] - a.c[2]) * u) + ')';
+      }
+    }
+    return 'rgb(255,240,214)';
+  }
+
+  function drawMap(ctx, x0, y0, size, fn, grid) {
+    var cs = size / grid;
+    for (var gy = 0; gy < grid; gy++) {
+      for (var gx = 0; gx < grid; gx++) {
+        var v = fn((gx + 0.5) / grid, (gy + 0.5) / grid);
+        ctx.fillStyle = color(v);
+        ctx.fillRect(x0 + gx * cs, y0 + gy * cs, cs + 0.5, cs + 0.5);
+      }
+    }
+    ctx.strokeStyle = '#243246';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0, y0, size, size);
+  }
+
+  function drawProfile(ctx, w, s) {
+    var x0 = 52, x1 = 500, y0 = 306, y1 = 396;
+
+    cn(ctx, '中心线剖面（y = 0.5）', 20, 290, '#b6c7d9', 10.5);
+
+    line(ctx, x0, y0, x1, y0, '#243246', 1);
+    line(ctx, x0, y1, x1, y1, '#243246', 1);
+    line(ctx, x0, y0, x0, y1, '#243246', 1);
+
+    mono(ctx, '高', x0 - 7, y0 + 4, '#8fa3b8', 8.5, 'right');
+    mono(ctx, '低', x0 - 7, y1 - 2, '#8fa3b8', 8.5, 'right');
+    mono(ctx, '0', x0, y1 + 12, '#8fa3b8', 8.5, 'center');
+    mono(ctx, '1', x1, y1 + 12, '#8fa3b8', 8.5, 'center');
+
+    var n = 120;
+    function plot(fn, color, width) {
+      ctx.beginPath();
+      for (var i = 0; i <= n; i++) {
+        var x = i / n;
+        var v = fn(x, 0.5);
+        var px = x0 + x * (x1 - x0);
+        var py = y1 - clamp(v, 0, 1) * (y1 - y0);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    }
+
+    plot(function (x, y) { return cleanAt(x, y); }, '#8fa3b8', 2.2);
+    plot(function (x, y) { return reconAt(x, y, w, s); }, '#58e2d6', 1.6);
+
+    line(ctx, 20, 380, 34, 380, '#8fa3b8', 2.2);
+    mono(ctx, '干净参考', 40, 380, '#8fa3b8', 9);
+    line(ctx, 116, 380, 130, 380, '#58e2d6', 1.6);
+    mono(ctx, 'INR 重建', 136, 380, '#b6c7d9', 9);
+  }
+
+  function render() {
+    var v = ensureCanvas(canvas);
+    var ctx = v.ctx;
+    var w = parseFloat(omega.value);
+    var s = parseFloat(sigma.value);
+
+    ctx.fillStyle = '#070b12';
+    ctx.fillRect(0, 0, v.w, v.h);
+
+    var scale = Math.min(v.w / 520, v.h / 420);
+    ctx.save();
+    ctx.translate((v.w - 520 * scale) / 2, (v.h - 420 * scale) / 2);
+    ctx.scale(scale, scale);
+    cn(ctx, '谱偏差：细节与噪声的折中', 24, 24, '#e8f0fa', 12);
+    cn(ctx, '目标（含噪声）', 20, 44, '#b6c7d9', 10);
+    cn(ctx, 'INR 重建', 300, 44, '#b6c7d9', 10);
+
+    drawMap(ctx, 20, 52, 200, targetAt, 64);
+    drawMap(ctx, 300, 52, 200, function (x, y) { return reconAt(x, y, w, s); }, 64);
+
+    drawProfile(ctx, w, s);
+    ctx.restore();
+
+    /* 误差与高频保留：在 64×64 网格上采样 */
+    var sumErr = 0, sumClean = 0, count = 0;
+    for (var gy = 0; gy < 64; gy++) {
+      for (var gx = 0; gx < 64; gx++) {
+        var x = (gx + 0.5) / 64, y = (gy + 0.5) / 64;
+        var c = cleanAt(x, y);
+        var r = reconAt(x, y, w, s);
+        sumErr += Math.abs(r - c);
+        sumClean += Math.abs(c);
+        count++;
+      }
+    }
+    var errPct = (sumErr / Math.max(1e-6, sumClean)) * 100;
+    var ret = response(24, w, s) * 100;
+
+    omegaVal.textContent = String(w);
+    sigmaVal.textContent = String(s);
+    statusEl.textContent = '(ω₀, s₀) = (' + w + ', ' + s + ')';
+    errEl.textContent = errPct.toFixed(1) + '%';
+    retEl.textContent = ret.toFixed(0) + '%';
+
+    if (w <= 10 && s <= 15) {
+      stateEl.textContent = '低频偏好';
+      stateEl.style.color = 'var(--ice)';
+    } else if (w >= 60 && s >= 40) {
+      stateEl.textContent = '高频偏好';
+      stateEl.style.color = 'var(--amber)';
+    } else {
+      stateEl.textContent = '中间频带';
+      stateEl.style.color = 'var(--cyan)';
+    }
+  }
+
+  omega.addEventListener('input', render);
+  sigma.addEventListener('input', render);
+  document.addEventListener('technotes:theme', render);
+  window.addEventListener('resize', render);
+  render();
+  setTimeout(render, 300);
+  setInterval(render, 950);
+})();
+
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNGY2YjRhIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMy41IDljMi0zLjIgNC0zLjIgNiAwczQgMy4yIDYgMCAzLjItMi44IDUtMi40Ii8+PHBhdGggZD0iTTMuNSAxNS41YzItMy4yIDQtMy4yIDYgMHM0IDMuMiA2IDAgMy4yLTIuOCA1LTIuNCIvPjwvZz48L3N2Zz4=";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTliOThlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMy41IDljMi0zLjIgNC0zLjIgNiAwczQgMy4yIDYgMCAzLjItMi44IDUtMi40Ii8+PHBhdGggZD0iTTMuNSAxNS41YzItMy4yIDQtMy4yIDYgMHM0IDMuMiA2IDAgMy4yLTIuOCA1LTIuNCIvPjwvZz48L3N2Zz4=";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

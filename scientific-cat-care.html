@@ -1,0 +1,4067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>科学养猫：把猫碗、水碗和体重秤都算明白</title>
+<meta name="description" content="科学养猫：猫的专性肉食代谢、RER 能量计算、干湿粮水分账、九分制体况评分、资源 n+1、常见行为解释与症状应对红线；附饭量计算器、体况轮廓仪与呼吸计数仪。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="科学养猫：把猫碗、水碗和体重秤都算明白">
+<meta property="og:description" content="科学养猫：猫的专性肉食代谢、RER 能量计算、干湿粮水分账、九分制体况评分、资源 n+1、常见行为解释与症状应对红线；附饭量计算器、体况轮廓仪与呼吸计数仪。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/scientific-cat-care.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/scientific-cat-care.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+
+/* ============================================================
+   0. 令牌
+   ============================================================ */
+
+:root {
+  --void: #05070c;
+  --void-2: #090e17;
+  --void-3: #0d1420;
+  --panel: rgba(14, 21, 33, .78);
+  --screen: #080d15;
+  --screen-2: #0c131e;
+  --screen-3: #111b29;
+  --screen-ink: #e8f0fa;
+  --screen-ink-2: #b6c7d9;
+  --screen-ink-3: #8fa3b8;
+  --ink: #e8eef6;
+  --ink-2: #b3c2d3;
+  --ink-3: #8497ac;
+  --rule: #172130;
+  --rule-2: #243246;
+  --ice: #8cc4ff;
+  --cyan: #58e2d6;
+  --teal: #34c9bd;
+  --amber: #ffc266;
+  --rose: #ff6f91;
+  --violet: #b9a1ff;
+  --rose-dim: rgba(255, 111, 145, .12);
+  --cyan-dim: rgba(88, 226, 214, .10);
+  --amber-dim: rgba(255, 194, 102, .10);
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 4px;
+  --max: 1180px;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --void: #f6f8fb; --void-2: #edf1f6; --void-3: #e4eaf2;
+    --panel: rgba(255,255,255,.82);
+    --ink: #0f1722; --ink-2: #3d4e60; --ink-3: #5d7084;
+    --rule: #dfe6ee; --rule-2: #c9d4e0;
+    --ice: #1b5fc9; --cyan: #0b7d75; --teal: #0a6e67;
+    --amber: #9a5c00; --rose: #b51f45; --violet: #6347c7;
+    --rose-dim: rgba(181,31,69,.07);
+    --cyan-dim: rgba(11,125,117,.07);
+    --amber-dim: rgba(154,92,0,.07);
+    --screen: #f7f9fc; --screen-2: #eef2f8; --screen-3: #e7edf6;
+    --screen-ink: #0f1722; --screen-ink-2: #3d4e60; --screen-ink-3: #5d7084;
+  }
+}
+
+html[data-theme="light"] {
+  --void: #f6f8fb; --void-2: #edf1f6; --void-3: #e4eaf2;
+  --panel: rgba(255,255,255,.82);
+  --ink: #0f1722; --ink-2: #3d4e60; --ink-3: #5d7084;
+  --rule: #dfe6ee; --rule-2: #c9d4e0;
+  --ice: #1b5fc9; --cyan: #0b7d75; --teal: #0a6e67;
+  --amber: #9a5c00; --rose: #b51f45; --violet: #6347c7;
+  --rose-dim: rgba(181,31,69,.07);
+  --cyan-dim: rgba(11,125,117,.07);
+  --amber-dim: rgba(154,92,0,.07);
+  --screen: #f7f9fc; --screen-2: #eef2f8; --screen-3: #e7edf6;
+  --screen-ink: #0f1722; --screen-ink-2: #3d4e60; --screen-ink-3: #5d7084;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--cyan); color: var(--void); }
+
+/* ---- 背景 ---- */
+
+.glow {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(44rem 30rem at 16% -8%, rgba(255,194,102,.075), transparent 62%),
+    radial-gradient(46rem 32rem at 88% 2%, rgba(88,226,214,.055), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 118%, rgba(140,196,255,.05), transparent 66%),
+    var(--void);
+}
+
+.glow::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 3px,
+    rgba(255, 194, 102, .012) 3px 4px
+  );
+}
+
+/* ---- 顶栏 ---- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--void) 84%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .topbar { background: var(--void); }
+}
+
+.topbar-in {
+  max-width: var(--max); margin: 0 auto;
+  padding: 0 24px; height: 58px;
+  display: flex; align-items: center; gap: 18px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-decoration: none;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+  flex: none;
+}
+
+.brand-mark { width: 20px; height: 20px; flex: 0 0 auto; display: block; opacity: .95; }
+.brand:hover { color: var(--ink-2); }
+.brand-mark .bm-frame { fill: none; stroke: var(--cyan); stroke-width: 1.6; stroke-linejoin: round; }
+.brand-mark .bm-slice { stroke: var(--ice); stroke-width: 1.35; stroke-linecap: round; opacity: .8; }
+.brand-mark .bm-dot { fill: var(--rose); }
+
+.nav {
+  display: flex; gap: 2px; overflow-x: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 5px 9px;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+}
+
+.nav a:hover { color: var(--ink); background: var(--void-3); }
+.nav a.on { color: var(--ink); background: var(--void-3); }
+
+.spacer { flex: 1 1 auto; }
+
+.theme-btn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .05em;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .18s, border-color .18s;
+}
+
+.theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.progress {
+  position: absolute; left: 0; bottom: -1px; height: 1px; width: 0;
+  background: linear-gradient(90deg, var(--cyan), var(--amber));
+  transition: width .1s linear;
+}
+
+/* ---- 版心 ---- */
+
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+/* ---- 首屏 ---- */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 470px;
+  gap: 44px;
+  align-items: center;
+  padding: 66px 0 52px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+}
+
+.h1-prefix {
+  display: block;
+  font-family: var(--mono);
+  font-size: clamp(12px, 1.2vw, 15px);
+  line-height: 1.4;
+  letter-spacing: .16em;
+  color: var(--amber);
+  margin-bottom: 12px;
+  font-weight: 400;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(38px, 5.2vw, 66px);
+  line-height: 1.12;
+  letter-spacing: -.015em;
+  margin: 0 0 20px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+/* 渐变只挂在纯文本节点上，并限制在自身宽度内；不支持裁剪时回退纯色 */
+h1 em { color: var(--cyan); }
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  h1 em {
+    font-style: normal;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    font-size: .46em;
+    line-height: 1.42;
+    letter-spacing: .004em;
+    margin-top: 14px;
+    background: linear-gradient(96deg, var(--ice), var(--cyan) 52%, var(--amber));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 500;
+  }
+}
+
+.lede {
+  font-size: 17px;
+  line-height: 1.9;
+  color: var(--ink-2);
+  max-width: 40em;
+  margin: 0 0 16px;
+}
+
+.byline {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  margin-top: 18px;
+}
+
+/* ---- 首屏仪器 ---- */
+
+.hero-lab {
+  position: relative;
+  border: 1px solid var(--rule-2);
+  border-radius: 6px;
+  background:
+    linear-gradient(155deg, rgba(28, 36, 30, .55), rgba(6, 10, 17, .96)),
+    var(--screen);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255,255,255,.05);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.hero-lab::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(120deg, transparent 35%, rgba(255,194,102,.06) 49.7%, transparent 50.3%),
+    linear-gradient(300deg, transparent 35%, rgba(88,226,214,.05) 49.7%, transparent 50.3%);
+}
+
+.lab-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-3);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  position: relative;
+}
+
+.lab-head .live {
+  color: var(--cyan);
+  letter-spacing: .14em;
+}
+
+.lab-readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  position: relative;
+}
+
+.lab-readout > div {
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.lab-readout .k {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-3);
+}
+
+.lab-readout .v {
+  font-family: var(--mono);
+  font-size: 19px;
+  line-height: 1.3;
+  color: var(--screen-ink);
+  margin-top: 3px;
+}
+
+.lab-readout .v small { font-size: 10px; color: var(--screen-ink-3); margin-left: 2px; }
+.lab-readout .v.cyan { color: var(--cyan); }
+.lab-readout .v.amber { color: var(--amber); }
+
+.hero-controls { margin-top: 12px; position: relative; }
+
+.ctl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  font-size: 12px;
+  color: var(--screen-ink-2);
+  margin-bottom: 10px;
+}
+
+.ctl .val { font-family: var(--mono); color: var(--screen-ink); }
+.ctl input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; accent-color: var(--cyan); }
+.ctl select {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  background: var(--screen-2);
+  color: var(--screen-ink);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+}
+
+.chips { display: flex; gap: 6px; margin-top: 2px; }
+
+.chip {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  color: var(--screen-ink-2);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 20px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.chip:hover { color: var(--screen-ink); }
+.chip.on { color: var(--cyan); border-color: rgba(88,226,214,.45); background: rgba(88,226,214,.08); }
+
+.lab-formula {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--screen-ink-3);
+  letter-spacing: .02em;
+}
+
+.lab-note {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--screen-ink-3);
+  margin-top: 10px;
+}
+
+/* 浅色主题下的仪器面板 */
+
+html[data-theme="light"] .hero-lab,
+html.is-light .hero-lab {
+  background: linear-gradient(155deg, #fbfcfd, #eef2f7);
+  box-shadow: 0 18px 50px rgba(30, 45, 60, .10), inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+html[data-theme="light"] .lab-head,
+html.is-light .lab-head { border-bottom-color: rgba(20,30,45,.1); }
+
+html[data-theme="light"] .lab-readout > div,
+html.is-light .lab-readout > div {
+  background: #fff;
+  border-color: #e0e7ef;
+}
+
+html[data-theme="light"] .ctl select,
+html.is-light .ctl select { background: #fff; border-color: #d7e0ea; }
+
+html[data-theme="light"] .chip,
+html.is-light .chip { border-color: #d7e0ea; }
+
+html[data-theme="light"] .chip.on,
+html.is-light .chip.on { color: #0b7d75; border-color: rgba(11,125,117,.4); background: rgba(11,125,117,.07); }
+
+html[data-theme="light"] .lab-formula,
+html.is-light .lab-formula { border-top-color: rgba(20,30,45,.1); }
+
+/* ---- 章节 ---- */
+
+section { padding: 60px 0 8px; border-bottom: 1px solid var(--rule); scroll-margin-top: 70px; }
+section:last-of-type { border-bottom: 0; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--rose);
+  letter-spacing: .12em;
+  flex: none;
+  padding-top: 6px;
+}
+
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(24px, 2.7vw, 32px);
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -.005em;
+  text-wrap: balance;
+}
+
+.dek {
+  color: var(--ink-3);
+  font-size: 14.5px;
+  margin: 0 0 30px;
+}
+
+.paper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  column-gap: 44px;
+  align-items: start;
+}
+
+.paper > * { grid-column: 1; }
+.paper > .mnote { grid-column: 1; }
+.paper > .wide { grid-column: 1 / -1; }
+
+h3 {
+  font-size: 16.5px;
+  letter-spacing: .01em;
+  margin: 30px 0 10px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+p { margin: 0 0 15px; color: var(--ink-2); }
+p b, p strong { color: var(--ink); font-weight: 600; }
+
+a.inline {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(140,196,255,.3);
+}
+
+a.inline:hover { border-bottom-color: var(--ice); }
+
+sup.cite {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--rose);
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+sup.cite a { color: inherit; text-decoration: none; }
+sup.cite a:hover { text-decoration: underline; }
+
+/* ---- 边注 ---- */
+
+.mnote {
+  font-size: 12.5px;
+  line-height: 1.72;
+  color: var(--ink-3);
+  border-left: 1px solid var(--rule-2);
+  padding: 2px 0 2px 14px;
+  margin: 6px 0 18px;
+}
+
+.mnote b { color: var(--ink-2); font-weight: 600; }
+
+.mnote .tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 5px;
+}
+
+/* ---- 速览列表 ---- */
+
+.quick {
+  list-style: none;
+  counter-reset: q;
+  margin: 18px 0 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 34px;
+}
+
+.quick li {
+  counter-increment: q;
+  position: relative;
+  padding: 14px 0 14px 34px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.quick li::before {
+  content: counter(q, decimal-leading-zero);
+  position: absolute; left: 0; top: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: .08em;
+}
+
+.quick b { color: var(--ink); font-weight: 600; }
+
+/* ---- 统计条 ---- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 26px 0;
+}
+
+.stat {
+  background: var(--void-2);
+  padding: 16px 14px;
+}
+
+.stat .n {
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.4vw, 27px);
+  line-height: 1.15;
+  color: var(--ink);
+  letter-spacing: -.02em;
+}
+
+.stat .n small { font-size: 11px; color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.stat .l { font-size: 12px; color: var(--ink-3); line-height: 1.6; margin-top: 5px; }
+.stat .l b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 图 ---- */
+
+figure { margin: 28px 0; }
+
+.fig-frame {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  padding: 18px;
+  overflow-x: auto;
+}
+
+figcaption {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+figcaption b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 营养素卡片 ---- */
+
+.nutrient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.ncard {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  background: linear-gradient(160deg, rgba(255,194,102,.05), transparent 60%);
+}
+
+.ncard .t {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 6px;
+}
+
+.ncard .h { font-size: 15px; color: var(--ink); font-weight: 600; margin-bottom: 5px; }
+.ncard .d { font-size: 12.5px; line-height: 1.75; color: var(--ink-3); }
+.ncard .d b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 表格 ---- */
+
+.tbl-wrap { overflow-x: auto; margin: 22px 0; border: 1px solid var(--rule); border-radius: var(--r); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.7;
+  min-width: 560px;
+}
+
+thead th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 500;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule-2);
+  background: var(--void-2);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  vertical-align: top;
+}
+
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: rgba(255,194,102,.03); }
+tbody td b { color: var(--ink); font-weight: 600; }
+td.num { font-family: var(--mono); white-space: nowrap; }
+
+/* ---- 仪器 ---- */
+
+.instrument {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  color: var(--screen-ink);
+  margin: 28px 0;
+  overflow: hidden;
+}
+
+.instrument-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+}
+
+.instrument-head .t {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.instrument-head .s {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  color: var(--screen-ink-3);
+}
+
+.instrument-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(220px, .7fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.instrument-body.single { grid-template-columns: 1fr; }
+
+.instrument canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+}
+
+.instrument-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.instrument-aside .box {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,.025);
+}
+
+.instrument-aside .box .k {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-3);
+}
+
+.instrument-aside .box .v {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--screen-ink);
+  line-height: 1.3;
+  margin-top: 3px;
+}
+
+.instrument-aside .box .v small { font-size: 10px; color: var(--screen-ink-3); margin-left: 2px; }
+.instrument-aside .box p { font-size: 11.5px; line-height: 1.7; color: var(--screen-ink-3); margin: 4px 0 0; }
+
+.instrument-foot {
+  padding: 0 18px 16px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--screen-ink-3);
+}
+
+.instrument-foot b { color: var(--screen-ink-2); font-weight: 600; }
+
+/* 浅色主题下的仪器 */
+
+html[data-theme="light"] .instrument,
+html.is-light .instrument {
+  background: linear-gradient(160deg, #fbfcfd, #eef2f7);
+  border-color: #d7e0ea;
+}
+
+html[data-theme="light"] .instrument-head,
+html.is-light .instrument-head {
+  background: rgba(20,30,45,.02);
+  border-bottom-color: rgba(20,30,45,.08);
+}
+
+html[data-theme="light"] .instrument-aside .box,
+html.is-light .instrument-aside .box {
+  background: #fff;
+  border-color: #e0e7ef;
+}
+
+/* ---- 体况仪器 ---- */
+
+.bcs-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.bcs-controls label { font-size: 12.5px; color: var(--screen-ink-2); }
+.bcs-controls .v { font-family: var(--mono); font-size: 18px; color: var(--amber); }
+.bcs-controls input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--amber); }
+
+.bcs-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--screen-ink-3);
+  margin-top: 2px;
+}
+
+.bcs-readout .v { font-size: 15px; }
+.bcs-readout .desc { font-size: 11.5px; line-height: 1.7; color: var(--screen-ink-3); margin-top: 4px; }
+
+/* ---- 水分条 ---- */
+
+.waterbars { margin: 6px 0 2px; }
+
+.wbar {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) 74px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.wbar .track {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--void-3);
+  overflow: hidden;
+}
+
+.wbar .fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(88,226,214,.5), var(--cyan));
+}
+
+.wbar.dry .fill { background: linear-gradient(90deg, rgba(255,194,102,.45), var(--amber)); }
+.wbar .num { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); text-align: right; }
+
+/* ---- 五根支柱 ---- */
+
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.pillar {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 12px 12px 13px;
+  background: var(--void-2);
+}
+
+.pillar .no {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--cyan);
+  letter-spacing: .1em;
+}
+
+.pillar .t { font-size: 13px; color: var(--ink); font-weight: 600; margin: 3px 0 4px; line-height: 1.5; }
+.pillar .d { font-size: 11.5px; color: var(--ink-3); line-height: 1.65; }
+
+/* ---- 清单卡片 ---- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.card {
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  background: var(--void-2);
+}
+
+.card .k {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 7px;
+}
+
+.card ul { list-style: none; }
+.card li { font-size: 12.5px; line-height: 1.75; color: var(--ink-2); padding-left: 12px; position: relative; }
+.card li::before { content: "·"; position: absolute; left: 0; color: var(--ink-3); }
+
+/* ---- 参考 ---- */
+
+.refs {
+  margin: 18px 0 0;
+  padding-left: 26px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.refs li { margin-bottom: 8px; scroll-margin-top: 78px; }
+.refs li:target { background: var(--amber-dim); }
+.refs a { color: var(--ice); text-decoration: none; border-bottom: 1px solid rgba(140,196,255,.25); }
+.refs a:hover { border-bottom-color: var(--ice); }
+.refs .j { color: var(--ink-3); }
+
+/* ---- 页脚 ---- */
+
+.foot {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 30px 24px 44px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+.foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+.foot a:hover { color: var(--ink); }
+
+/* ---- 入场 ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity .65s cubic-bezier(.2,.7,.3,1), transform .65s cubic-bezier(.2,.7,.3,1);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+}
+
+/* ---- 响应式 ---- */
+
+@media (max-width: 1080px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 34px; }
+  .hero-lab { max-width: 560px; }
+  .paper { grid-template-columns: minmax(0, 1fr); }
+  .paper > .mnote { grid-column: 1; border-left: 0; border-top: 1px solid var(--rule-2); padding: 10px 0 0; }
+  .paper > .wide { grid-column: 1; }
+  .quick { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .pillars { grid-template-columns: repeat(2, 1fr); }
+  .cards { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 860px) {
+  .nav { display: none; }
+  .hero { padding-top: 46px; }
+  .instrument-body { grid-template-columns: 1fr; }
+  .instrument-aside { flex-direction: row; flex-wrap: wrap; }
+  .instrument-aside .box { flex: 1 1 150px; }
+  .nutrient-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .topbar-in { padding: 0 16px; gap: 10px; }
+  .brand { font-size: 10px; letter-spacing: .08em; }
+  .brand-mark { width: 17px; height: 17px; }
+  .wrap { padding: 0 18px; }
+  h1 { font-size: clamp(32px, 9.6vw, 44px); }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .pillars { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr; }
+  .wbar { grid-template-columns: 104px minmax(0, 1fr) 62px; gap: 8px; }
+  .foot { flex-direction: column; gap: 6px; padding: 24px 18px 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* ============================================================
+   猫页皮肤 · 团子的照顾手册（2026-11-18）
+   可爱漫画绘本风：浅色 = 冷调瓷白纸 / 蜜桃珊瑚；深色 = 夜蓝黑 / 珊瑚提亮。
+   形状锁：卡片与面板 14px 圆角、按钮与徽章全 pill；描边 1.6px 贴纸感。
+   强调色锁：只有蜜桃珊瑚；玫红只留给就医红线，琥珀只作注意语义。
+   ============================================================ */
+
+body.cat-page {
+  --void: #f6f8fb;
+  --void-2: #edf1f6;
+  --void-3: #e4eaf2;
+  --panel: rgba(255, 255, 255, .92);
+  --screen: #fbfcfe;
+  --screen-2: #eef2f8;
+  --screen-3: #e7edf6;
+  --screen-ink: #0f1722;
+  --screen-ink-2: #3d4e60;
+  --screen-ink-3: #4c5560;
+  --ink: #0f1722;
+  --ink-2: #3d4e60;
+  --ink-3: #4c5560;
+  --rule: #dfe6ee;
+  --rule-2: #c9d4e0;
+  --ice: #a04227;
+  --cyan: #a04227;
+  --teal: #a04227;
+  --amber: #9a6516;
+  --rose: #b23232;
+  --violet: #6b7280;
+  --rose-dim: rgba(178, 50, 50, .07);
+  --cyan-dim: rgba(207, 106, 77, .07);
+  --amber-dim: rgba(154, 101, 22, .08);
+  --coral: #cf6a4d;
+  --coral-deep: #a04227;
+  --coral-soft: #f4cdbb;
+  --cat-peach: #e08a5c;
+  --cat-peach-soft: #f7dcc7;
+  --cat-cocoa: #4a3428;
+  --cat-butter: #d9a23e;
+  --cat-mint: #7fa88f;
+  --cat-pink: #e79d92;
+  --cat-wash: rgba(207, 106, 77, .035);
+  --r: 14px;
+  --shadow-sticker: 0 3px 0 rgba(15, 23, 34, .05), 0 10px 26px rgba(15, 23, 34, .07);
+  --glow-a: radial-gradient(60% 50% at 18% 0%, rgba(147, 167, 224, .10), transparent 70%);
+  --glow-b: radial-gradient(50% 45% at 88% 8%, rgba(207, 106, 77, .045), transparent 72%);
+  --paw-row: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='16' viewBox='0 0 120 16'%3E%3Cg fill='%23cf6a4d' fill-opacity='.30'%3E%3Cellipse cx='14' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='8' cy='4.6' r='2'/%3E%3Ccircle cx='12' cy='2.4' r='2'/%3E%3Ccircle cx='16' cy='2.4' r='2'/%3E%3Ccircle cx='20' cy='4.6' r='2'/%3E%3Cellipse cx='60' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='54' cy='4.6' r='2'/%3E%3Ccircle cx='58' cy='2.4' r='2'/%3E%3Ccircle cx='62' cy='2.4' r='2'/%3E%3Ccircle cx='66' cy='4.6' r='2'/%3E%3Cellipse cx='106' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='100' cy='4.6' r='2'/%3E%3Ccircle cx='104' cy='2.4' r='2'/%3E%3Ccircle cx='108' cy='2.4' r='2'/%3E%3Ccircle cx='112' cy='4.6' r='2'/%3E%3C/g%3E%3C/svg%3E");
+  --paw-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 13 13'%3E%3Cg fill='%23cf6a4d'%3E%3Cellipse cx='6.5' cy='8.6' rx='3.1' ry='2.5'/%3E%3Ccircle cx='3' cy='4.6' r='1.35'/%3E%3Ccircle cx='5.6' cy='3.2' r='1.35'/%3E%3Ccircle cx='8.2' cy='3.2' r='1.35'/%3E%3Ccircle cx='10.4' cy='4.6' r='1.35'/%3E%3C/g%3E%3C/svg%3E");
+  --rl-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Ccircle cx='7' cy='7' r='6' fill='%23b23232'/%3E%3Cpath d='M7 3.6v4.2' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='7' cy='10.4' r='.95' fill='%23fff'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+
+html[data-theme="dark"] body.cat-page {
+  --void: #14161a;
+  --void-2: #1a1d22;
+  --void-3: #22262c;
+  --panel: rgba(26, 29, 34, .92);
+  --screen: #181b20;
+  --screen-2: #1e2228;
+  --screen-3: #262b32;
+  --screen-ink: #efe9e5;
+  --screen-ink-2: #c6bfba;
+  --screen-ink-3: #aaa39d;
+  --ink: #efe9e5;
+  --ink-2: #c6bfba;
+  --ink-3: #aaa39d;
+  --rule: #2a2f36;
+  --rule-2: #3a414a;
+  --ice: #f2927a;
+  --cyan: #f2927a;
+  --teal: #f2927a;
+  --amber: #e0b366;
+  --rose: #ef8a80;
+  --violet: #b7a89e;
+  --rose-dim: rgba(239, 138, 128, .10);
+  --cyan-dim: rgba(242, 146, 122, .10);
+  --amber-dim: rgba(224, 179, 102, .10);
+  --coral: #e58a6b;
+  --coral-deep: #f2927a;
+  --coral-soft: #5a3629;
+  --cat-peach: #f0a173;
+  --cat-peach-soft: #6b4433;
+  --cat-cocoa: #6b4a38;
+  --cat-butter: #e0b366;
+  --cat-mint: #8fb89c;
+  --cat-pink: #eb9a90;
+  --cat-wash: rgba(242, 146, 122, .04);
+  --shadow-sticker: 0 3px 0 rgba(0, 0, 0, .22), 0 12px 30px rgba(0, 0, 0, .30);
+  --glow-a: radial-gradient(60% 50% at 18% 0%, rgba(147, 167, 224, .08), transparent 70%);
+  --glow-b: radial-gradient(50% 45% at 88% 8%, rgba(242, 146, 122, .035), transparent 72%);
+  --paw-row: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='16' viewBox='0 0 120 16'%3E%3Cg fill='%23f2927a' fill-opacity='.26'%3E%3Cellipse cx='14' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='8' cy='4.6' r='2'/%3E%3Ccircle cx='12' cy='2.4' r='2'/%3E%3Ccircle cx='16' cy='2.4' r='2'/%3E%3Ccircle cx='20' cy='4.6' r='2'/%3E%3Cellipse cx='60' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='54' cy='4.6' r='2'/%3E%3Ccircle cx='58' cy='2.4' r='2'/%3E%3Ccircle cx='62' cy='2.4' r='2'/%3E%3Ccircle cx='66' cy='4.6' r='2'/%3E%3Cellipse cx='106' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='100' cy='4.6' r='2'/%3E%3Ccircle cx='104' cy='2.4' r='2'/%3E%3Ccircle cx='108' cy='2.4' r='2'/%3E%3Ccircle cx='112' cy='4.6' r='2'/%3E%3C/g%3E%3C/svg%3E");
+  --paw-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 13 13'%3E%3Cg fill='%23f2927a'%3E%3Cellipse cx='6.5' cy='8.6' rx='3.1' ry='2.5'/%3E%3Ccircle cx='3' cy='4.6' r='1.35'/%3E%3Ccircle cx='5.6' cy='3.2' r='1.35'/%3E%3Ccircle cx='8.2' cy='3.2' r='1.35'/%3E%3Ccircle cx='10.4' cy='4.6' r='1.35'/%3E%3C/g%3E%3C/svg%3E");
+  --rl-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Ccircle cx='7' cy='7' r='6' fill='%23ef8a80'/%3E%3Cpath d='M7 3.6v4.2' stroke='%2314161a' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='7' cy='10.4' r='.95' fill='%2314161a'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) body.cat-page {
+    --void: #14161a;
+    --void-2: #1a1d22;
+    --void-3: #22262c;
+    --panel: rgba(26, 29, 34, .92);
+    --screen: #181b20;
+    --screen-2: #1e2228;
+    --screen-3: #262b32;
+    --screen-ink: #efe9e5;
+    --screen-ink-2: #c6bfba;
+    --screen-ink-3: #aaa39d;
+    --ink: #efe9e5;
+    --ink-2: #c6bfba;
+    --ink-3: #aaa39d;
+    --rule: #2a2f36;
+    --rule-2: #3a414a;
+    --ice: #f2927a;
+    --cyan: #f2927a;
+    --teal: #f2927a;
+    --amber: #e0b366;
+    --rose: #ef8a80;
+    --violet: #b7a89e;
+    --rose-dim: rgba(239, 138, 128, .10);
+    --cyan-dim: rgba(242, 146, 122, .10);
+    --amber-dim: rgba(224, 179, 102, .10);
+    --coral: #e58a6b;
+    --coral-deep: #f2927a;
+    --coral-soft: #5a3629;
+    --cat-peach: #f0a173;
+    --cat-peach-soft: #6b4433;
+    --cat-cocoa: #6b4a38;
+    --cat-butter: #e0b366;
+    --cat-mint: #8fb89c;
+    --cat-pink: #eb9a90;
+    --cat-wash: rgba(242, 146, 122, .04);
+    --shadow-sticker: 0 3px 0 rgba(0, 0, 0, .22), 0 12px 30px rgba(0, 0, 0, .30);
+    --glow-a: radial-gradient(60% 50% at 18% 0%, rgba(147, 167, 224, .08), transparent 70%);
+    --glow-b: radial-gradient(50% 45% at 88% 8%, rgba(242, 146, 122, .035), transparent 72%);
+    --paw-row: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='16' viewBox='0 0 120 16'%3E%3Cg fill='%23f2927a' fill-opacity='.26'%3E%3Cellipse cx='14' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='8' cy='4.6' r='2'/%3E%3Ccircle cx='12' cy='2.4' r='2'/%3E%3Ccircle cx='16' cy='2.4' r='2'/%3E%3Ccircle cx='20' cy='4.6' r='2'/%3E%3Cellipse cx='60' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='54' cy='4.6' r='2'/%3E%3Ccircle cx='58' cy='2.4' r='2'/%3E%3Ccircle cx='62' cy='2.4' r='2'/%3E%3Ccircle cx='66' cy='4.6' r='2'/%3E%3Cellipse cx='106' cy='9.5' rx='4.6' ry='3.6'/%3E%3Ccircle cx='100' cy='4.6' r='2'/%3E%3Ccircle cx='104' cy='2.4' r='2'/%3E%3Ccircle cx='108' cy='2.4' r='2'/%3E%3Ccircle cx='112' cy='4.6' r='2'/%3E%3C/g%3E%3C/svg%3E");
+    --paw-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 13 13'%3E%3Cg fill='%23f2927a'%3E%3Cellipse cx='6.5' cy='8.6' rx='3.1' ry='2.5'/%3E%3Ccircle cx='3' cy='4.6' r='1.35'/%3E%3Ccircle cx='5.6' cy='3.2' r='1.35'/%3E%3Ccircle cx='8.2' cy='3.2' r='1.35'/%3E%3Ccircle cx='10.4' cy='4.6' r='1.35'/%3E%3C/g%3E%3C/svg%3E");
+    --rl-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Ccircle cx='7' cy='7' r='6' fill='%23ef8a80'/%3E%3Cpath d='M7 3.6v4.2' stroke='%2314161a' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='7' cy='10.4' r='.95' fill='%2314161a'/%3E%3C/svg%3E");
+    color-scheme: dark;
+  }
+}
+
+body.cat-page {
+  background: var(--void);
+  font-size: 16px;
+  line-height: 1.9;
+}
+
+body.cat-page ::selection { background: var(--coral); color: #fffdfb; }
+body.cat-page .nw { white-space: nowrap; }
+
+/* ---- 背景：爪印纸 ---- */
+
+body.cat-page .glow {
+  background: var(--glow-a), var(--glow-b), var(--void);
+}
+
+body.cat-page .glow::after { content: none; }
+
+body.cat-page .topbar {
+  background: color-mix(in srgb, var(--void) 88%, transparent);
+  border-bottom: 1.6px solid var(--rule);
+}
+
+body.cat-page .brand-mark .bm-frame { stroke: var(--coral); }
+body.cat-page .brand-mark .bm-slice { stroke: var(--coral-soft); }
+body.cat-page .brand-mark .bm-dot { fill: var(--coral); }
+
+body.cat-page .nav a { border-radius: 999px; padding: 5px 11px; }
+body.cat-page .nav a:hover { background: var(--cyan-dim); color: var(--ink); }
+body.cat-page .nav a.on { background: var(--cyan-dim); color: var(--coral-deep); }
+
+body.cat-page .theme-btn { border-radius: 999px; padding: 5px 12px; }
+body.cat-page .theme-btn:hover { border-color: var(--coral); color: var(--coral-deep); }
+
+body.cat-page .progress { background: var(--coral); }
+
+/* ---- 首屏 ---- */
+
+body.cat-page .hero {
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 52px;
+  padding: 56px 0 48px;
+  border-bottom: none;
+}
+
+body.cat-page .kicker {
+  color: var(--coral-deep);
+  font-size: 10.5px;
+  letter-spacing: .2em;
+}
+
+body.cat-page .h1-prefix {
+  color: var(--ink-3);
+  font-size: 11px;
+  letter-spacing: .18em;
+  margin-bottom: 12px;
+}
+
+body.cat-page h1 {
+  font-family: var(--sans);
+  font-weight: 900;
+  font-size: clamp(38px, 4.8vw, 56px);
+  line-height: 1.16;
+  letter-spacing: -.01em;
+}
+
+body.cat-page h1 em {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 14px;
+  font-size: .42em;
+  line-height: 1.4;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--coral-deep);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+body.cat-page .lede {
+  font-size: 16.5px;
+  line-height: 1.88;
+  color: var(--ink-2);
+  max-width: 38em;
+}
+
+body.cat-page .byline {
+  color: var(--ink-3);
+  border-top: none;
+  padding-top: 0;
+  margin-top: 22px;
+  gap: 6px 10px;
+}
+
+body.cat-page .byline span {
+  background: var(--void-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 10px;
+}
+
+/* 吉祥物 */
+
+body.cat-page .mascot-row { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 18px; }
+body.cat-page .mascot-lg { width: 150px; height: 150px; flex: none; }
+body.cat-page .mascot { width: 72px; height: 72px; flex: none; }
+body.cat-page .mascot-sm { width: 46px; height: 46px; flex: none; }
+
+body.cat-page .speech {
+  position: relative;
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: 100%;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1.6px solid var(--rule-2);
+  border-radius: 16px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow-sticker);
+}
+
+body.cat-page .mascot-row .speech { margin-bottom: 26px; }
+
+body.cat-page .speech::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  background: var(--panel);
+  border-right: 1.6px solid var(--rule-2);
+  border-bottom: 1.6px solid var(--rule-2);
+  transform: rotate(45deg);
+  border-bottom-right-radius: 3px;
+}
+
+/* 小贴士（团子 + 气泡，章节内用） */
+
+body.cat-page .cat-tip {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 20px 0 6px;
+}
+
+body.cat-page .cat-tip .speech { font-size: 12.5px; padding: 8px 12px; }
+body.cat-page .cat-tip .speech b { color: var(--coral-deep); }
+
+/* ---- 首屏饭量卡 ---- */
+
+body.cat-page .hero-lab {
+  border: 1.6px solid var(--rule-2);
+  border-radius: 18px;
+  background: var(--screen);
+  box-shadow: var(--shadow-sticker);
+  padding: 16px 17px;
+}
+
+body.cat-page .hero-lab::before {
+  background: linear-gradient(180deg, var(--cyan-dim), transparent 42%);
+  border-radius: 18px 18px 0 0;
+}
+
+body.cat-page .hero-lab::after { content: none; }
+
+body.cat-page .lab-head {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  border-bottom: 1.6px dashed var(--rule);
+  padding-bottom: 10px;
+}
+
+body.cat-page .lab-head .live { color: var(--coral-deep); }
+
+body.cat-page .lab-head .live::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--coral);
+  margin-right: 7px;
+  vertical-align: 1px;
+}
+
+body.cat-page .lab-readout { gap: 8px; margin-top: 14px; }
+
+body.cat-page .lab-readout > div {
+  background: var(--panel);
+  border: 1.6px solid var(--rule);
+  border-radius: 12px;
+  padding: 9px 11px;
+}
+
+body.cat-page .lab-readout .k { color: var(--ink-3); }
+body.cat-page .lab-readout .v { color: var(--ink); font-size: 20px; }
+body.cat-page .lab-readout .v.cyan { color: var(--coral-deep); }
+body.cat-page .lab-readout .v.amber { color: var(--amber); }
+
+body.cat-page .hero-controls { margin-top: 14px; }
+body.cat-page .ctl { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+body.cat-page .ctl .val { color: var(--ink); }
+body.cat-page .ctl input[type="range"] { accent-color: var(--coral); }
+body.cat-page .bcs-controls .v { color: var(--coral-deep); }
+body.cat-page .bcs-controls input[type="range"] { accent-color: var(--coral); }
+
+body.cat-page .ctl select {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.6px solid var(--rule-2);
+  border-radius: 10px;
+  padding: 7px 9px;
+  font-size: 12.5px;
+}
+
+body.cat-page .chips { gap: 6px; }
+
+body.cat-page .chip {
+  font-size: 10px;
+  letter-spacing: .05em;
+  color: var(--ink-2);
+  border: 1.6px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 4px 11px;
+  background: var(--panel);
+}
+
+body.cat-page .chip:hover { color: var(--coral-deep); border-color: var(--coral); }
+
+body.cat-page .chip.on {
+  color: var(--coral-deep);
+  border-color: var(--coral);
+  background: var(--cyan-dim);
+}
+
+body.cat-page .lab-formula {
+  border-top: 1.6px dashed var(--rule);
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+body.cat-page .lab-note { color: var(--ink-3); }
+
+body.cat-page .lab-quip {
+  color: var(--ink-2);
+  font-size: 11.5px;
+  padding-left: 16px;
+}
+
+body.cat-page .lab-quip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coral);
+  font-size: 0;
+}
+
+body.cat-page .bowl-row { margin-top: 14px; gap: 12px; }
+body.cat-page .bowl { width: 78px; color: var(--ink-2); }
+body.cat-page .bowl-cap { color: var(--ink-3); }
+body.cat-page .bowl-cap b { color: var(--coral-deep); }
+
+/* ---- 章节 ---- */
+
+body.cat-page section {
+  padding: 60px 0 14px;
+  border-bottom: none;
+  position: relative;
+}
+
+/* 爪印分隔线（替代章节间的直线） */
+
+body.cat-page section::after {
+  content: "";
+  display: block;
+  height: 16px;
+  margin-top: 34px;
+  background: var(--paw-row) center / 120px 16px repeat-x;
+  opacity: .55;
+}
+
+body.cat-page section:last-of-type::after { content: none; }
+
+body.cat-page .sec-head {
+  align-items: center;
+  gap: 14px;
+  padding-top: 4px;
+  border-top: none;
+  margin-bottom: 10px;
+  position: relative;
+  padding-bottom: 18px;
+}
+
+body.cat-page .sec-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 58px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--coral);
+}
+
+body.cat-page .sec-num {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--coral-deep);
+  background: var(--cyan-dim);
+  border: 1px solid color-mix(in srgb, var(--coral) 36%, transparent);
+  border-radius: 999px;
+  padding: 6px 13px;
+  letter-spacing: .08em;
+  flex: none;
+}
+
+body.cat-page .sec-num::before { content: none; }
+
+body.cat-page h2 {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.26;
+  letter-spacing: -.005em;
+}
+
+body.cat-page .dek { font-size: 14.5px; color: var(--ink-3); }
+
+/* ---- 正文 ---- */
+
+/* 正文单栏限 852；通栏块占满 1132；边注走 .mrow 的右栏，不参与主栏高度 */
+body.cat-page .paper { grid-template-columns: minmax(0, 1fr); }
+body.cat-page .paper > :not(.wide):not(.mnote):not(.mrow) { max-width: 852px; }
+
+body.cat-page h3 {
+  font-weight: 700;
+}
+
+body.cat-page sup.cite { color: var(--coral-deep); }
+
+/* 卡片组后的段落：卡片没有外边距，必须显式留白，否则文字贴着卡片下沿 */
+body.cat-page .nutrient-grid + p,
+body.cat-page .pillars + p { margin-top: 32px; }
+
+/* ---- 边注：右栏 236，底边贴目标块底边；绝对定位，不撑高主栏 ---- */
+
+body.cat-page .mrow {
+  position: relative;
+  max-width: none;
+  margin: 22px 0;
+  display: flow-root;
+}
+
+body.cat-page .mrow > .mrow-main { max-width: 852px; }
+body.cat-page .mrow > .mrow-main > :first-child { margin-top: 0; }
+body.cat-page .mrow > .mrow-main > :last-child { margin-bottom: 0; }
+
+body.cat-page .mrow > .mnote {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 236px;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border: 0;
+  border-left: 1.6px dashed var(--rule-2);
+  border-radius: 0;
+  background: transparent;
+  display: block;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-3);
+}
+
+/* 卡片目标的注解对齐“最后一行文字”，不是卡片外框底边：把注解上提一个卡片
+   内边距，抵消 .bcard 的 padding-bottom 与末段行高下沉 */
+body.cat-page .mrow--cardtext > .mnote { bottom: 15px; }
+
+body.cat-page .mnote b { color: var(--ink-2); }
+
+body.cat-page .mnote .tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: none;
+  color: var(--coral-deep);
+  margin: 0 0 6px;
+}
+
+body.cat-page .mnote .tag::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  flex: none;
+  background: var(--paw-icon) center / contain no-repeat;
+}
+
+/* ---- 速览 ---- */
+
+body.cat-page .quick { gap: 0 40px; }
+
+body.cat-page .quick li {
+  padding: 13px 0 13px 42px;
+  font-size: 14.5px;
+  border-top: 1.6px dashed var(--rule);
+}
+
+body.cat-page .quick li::before {
+  content: counter(q);
+  width: 27px;
+  height: 27px;
+  left: 0;
+  top: 13px;
+  display: block;
+  text-align: center;
+  line-height: 25px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11.5px;
+  color: var(--coral-deep);
+  background: var(--cyan-dim);
+  border: 1px solid color-mix(in srgb, var(--coral) 30%, transparent);
+  border-radius: 999px;
+  letter-spacing: 0;
+}
+
+/* ---- 数字条 ---- */
+
+body.cat-page .stats {
+  border: 1.6px solid var(--rule-2);
+  border-radius: 16px;
+  background: var(--rule);
+  box-shadow: var(--shadow-sticker);
+  grid-template-columns: repeat(5, 1fr);
+}
+
+body.cat-page .stat { background: var(--panel); }
+body.cat-page .stat .n { color: var(--ink); }
+body.cat-page .stat .n small { color: var(--coral-deep); }
+
+/* ---- 卡片组 ---- */
+
+body.cat-page .nutrient-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+
+body.cat-page .ncard {
+  border: 1.6px solid var(--rule);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sticker);
+}
+
+body.cat-page .ncard .t { color: var(--coral-deep); }
+
+body.cat-page .pillars { gap: 10px; background: none; border: none; }
+
+body.cat-page .pillar {
+  border: 1.6px solid var(--rule);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 14px 13px;
+  box-shadow: var(--shadow-sticker);
+}
+
+body.cat-page .pillar .no { color: var(--coral-deep); }
+
+body.cat-page .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+
+/* card grid followed by prose: one breathing unit, not the paragraph's 22px */
+body.cat-page .paper > .cards + p,
+body.cat-page .mrow-main > .cards + p { margin-top: 32px; }
+
+body.cat-page .card {
+  border: 1.6px solid var(--rule);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sticker);
+}
+
+body.cat-page .card .k { color: var(--coral-deep); }
+body.cat-page .card li::before { color: var(--coral); }
+
+/* ---- 表格 ---- */
+
+body.cat-page .tbl-wrap {
+  border: 1.6px solid var(--rule-2);
+  border-radius: 14px;
+}
+
+body.cat-page thead th {
+  color: var(--coral-deep);
+  background: var(--cyan-dim);
+}
+
+body.cat-page tbody tr:hover td { background: var(--cyan-dim); }
+
+/* ---- 仪器与图 ---- */
+
+body.cat-page .instrument {
+  border: 1.6px solid var(--rule-2);
+  border-radius: 18px;
+  background: var(--screen);
+  box-shadow: var(--shadow-sticker);
+}
+
+body.cat-page .instrument-head {
+  background: var(--cyan-dim);
+  border-bottom: 1.6px dashed var(--rule);
+}
+
+body.cat-page .instrument-head .t { color: var(--coral-deep); }
+
+body.cat-page .instrument-head .t::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  background: var(--paw-icon) center / contain no-repeat;
+}
+
+body.cat-page .instrument-aside .box {
+  border: 1.6px solid var(--rule);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+body.cat-page .fig-frame {
+  border: 1.6px solid var(--rule-2);
+  border-radius: 16px;
+  background: var(--screen);
+}
+
+/* 通栏图的图注收在正文 measure，避免一行跨满 1132 */
+body.cat-page figure.wide > figcaption { max-width: 852px; }
+
+/* ---- 水分条 ---- */
+
+body.cat-page .wbar .fill {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--coral) 55%, transparent), var(--coral));
+}
+
+body.cat-page .wbar.dry .fill {
+  background: color-mix(in srgb, var(--ink-3) 62%, transparent);
+}
+
+/* ---- 参考 / 页脚 ---- */
+
+/* 参考分两栏，总宽与「正文 852 + 边注 236」齐平（1132） */
+body.cat-page .refs {
+  columns: 2;
+  column-gap: 44px;
+}
+
+body.cat-page .refs li { break-inside: avoid; }
+
+@media (max-width: 860px) {
+  body.cat-page .refs { columns: 1; }
+}
+
+body.cat-page .refs a {
+  color: var(--coral-deep);
+  border-bottom-color: color-mix(in srgb, var(--coral) 32%, transparent);
+}
+
+body.cat-page .refs a:hover { border-bottom-color: var(--coral); }
+
+body.cat-page .refs li:target { background: var(--cyan-dim); border-radius: 6px; }
+
+/* ============================================================
+   新组件：行为卡 / 症状卡 / 漫画格 / 就医红线 / 呼吸计数
+   ============================================================ */
+
+/* ---- 行为卡：猫在做什么 / 猫在说 / 你可以做 ---- */
+
+body.cat-page .behavior-grid,
+body.cat-page .symptom-grid {
+  display: grid;
+  gap: 12px;
+  margin: 22px 0;
+}
+
+/* 卡片组所有卡等宽，靠列数消化数量：行为 6 张 3 列、症状 8 张 4 列 */
+body.cat-page .behavior-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.cat-page .symptom-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+body.cat-page .bcard {
+  border: 1.6px solid var(--rule);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sticker);
+  padding: 14px 16px 15px;
+}
+
+/* 末段自带 15px 下外边距，会在卡片内叠加成双倍底距；卡片底部只留 padding */
+body.cat-page .bcard > :last-child { margin-bottom: 0; }
+
+body.cat-page .bcard .b-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 9px;
+}
+
+body.cat-page .bcard .b-ico {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--cyan-dim);
+  border: 1px solid color-mix(in srgb, var(--coral) 26%, transparent);
+  display: grid;
+  place-items: center;
+}
+
+body.cat-page .bcard .b-ico svg { width: 26px; height: 26px; display: block; }
+
+body.cat-page .bcard .b-t { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.4; }
+body.cat-page .bcard .b-t small { display: block; font-size: 10.5px; font-weight: 500; color: var(--ink-3); margin-top: 1px; }
+
+body.cat-page .bcard .b-say,
+body.cat-page .bcard .b-do {
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  margin-top: 6px;
+}
+
+body.cat-page .bcard .b-say b,
+body.cat-page .bcard .b-do b {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--coral-deep);
+  background: var(--cyan-dim);
+  border-radius: 999px;
+  padding: 1px 9px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+body.cat-page .bcard .b-do b {
+  color: var(--ink-2);
+  background: var(--void-3);
+}
+
+/* ---- 症状卡：可能原因 / 居家观察 / 何时就医 ---- */
+
+
+
+body.cat-page .scard {
+  border: 1.6px solid var(--rule);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sticker);
+  padding: 14px 16px 15px;
+}
+
+body.cat-page .scard .s-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+  border-bottom: 1.6px dashed var(--rule);
+}
+
+body.cat-page .scard .s-ico {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--cyan-dim);
+  border: 1px solid color-mix(in srgb, var(--coral) 26%, transparent);
+  display: grid;
+  place-items: center;
+}
+
+body.cat-page .scard .s-ico svg { width: 26px; height: 26px; display: block; }
+
+body.cat-page .scard .s-t { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.4; }
+body.cat-page .scard .s-t small { display: block; font-size: 10.5px; font-weight: 500; color: var(--ink-3); margin-top: 1px; }
+
+body.cat-page .scard .s-row {
+  font-size: 12.5px;
+  line-height: 1.72;
+  color: var(--ink-2);
+  margin-top: 6px;
+}
+
+body.cat-page .scard .s-row b {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  border-radius: 999px;
+  padding: 1px 9px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+body.cat-page .scard .s-why b { color: var(--ink-2); background: var(--void-3); }
+body.cat-page .scard .s-home b { color: var(--coral-deep); background: var(--cyan-dim); }
+body.cat-page .scard .s-vet b { color: var(--rose); background: var(--rose-dim); }
+body.cat-page .scard .s-vet { color: var(--ink-2); }
+
+/* ---- 就医红线 ---- */
+
+body.cat-page .redline {
+  border: 1.6px solid color-mix(in srgb, var(--rose) 55%, transparent);
+  background: var(--rose-dim);
+  border-radius: 16px;
+  padding: 15px 18px 13px;
+  margin: 24px 0;
+}
+
+body.cat-page .redline .rl-t {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--rose);
+  margin-bottom: 8px;
+}
+
+body.cat-page .redline .rl-t::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  flex: none;
+  background: var(--rl-icon) center / contain no-repeat;
+}
+
+body.cat-page .redline ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 22px;
+}
+
+body.cat-page .redline li {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  padding-left: 16px;
+  position: relative;
+}
+
+body.cat-page .redline li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rose);
+}
+
+body.cat-page .redline li b { color: var(--rose); font-weight: 700; }
+
+body.cat-page .redline .rl-note {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1.6px dashed color-mix(in srgb, var(--rose) 28%, transparent);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--ink-3);
+}
+
+/* ---- 漫画格 ---- */
+
+body.cat-page .comic-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.cat-page .ccol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.cat-page .ccell {
+  border: 1.6px solid var(--rule-2);
+  border-radius: 12px;
+  background: var(--screen);
+  overflow: hidden;
+}
+
+body.cat-page .ccell svg { display: block; width: 100%; height: auto; }
+
+body.cat-page .ccap {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin-top: 7px;
+}
+
+body.cat-page .ccap b { color: var(--ink-2); font-weight: 700; }
+
+/* ---- 呼吸计数仪 ---- */
+
+body.cat-page .rr-pad {
+  width: 100%;
+  border: 1.6px solid var(--coral);
+  border-radius: 14px;
+  background: var(--cyan-dim);
+  color: var(--coral-deep);
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.6;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: transform .12s ease, background .18s;
+}
+
+body.cat-page .rr-pad small { display: block; font-size: 11px; font-weight: 500; color: var(--ink-3); margin-top: 3px; }
+body.cat-page .rr-pad:active { transform: scale(.985); }
+body.cat-page .rr-pad[data-on="1"] { background: var(--coral); color: #fffdfb; }
+body.cat-page .rr-pad[data-on="1"] small { color: color-mix(in srgb, #fffdfb 78%, transparent); }
+
+body.cat-page .rr-chest { width: 100%; max-width: 200px; margin: 4px auto 0; display: block; }
+
+body.cat-page .rr-chest .breath {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+/* ============================================================
+   动效（全部有叙事理由，reduced-motion 一律静止）
+   ============================================================ */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cat-tail {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(10deg); }
+  }
+
+  @keyframes cat-blink {
+    0%, 91%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(.08); }
+  }
+
+  @keyframes cat-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  @keyframes cat-breath {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(.955); }
+  }
+
+  body.cat-page .mascot .tail,
+  body.cat-page .mascot-lg .tail {
+    transform-box: fill-box;
+    transform-origin: 16% 88%;
+    animation: cat-tail 3.4s ease-in-out infinite;
+  }
+
+  body.cat-page .mascot .eye,
+  body.cat-page .mascot-lg .eye {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: cat-blink 4.6s ease-in-out infinite;
+  }
+
+  body.cat-page .mascot-lg { animation: cat-float 4.8s ease-in-out infinite; }
+
+  body.cat-page .rr-chest .breath { animation: cat-breath 2.4s ease-in-out infinite; }
+
+  body.cat-page .ncard,
+  body.cat-page .pillar,
+  body.cat-page .card,
+  body.cat-page .bcard,
+  body.cat-page .scard {
+    transition: border-color .18s, transform .18s, box-shadow .18s;
+  }
+
+  body.cat-page .ncard:hover,
+  body.cat-page .pillar:hover,
+  body.cat-page .card:hover,
+  body.cat-page .bcard:hover,
+  body.cat-page .scard:hover {
+    transform: translateY(-2px);
+    border-color: var(--rule-2);
+  }
+}
+
+/* ---- 响应式 ---- */
+
+/* 版心不足 1132 时右栏会让位：边注回到目标块下方，保持与正文同一 852 */
+@media (max-width: 1179px) {
+  body.cat-page .mrow > .mrow-main { max-width: 852px; }
+  body.cat-page .mrow > .mnote {
+    position: static;
+    width: auto;
+    max-width: 852px;
+    margin-top: 18px;
+    padding: 11px 0 0;
+    border-left: 0;
+    border-top: 1.6px dashed var(--rule-2);
+  }
+}
+
+@media (max-width: 1080px) {
+  body.cat-page .hero { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  body.cat-page .hero-lab { max-width: 560px; }
+  body.cat-page .behavior-grid,
+  body.cat-page .symptom-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.cat-page .nutrient-grid,
+  body.cat-page .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.cat-page .stats { grid-template-columns: repeat(2, 1fr); }
+  /* odd count: let the last stat span the row instead of leaving an empty cell */
+  body.cat-page .stats > .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 920px) {
+  body.cat-page .mnote {
+    display: block;
+    border-top: 1.6px dashed var(--rule-2);
+    padding-top: 11px;
+  }
+  body.cat-page .mnote .tag { margin-bottom: 5px; }
+}
+
+@media (max-width: 860px) {
+  body.cat-page .comic-strip { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  body.cat-page .behavior-grid,
+  body.cat-page .symptom-grid,
+  body.cat-page .nutrient-grid,
+  body.cat-page .cards { grid-template-columns: 1fr; }
+  body.cat-page .mascot-lg { width: 116px; height: 116px; }
+  body.cat-page .mascot { width: 58px; height: 58px; }
+  body.cat-page .mascot-sm { width: 40px; height: 40px; }
+  body.cat-page .mascot-row .speech { margin-bottom: 22px; }
+  body.cat-page .speech { font-size: 12px; }
+  body.cat-page .quick li { padding-left: 40px; }
+  body.cat-page .bowl { width: 68px; }
+  body.cat-page h1 { font-size: clamp(32px, 9.4vw, 42px); }
+  body.cat-page .sec-head { gap: 10px; }
+  body.cat-page .sec-head::after { width: 44px; }
+  body.cat-page .bcard .b-say,
+  body.cat-page .bcard .b-do,
+  body.cat-page .scard .s-row { padding-left: 0; }
+  body.cat-page .bcard .b-say b,
+  body.cat-page .bcard .b-do b,
+  body.cat-page .scard .s-row b { display: block; width: fit-content; margin-bottom: 3px; }
+  body.cat-page .redline ul { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.cat-page .mascot .tail,
+  body.cat-page .mascot-lg .tail,
+  body.cat-page .mascot .eye,
+  body.cat-page .mascot-lg .eye,
+  body.cat-page .mascot-lg,
+  body.cat-page .rr-chest .breath { animation: none; }
+}
+
+</style>
+
+
+
+
+
+
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNiA1LjJ2NE02IDUuMmwzLjggMy4yTTE4IDUuMnY0TTE4IDUuMmwtMy44IDMuMiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTMuNSIgcj0iNi4yIi8+PHBhdGggZD0iTTkuNiAxMi42aC4wMU0xNC40IDEyLjZoLjAxTTEwLjYgMTYuNGMuOS44IDEuOS44IDIuOCAwIi8+PC9nPjwvc3ZnPg==">
+</head>
+<body class="cat-page">
+<div class="glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="文章目录"></nav>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">主题：深色</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="reveal">
+    <div class="mascot-row">
+      <svg class="mascot-lg" viewBox="0 0 160 160" role="img" aria-label="团子，一只圆滚滚的橘猫">
+        <g stroke="var(--cat-cocoa)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <!-- 尾巴：双描边粗线 -->
+          <path class="tail" d="M116 118 C140 124 150 104 140 86" fill="none" stroke-width="15"/>
+          <path class="tail" d="M116 118 C140 124 150 104 140 86" fill="none" stroke="var(--cat-peach)" stroke-width="9"/>
+          <!-- 身体 -->
+          <ellipse cx="80" cy="112" rx="38" ry="33" fill="var(--cat-peach)"/>
+          <ellipse cx="80" cy="121" rx="22" ry="19" fill="var(--cat-peach-soft)" stroke="none"/>
+          <!-- 前爪 -->
+          <ellipse cx="64" cy="143" rx="10.5" ry="7" fill="var(--cat-peach-soft)"/>
+          <ellipse cx="96" cy="143" rx="10.5" ry="7" fill="var(--cat-peach-soft)"/>
+          <!-- 耳朵 -->
+          <path d="M52 44 L45 16 L71 33 Z" fill="var(--cat-peach)"/>
+          <path d="M108 44 L115 16 L89 33 Z" fill="var(--cat-peach)"/>
+          <path d="M54 39 L50 24 L65 33 Z" fill="var(--cat-pink)" stroke="none"/>
+          <path d="M106 39 L110 24 L95 33 Z" fill="var(--cat-pink)" stroke="none"/>
+          <!-- 头 -->
+          <circle cx="80" cy="64" r="34" fill="var(--cat-peach)"/>
+          <!-- 额头橘纹 -->
+          <path d="M70 36 q4 7 1 12 M80 34 q2 7 0 12 M90 36 q-4 7 -1 12" fill="none" stroke-width="2.4" opacity=".5"/>
+          <!-- 眼睛（class=eye 负责眨眼动画） -->
+          <g class="eye">
+            <circle cx="67" cy="61" r="5" fill="var(--cat-cocoa)" stroke="none"/>
+            <circle cx="68.8" cy="59.2" r="1.6" fill="var(--cat-peach-soft)" stroke="none"/>
+          </g>
+          <g class="eye">
+            <circle cx="93" cy="61" r="5" fill="var(--cat-cocoa)" stroke="none"/>
+            <circle cx="94.8" cy="59.2" r="1.6" fill="var(--cat-peach-soft)" stroke="none"/>
+          </g>
+          <!-- 鼻子与嘴 -->
+          <path d="M77 70 h6 l-3 4.5 Z" fill="var(--cat-pink)" stroke="none"/>
+          <path d="M80 74.5 q-4 5 -8 2 M80 74.5 q4 5 8 2" fill="none" stroke-width="2.4"/>
+          <!-- 腮红 -->
+          <ellipse cx="59" cy="71" rx="6.5" ry="3.8" fill="var(--cat-pink)" stroke="none" opacity=".55"/>
+          <ellipse cx="101" cy="71" rx="6.5" ry="3.8" fill="var(--cat-pink)" stroke="none" opacity=".55"/>
+          <!-- 胡须 -->
+          <path d="M44 63 L28 59 M44 69 L28 71 M116 63 L132 59 M116 69 L132 71" fill="none" stroke-width="2.2"/>
+          <!-- 项圈与铃铛 -->
+          <path d="M57 91 Q80 101 103 91" fill="none" stroke="var(--coral)" stroke-width="6"/>
+          <circle cx="80" cy="103" r="5" fill="var(--cat-butter)" stroke-width="2.4"/>
+          <path d="M80 103 v3.4" stroke-width="1.8"/>
+        </g>
+      </svg>
+      <div class="speech">你好呀，我是团子。这只可爱的橘猫今天也来上班了：先称体重，再谈猫粮。</div>
+    </div>
+    <p class="kicker">Cat Care · 吃、喝、胖瘦、行为与家</p>
+    <h1><span class="h1-prefix">科普 · 伴侣动物</span>科学养猫<em>把猫碗、水碗和体重秤都算明白</em></h1>
+    <p class="lede">
+      猫不是缩小版的狗，也不是“随便喂喂就能活”的室友。它是专性肉食动物：精氨酸、牛磺酸、
+      维生素 A、花生四烯酸都得从动物组织里直接拿；缺了不是“瘦一点”，而是高血氨、心肌病和视网膜退化。
+      这篇把养猫拆成六本账：今天吃多少、喝够没有、胖不胖、家里资源够不够、
+      团子的那些小动作在说什么、不对劲时先看什么。
+      数字给口径，引用给 DOI，计算器就在右边，先玩一下，再往下看。
+    </p>
+    <div class="byline">
+      <span>约 28 分钟</span>
+      <span>21 条参考</span>
+      <span>3 台小仪器</span>
+      <span>1 只画出来的猫</span>
+    </div>
+  </div>
+
+  <aside class="hero-lab reveal" aria-label="今日饭量计算器">
+    <div class="lab-head">
+      <span><span class="live">LIVE</span> · 今日饭量</span>
+      <span id="cFormulaShort">RER = 198 kcal</span>
+    </div>
+
+    <div class="lab-readout">
+      <div><div class="k">躺着也要</div><div class="v" id="cRer">198<small> kcal/日</small></div></div>
+      <div><div class="k">日常消耗</div><div class="v amber" id="cDer">238<small> kcal/日</small></div></div>
+      <div><div class="k">今天吃这些</div><div class="v cyan" id="cGday">62.6<small> g</small></div></div>
+      <div><div class="k">每顿这些</div><div class="v" id="cGmeal">31.3<small> g</small></div></div>
+    </div>
+
+    <div class="bowl-row" aria-hidden="true">
+      <svg class="bowl" viewBox="0 0 120 62">
+        <defs>
+          <linearGradient id="bowlGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#e6b05c"/>
+            <stop offset="1" stop-color="#cf6a4d"/>
+          </linearGradient>
+          <clipPath id="bowlClip"><path d="M12 20 H108 Q106 56 60 56 Q14 56 12 20 Z"/></clipPath>
+        </defs>
+        <g clip-path="url(#bowlClip)">
+          <rect id="bowlFill" x="0" y="37.2" width="120" height="18.8" fill="url(#bowlGrad)" opacity=".85"/>
+        </g>
+        <path d="M12 20 H108 Q106 56 60 56 Q14 56 12 20 Z" fill="none" stroke="currentColor" stroke-width="2.4"/>
+        <ellipse cx="60" cy="20" rx="48" ry="5.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
+      </svg>
+      <div class="bowl-cap"><b id="cBowlG">62.6 g</b><span>今天装这么多 · 用厨房秤</span></div>
+    </div>
+
+    <div class="hero-controls">
+      <div class="ctl">
+        <label for="cWeight">猫有多重</label>
+        <span class="val" id="cWeightVal">4.0 kg</span>
+        <input id="cWeight" type="range" min="2" max="9" step="0.1" value="4.0">
+      </div>
+      <div class="ctl">
+        <label for="cFactor">今天什么状态</label>
+        <span class="val" id="cFactorVal">×1.2</span>
+        <select id="cFactor">
+          <option value="1.2" selected>绝育室内成猫 · 1.2</option>
+          <option value="1.4">活跃 / 未绝育 · 1.4</option>
+          <option value="0.8">减重（按目标体重）· 0.8</option>
+          <option value="2.5">幼猫（&lt;1 岁）· 2.5</option>
+          <option value="1.1">老年（≥11 岁）· 1.1</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label for="cDensity">粮有多顶饱</label>
+        <span class="val" id="cDensityVal">380 kcal/100g</span>
+        <input id="cDensity" type="range" min="60" max="450" step="5" value="380">
+        <div class="chips">
+          <button class="chip on" type="button" data-kcal="380">干粮 380</button>
+          <button class="chip" type="button" data-kcal="80">湿粮 80</button>
+        </div>
+      </div>
+      <div class="ctl">
+        <label for="cMeals">分几顿</label>
+        <span class="val" id="cMealsVal">2 餐</span>
+        <select id="cMeals">
+          <option value="2" selected>2 餐</option>
+          <option value="3">3 餐</option>
+          <option value="4">4 餐</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="lab-formula" id="cFormula">70 × 4.0^0.75 = 198 kcal → ×1.2 = 238 kcal/日</p>
+    <p class="lab-note">系数只是起点，不是圣旨；每两周称一次，按体重趋势微调。</p>
+    <p class="lab-quip" id="cQuip">先按这个量喂两周，再让体重秤说话。</p>
+  </aside>
+</section>
+
+<section id="s0" data-nav="速览">
+  <div class="sec-head"><span class="sec-num">00</span><h2>速览：八条可执行的结论</h2></div>
+  <div class="paper">
+    <p class="dek">先把结论摆出来；赶时间的话，看完这八条就能去开罐罐。</p>
+
+    <ol class="quick">
+      <li><b>能量有个懒人公式。</b>RER = 70 × 体重(kg)<sup>0.75</sup>。4 kg 的猫躺着也要 198 kcal/日；乘 1.2，日常约 238 kcal。</li>
+      <li><b>喂饭按克，不按杯。</b>克数 = 每日能量 ÷ 食物能量密度 × 100。380 kcal/100 g 的干粮约 63 g；80 kcal/100 g 的湿粮约 297 g。量杯的体积误差能到 ±20%，厨房秤不会。</li>
+      <li><b>水要算总账。</b>200 kcal 的干粮只带约 5 g 水，同样的湿粮约 195 g。干粮猫喝水更多，但总账还是低。</li>
+      <li><b>胖不胖看九分制。</b>5/9 最稳。2609 只猫的队列里，最大 BCS 9 的死亡风险比 BCS 6 高 80%（HR 1.80，95% CI 1.11–2.93）。</li>
+      <li><b>资源按 n+1 配。</b>猫砂盆从“猫数 + 1”起步；食盆、水碗、高处、躲藏处都要多，而且分开放。</li>
+      <li><b>行为先听再说。</b>慢眨眼是猫的“微笑”，可以回眨；尾巴竖直带小钩是问候，甩尾拍地是“先别摸”。</li>
+      <li><b>预防按阶段来。</b>核心疫苗是猫瘟、疱疹、杯状；7 岁后把肾、甲状腺、血压、尿检加进年检。</li>
+      <li><b>红线要背下来。</b>拒食超过 24 小时、进出猫砂盆却尿不出来、静息呼吸持续超过 40 次/分，当天就医，不要“再观察一晚”。</li>
+    </ol>
+
+    <div class="mrow">
+      <div class="mrow-main">
+      <div class="stats">
+        <div class="stat"><div class="n">70 × BW<small>0.75</small></div><div class="l"><b>躺着也要的能量</b><br>兽医临床估算式</div></div>
+        <div class="stat"><div class="n">60<small>%</small></div><div class="l"><b>美国猫超重/肥胖</b><br>2024 年研究引用的估计</div></div>
+        <div class="stat"><div class="n">1.80<small> HR</small></div><div class="l"><b>BCS 9 vs 6 的死亡风险</b><br>95% CI 1.11–2.93<br>2609 只队列</div></div>
+        <div class="stat"><div class="n">20–30<small> 次/分</small></div><div class="l"><b>安静时的正常呼吸</b><br>持续 &gt;40 次是就医信号</div></div>
+        <div class="stat"><div class="n">n + 1</div><div class="l"><b>资源起步价</b><br>猫砂盆、食盆、休息处</div></div>
+      </div>
+    </div>
+
+    <aside class="mnote">
+      <span class="tag">阅读提示</span>
+      关心“喂多少”，看 <a class="inline" href="#s2">§02</a> 与首屏计算器；关心“怎么喂水”，看 <a class="inline" href="#s3">§03</a>；
+      关心“胖不胖”，看 <a class="inline" href="#s4">§04</a> 的体况轮廓；资源与行为分别在 <a class="inline" href="#s5">§05</a>、<a class="inline" href="#s6">§06</a>；
+      疫苗与“不对劲怎么办”在 <a class="inline" href="#s7">§07</a>、<a class="inline" href="#s8">§08</a>。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s1" data-nav="代谢">
+  <div class="sec-head"><span class="sec-num">01</span><h2>肉食者的代谢底稿</h2></div>
+  <div class="paper">
+    <p class="dek">“必须吃动物”不是挑食，是几条代谢通路真的缺零件。狗粮、素食和随手自制，问题通常不在热量，而在这些不能省掉的分子。</p>
+
+    <p>
+      猫在分类上是食肉目，在营养学上则被称为 <b>专性肉食动物</b>（obligate carnivore）。这个标签的含义不是“爱吃肉”，
+      而是若干必需营养素的体内合成能力在进化中被削弱或丢失，必须从动物组织直接获得<sup class="cite"><a href="#r2">2</a></sup>。
+      把猫当“小一号的狗”来喂，问题往往不在热量，而在这些不能省掉的分子。
+    </p>
+
+    <div class="nutrient-grid wide">
+      <div class="ncard">
+        <div class="t">Arginine</div>
+        <div class="h">精氨酸：尿素循环的缺口</div>
+        <div class="d">猫的肠道黏膜缺乏把谷氨酸、脯氨酸转成精氨酸的关键酶，内源合成不足。饲料中缺少精氨酸时，<b>一餐之内</b>就可能出现高血氨：呕吐、流涎、共济失调，严重时抽搐<sup class="cite"><a href="#r3">3</a></sup>。</div>
+      </div>
+      <div class="ncard">
+        <div class="t">Taurine</div>
+        <div class="h">牛磺酸：心肌与视网膜</div>
+        <div class="d">猫的半胱亚磺酸脱羧酶活性低，内源合成不足。牛磺酸缺乏会导致扩张型心肌病与视网膜退化；
+        1987 年的研究里，21 只商业粮喂养的猫低血浆牛磺酸伴心肌衰竭，补充后逆转<sup class="cite"><a href="#r4">4</a></sup>。</div>
+      </div>
+      <div class="ncard">
+        <div class="t">Vitamin A</div>
+        <div class="h">维生素 A：不能从胡萝卜素转</div>
+        <div class="d">猫肠黏膜缺乏把 β-胡萝卜素裂解为视黄醇的酶活性，必须直接摄入视黄醇或视黄酯。以胡萝卜为维生素 A 来源的配方，对猫不算数<sup class="cite"><a href="#r2">2</a></sup>。</div>
+      </div>
+      <div class="ncard">
+        <div class="t">Arachidonic acid</div>
+        <div class="h">花生四烯酸：Δ6 去饱和酶不足</div>
+        <div class="d">猫不能由亚油酸有效合成花生四烯酸，必须直接从动物脂肪获得。缺乏与皮肤、被毛、繁殖及血小板功能异常相关<sup class="cite"><a href="#r2">2</a></sup>。</div>
+      </div>
+    </div>
+
+    <p>
+      还有一条常被误读的差异：猫的肝脏葡糖激酶活性低，餐后葡萄糖清除较慢<sup class="cite"><a href="#r2">2</a></sup>。
+      这<b>不等于</b>“猫不能吃碳水化合物”：猫可以用糖异生维持血糖，商品粮里的淀粉也承担加工与能量密度功能；
+      它只说明碳水不是必需营养素，配方里的形式与总量需要设计，而不是越多越好。
+    </p>
+
+    <h3>三条常见喂法的后果</h3>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>喂法</th><th>缺什么</th><th>后果与口径</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>长期喂狗粮</b></td>
+            <td>牛磺酸、精氨酸、维生素 A、花生四烯酸的比例按犬设计</td>
+            <td>不是“立刻中毒”，而是慢性缺乏风险；猫的蛋白与这些营养素需求高于同体重犬<sup class="cite"><a href="#r1">1</a></sup>。</td>
+          </tr>
+          <tr>
+            <td><b>素食 / 纯谷物自制</b></td>
+            <td>上述四种动物源营养素</td>
+            <td>必须人工添加并做配方核算；仅以米饭、蔬菜、豆类为食，会出现牛磺酸与精氨酸缺乏<sup class="cite"><a href="#r2">2</a></sup>。</td>
+          </tr>
+          <tr>
+            <td><b>鸡胸 + 米饭“清淡餐”</b></td>
+            <td>钙磷比、牛磺酸、维生素与微量元素</td>
+            <td>短期作为病后过渡可以，长期当主食会营养失衡；全价粮或兽医营养师配方才是长期方案<sup class="cite"><a href="#r1">1</a></sup>。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">一个加工细节</span>
+      干粮的膨化与长期储存会造成牛磺酸损失，因此配方需要过量添加并在保质期内复核。这也是“自制”难以凭感觉做对的原因：
+      配方表上的数字与猫实际吃进去的数字，中间隔着加工与储存。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s2" data-nav="能量">
+  <div class="sec-head"><span class="sec-num">02</span><h2>能量：从体重算到克数</h2></div>
+  <div class="paper">
+    <p class="dek">算热量像算零花钱：先看基础开销，再看今天什么状态，最后换成能装进碗里的克数。</p>
+
+    <p>
+      兽医临床通用的静息能量需求（RER）估算式是
+      <b>RER = 70 × 体重(kg)<sup>0.75</sup></b>，单位 kcal/日。指数 0.75 来自跨物种的异速生长关系：
+      体重翻倍，能量需求不是翻倍，而是约 2<sup>0.75</sup> ≈ 1.68 倍。
+    </p>
+
+    <p>
+      以 4 kg 为例：4<sup>0.75</sup> = 2.828，70 × 2.828 = <b>198 kcal/日</b>。
+      以 8 kg 为例：8<sup>0.75</sup> = 4.757，70 × 4.757 = <b>333 kcal/日</b>。
+      验算比例：333 ÷ 198 = 1.682，与 2<sup>0.75</sup> = 1.682 一致：体重翻倍，RER 只增加约 68%。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>体重</th><th>RER（kcal/日）</th><th>室内绝育 ×1.2</th><th>活跃 ×1.4</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">3.0 kg</td><td class="num">160</td><td class="num">192</td><td class="num">224</td></tr>
+          <tr><td class="num">4.0 kg</td><td class="num">198</td><td class="num">238</td><td class="num">277</td></tr>
+          <tr><td class="num">5.0 kg</td><td class="num">234</td><td class="num">281</td><td class="num">328</td></tr>
+          <tr><td class="num">6.0 kg</td><td class="num">268</td><td class="num">322</td><td class="num">376</td></tr>
+          <tr><td class="num">7.0 kg</td><td class="num">301</td><td class="num">361</td><td class="num">422</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      每日维持能量（DER）= RER × 场景系数。系数是<b>起点</b>，不是精确值：同一个 4 kg 的猫，室内绝育与每天外出巡视的个体可以差 20% 以上。
+      常用取值如下，任何一条都应在两周体重趋势上校准。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>场景</th><th>系数</th><th>4 kg 猫的 DER</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>绝育室内成猫</td><td class="num">1.2</td><td class="num">238 kcal</td><td>最常见起点</td></tr>
+          <tr><td>活跃 / 未绝育</td><td class="num">1.4</td><td class="num">277 kcal</td><td>活动量大或未绝育</td></tr>
+          <tr><td>减重</td><td class="num">0.8</td><td class="num">158 kcal</td><td>按<b>目标体重</b>的 RER 计算</td></tr>
+          <tr><td>幼猫（&lt;1 岁）</td><td class="num">2.5</td><td class="num">495 kcal</td><td>按当前体重与生长曲线调</td></tr>
+          <tr><td>老年（≥11 岁）</td><td class="num">1.1</td><td class="num">218 kcal</td><td>肌肉量下降时需单独评估</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>从 kcal 到克数</h3>
+
+    <p>
+      食物包装上的代谢能（ME）通常写作 kcal/100 g 或 kcal/kg。换算：
+      <b>每日克数 = DER ÷ 能量密度(kcal/100 g) × 100</b>。
+      4 kg 室内绝育猫的 DER 是 238 kcal：喂 380 kcal/100 g 的干粮，238 ÷ 380 × 100 = <b>62.6 g/日</b>；
+      喂 80 kcal/100 g 的湿粮，238 ÷ 80 × 100 = <b>297 g/日</b>。分两餐，分别是 31.3 g 与 148.5 g。
+    </p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <p>
+      这一步最容易被“一杯粮”糊弄过去。干粮颗粒的形状、密度与装填方式不同，量杯的体积误差可以到 ±20%；
+      一台 1 g 精度的厨房秤，能把这件事变成可复现的操作。换配方、换品牌、换口味，都要重新按标签上的能量密度算一遍。
+    </p>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">校准循环</span>
+      每两周在同一时间、同一台秤上称重。成猫体重上升，投喂量减 10%；下降，加 10%；围绕目标波动 ±2% 以内就维持。
+      幼猫、孕猫与病猫不适用这条经验规则，按兽医方案走。
+    </aside>
+      </div>
+
+    <p>
+      营养评估不只是“算热量”。2021 年 AAHA 营养与体重管理指南建议，每次体检都做体况评分（BCS）与肌肉状况评分（MCS），
+      把体重、体况与饮食史一起记录，再给个体化建议<sup class="cite"><a href="#r7">7</a></sup>。
+      热量公式负责给出起点，体况与体重趋势负责纠偏。
+    </p>
+  </div>
+</section>
+
+<section id="s3" data-nav="饮水">
+  <div class="sec-head"><span class="sec-num">03</span><h2>水：干湿粮的水分账</h2></div>
+  <div class="paper">
+    <p class="dek">猫的祖先来自干旱环境，渴感天生不太靠谱；水得从饭里骗一点出来。</p>
+
+    <p>
+      猫的祖先来自干旱环境，饮水行为并不像犬那样由渴感强力驱动。于是“每天喝多少”不能只看水碗：
+      湿粮 78% 是水，干粮只有约 10%。同样 200 kcal 的一餐，食物带入的水可以差出近 40 倍。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>200 kcal 的食物</th><th>重量</th><th>水分比例</th><th>食物提供的水</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>干粮 · 380 kcal/100 g</td><td class="num">52.6 g</td><td class="num">10%</td><td class="num">5.3 g</td></tr>
+          <tr><td>湿粮 · 80 kcal/100 g</td><td class="num">250 g</td><td class="num">78%</td><td class="num">195 g</td></tr>
+          <tr><td><b>差值</b></td><td class="num">不适用</td><td class="num">不适用</td><td class="num"><b>约 190 g/日</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <div class="fig-frame">
+        <div class="waterbars" aria-label="同样 200 kcal 下，干粮与湿粮提供的水分对比">
+          <div class="wbar dry">
+            <span>干粮 · 52.6 g</span>
+            <span class="track"><span class="fill" style="width:2.7%"></span></span>
+            <span class="num">5.3 g 水</span>
+          </div>
+          <div class="wbar">
+            <span>湿粮 · 250 g</span>
+            <span class="track"><span class="fill" style="width:100%"></span></span>
+            <span class="num">195 g 水</span>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <b>图 1 · 200 kcal 食物带入的水。</b>条形按同一能量基准换算，不是“吃多少克”的对比。
+        湿粮条长为干粮的约 37 倍；差额约 190 g/日，接近一只 4 kg 猫一天主动饮水的量级。
+      </figcaption>
+    </figure>
+
+    <p>
+      2026 年一项交叉设计研究把这件事测得更直接：12 只群养猫与 10 只家养猫依次吃 100% 干粮、50/50 干湿、100% 湿粮三种等能日粮。
+      结果是<b>干粮组的主动饮水（FWI）最高，湿粮组的总水摄入（TWI）最高</b>（P &lt; 0.001）；
+      两种环境下猫对日粮水分变化的反应高度一致（FWI 相关系数 r ≥ 0.87）<sup class="cite"><a href="#r9">9</a></sup>。
+      换句话说，干粮猫会更频繁地去喝水，但这部分增加补不回食物里少掉的水。
+    </p>
+
+    <p>
+      这条结论的边界要说清楚：<b>提高总水摄入</b>有明确的生理意义（尿液浓缩程度、粪便含水量），
+      但“湿粮能预防慢性肾病”并不是这项研究证明的东西。把湿粮当作水分管理工具，而不是疾病保险。
+    </p>
+
+    <h3>可执行的水分管理</h3>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <ul class="quick" style="grid-template-columns:1fr">
+      <li><b>多放几个水碗。</b>远离食盆与猫砂盆，宽口浅碗，每天换水；位置固定，避免与“必经之路”重叠。</li>
+      <li><b>湿粮分餐。</b>把每日能量的一部分换成湿粮，按 §02 的克数换算，而不是“额外加一罐”。</li>
+      <li><b>观察尿团。</b>猫砂盆里的尿团数量与大小，比“今天喝了几口”更可靠；突然增多或减少都值得记录。</li>
+      <li><b>流动水看个体。</b>有的猫偏好流动水，有的不；这是偏好问题，不是健康必需品。</li>
+    </ul>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">口径提醒</span>
+      表中的 10% 与 78% 是常见水分范围，具体以包装标示为准。干粮标注“水分 ≤ 10%”是上限，不是精确值；
+      湿粮常见 75–82%。换粮时先按标签重算，再按体重趋势微调。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s4" data-nav="体重">
+  <div class="sec-head"><span class="sec-num">04</span><h2>体重：九分制与减重时间表</h2></div>
+  <div class="paper">
+    <p class="dek">体重秤只说数字，体况评分才告诉你肉长在哪。两者一起看，才知道该不该减、减多少、减多快。</p>
+
+    <p>
+      九分制体况评分（BCS）用触诊与外观把体脂分成九档，5 分为理想。它比体重更能反映个体差异：
+      同样是 5 kg，骨架大的猫可能偏瘦，骨架小的猫可能已经超重。评估看三处：<b>肋骨</b>（轻覆脂肪、可触及）、
+      <b>俯视腰线</b>（肋骨后方有内收）、<b>侧面腹提</b>（腹线向骨盆方向上收）。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>评分</th><th>分类</th><th>触诊与外观</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1–3</td><td><b>偏瘦</b></td><td>肋骨与脊柱易见或易触；无腹部脂肪垫；腹提明显。需排查疾病与喂养不足。</td></tr>
+          <tr><td class="num">4–5</td><td><b>理想</b></td><td>肋骨轻覆脂肪、可触及；俯视有腰线；侧面有腹提。5 分为标准。</td></tr>
+          <tr><td class="num">6–7</td><td><b>超重</b></td><td>肋骨需按压才触及；腰线不明显；腹部脂肪垫可见。</td></tr>
+          <tr><td class="num">8–9</td><td><b>肥胖</b></td><td>肋骨不可触及；无腰线；腹部膨隆、下垂。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      胖，不只是外观问题。2013 年一篇综述引用的美国数据是 53%<sup class="cite"><a href="#r5">5</a></sup>，
+      2024 年一篇研究引言给出的估计升到约 <b>60%</b><sup class="cite"><a href="#r8">8</a></sup>。
+      两次调查的年份与样本口径不同，但方向一致：超重与肥胖已经是家猫的常态，而不是少数。
+      在澳大利亚一家猫科为主的诊所队列里，2609 只猫的最大 BCS 与生存显著相关：与最大 BCS 6 相比，
+      最大 BCS 9 的猫死亡风险高 80%（HR 1.80，95% CI 1.11–2.93）；BCS 3 的猫风险更高（HR 4.67，95% CI 3.00–7.27）。
+      该队列的中位寿命为 15.8 年（IQR 13.5–17.6）<sup class="cite"><a href="#r6">6</a></sup>。
+      这是观察性数据，不能直接读成“胖 1 分少活几年”的因果，但方向与临床经验一致：两端都不好，中间最稳。
+    </p>
+
+    <div class="instrument wide">
+      <div class="instrument-head">
+        <span class="t">仪器 02 · 摸摸看几斤</span>
+        <span class="s">BCS 1–9 · 拖动滑块</span>
+      </div>
+      <div class="instrument-body">
+        <div>
+          <canvas id="bcsCv" width="560" height="340" role="img" aria-label="侧面与俯视的猫体况轮廓示意，随评分变化显示肋骨、腰线与腹线"></canvas>
+        </div>
+        <div class="instrument-aside bcs-readout">
+          <div class="box">
+            <div class="k">摸出来几分</div>
+            <div class="v" id="bcsNum">5 / 9</div>
+            <p id="bcsClass">理想</p>
+          </div>
+          <div class="box">
+            <div class="k">手感与外观</div>
+            <p class="desc" id="bcsDesc">肋骨轻覆脂肪、可触及；俯视有腰线；侧面有腹提。</p>
+          </div>
+          <div class="box">
+            <div class="k">怎么摸</div>
+            <p class="desc">双手沿肋骨两侧轻抚，再俯视腰线、侧看腹线；三个位置里有两个符合，就按该档记。</p>
+          </div>
+        </div>
+      </div>
+      <div class="bcs-controls" style="padding:0 18px 4px">
+        <label for="bcsRange">体况评分</label>
+        <span class="v" id="bcsVal">5</span>
+        <input id="bcsRange" type="range" min="1" max="9" step="1" value="5">
+      </div>
+      <div class="bcs-scale" style="padding:0 18px 16px">
+        <span>1 偏瘦</span><span>3</span><span>5 理想</span><span>7</span><span>9 肥胖</span>
+      </div>
+    </div>
+
+    <p>
+      减重的目标不是“称上的数字”，而是 BCS 回到 4–5。举例：6.5 kg、BCS 8 的猫，目标体重 5.0 kg，需要减 1.5 kg。
+      研究方案常以每周 1–2% 体重为目标<sup class="cite"><a href="#r8">8</a></sup>，但临床对猫更保守：
+      从每周 0.5–1% 起步，按耐受与体重趋势调整。按 1% 估算，初始每周约 65 g，1.5 kg 需要约 <b>23 周</b>；
+      按 0.5%，约 <b>46 周</b>。这是按初始体重做的线性估算，实际会随体重下降而变慢。
+    </p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <p>
+      减重期的能量按<b>目标体重</b>算：RER(5.0 kg) = 234 kcal，乘 0.8 得 <b>187 kcal/日</b>。
+      不按当前体重 6.5 kg 算，否则缺口会被高估。每周固定时间称重，连续两周不降，再减 10% 投喂量；
+      下降过快（&gt;1.5%/周）则回调。猫不能长时间禁食：连续 2–3 天不进食就有肝脂肪沉积的风险，
+      减重方案必须在兽医监督下进行<sup class="cite"><a href="#r7">7</a></sup>。
+    </p>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">数字的读法</span>
+      HR 1.80 的意思是：在同一队列、同一观察期内，BCS 9 的猫发生死亡的风险是 BCS 6 的 1.8 倍；
+      它不等于“寿命缩短 80%”，也不等于“减到 5 分就能拿回这 80%”。<a class="inline" href="#r6">原文</a>给的是关联，不是随机试验。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s5" data-nav="环境">
+  <div class="sec-head"><span class="sec-num">05</span><h2>环境：资源 n+1 与五根支柱</h2></div>
+  <div class="paper">
+    <p class="dek">猫的应激，多半不是房子小，是资源总被别人堵着、路线总被截断。</p>
+
+    <p>
+      2013 年 AAFP/ISFM 猫科环境需求指南把家猫的福利需求归纳为五根支柱：<b>安全屋</b>、<b>多种且分离的关键资源</b>、
+      <b>玩耍与捕猎的机会</b>、<b>可预期的人猫互动</b>、<b>尊重嗅觉与气味标记的环境</b><sup class="cite"><a href="#r10">10</a></sup>。
+      这五条不是“ enrichment 清单”，而是判断环境是否合格的检查框架：任何一条长期缺失，行为问题就会从这里长出来。
+    </p>
+
+    <div class="pillars wide">
+      <div class="pillar"><div class="no">01</div><div class="t">安全屋</div><div class="d">随时可进、可观察外面、不被拖出来的封闭空间。</div></div>
+      <div class="pillar"><div class="no">02</div><div class="t">分离的资源</div><div class="d">食、水、砂盆、休息处、抓挠点，多且彼此分开。</div></div>
+      <div class="pillar"><div class="no">03</div><div class="t">玩耍与捕猎</div><div class="d">每天有追逐、扑咬、分解猎物的替代行为。</div></div>
+      <div class="pillar"><div class="no">04</div><div class="t">可预期的互动</div><div class="d">固定的喂食、玩耍与抚摸节奏，尊重回避信号。</div></div>
+      <div class="pillar"><div class="no">05</div><div class="t">嗅觉环境</div><div class="d">保留气味标记点；不用强香清洁剂反复覆盖。</div></div>
+    </div>
+
+    <p>
+      多猫家庭最容易犯的错，是按“猫数”平分资源。临床常用 <b>n+1</b> 作为起点：n 只猫，准备 n+1 个猫砂盆、n+1 个水源、n+1 个高处休息点，
+      并且分散放置，避免一只猫守在必经之路就能控制全部资源。资源不是“有就行”，而是“每只猫都能在不发生冲突的情况下到达”。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>资源</th><th>最低配置</th><th>位置要求</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>猫砂盆</b></td><td>猫数 + 1</td><td>分散、安静、远离食盆与水碗；长度约为猫体长（鼻到尾根）的 1.5 倍</td></tr>
+          <tr><td><b>食盆 / 水碗</b></td><td>每猫一套，另加一处水源</td><td>食水分离；宽口浅碗，避免胡须挤压；多猫分点喂</td></tr>
+          <tr><td><b>休息高处</b></td><td>每猫一处可独处的高处</td><td>窗台、猫爬架、柜顶；上下路线不交叉</td></tr>
+          <tr><td><b>抓挠点</b></td><td>竖直与水平各一</td><td>睡眠区与入口附近；材质稳定，不晃动</td></tr>
+          <tr><td><b>躲藏处</b></td><td>每猫一个可容身的封闭空间</td><td>避开人流主通道，保留两个出口更佳</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <p>
+      猫砂盆的日常管理比“买多大的盆”更影响使用率：每天铲、每周换砂、不用强香清洁剂。突然乱尿首先要排查医学问题
+      （泌尿系统、疼痛、甲状腺等），再谈行为；把乱尿直接归因于“报复”，会错过可治疗的病因。
+    </p>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">一个检查动作</span>
+      站在房间中央环视：从任意一只猫的位置出发，去食、水、砂盆、高处、躲藏处，是否会经过另一只猫的“核心领地”？
+      会，就说明资源数量够、布局不够。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s6" data-nav="行为">
+  <div class="sec-head"><span class="sec-num">06</span><h2>读懂猫话：常见行为解释</h2></div>
+  <div class="paper">
+    <p class="dek">团子的每个小动作都有出处：有的是幼年剧本的重播，有的是一封气味邮件，有的是“我信任你”。先听懂，再回应。</p>
+
+    <p>
+      家猫保留了一整套野猫时代的行为脚本：捕猎的冲刺、藏起气味的埋砂、用脸颊留标记的蹭。<b>这些行为在家里的“翻译”</b>，
+      往往和人类的第一直觉相反：露肚皮不是邀请摸肚子，半夜跑酷不是调皮，呼噜也不一定代表开心。
+      这一节把最高频的几件事摊开讲，每件事都按同一个句式：猫在做什么、猫在说什么、你可以怎么做。
+    </p>
+
+    <div class="cat-tip">
+      <svg class="mascot-sm" viewBox="0 0 120 120" role="img" aria-label="团子的小头像">
+        <g stroke="var(--cat-cocoa)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M38 34 L33 12 L53 25 Z" fill="var(--cat-peach)"/>
+          <path d="M82 34 L87 12 L67 25 Z" fill="var(--cat-peach)"/>
+          <circle cx="60" cy="52" r="26" fill="var(--cat-peach)"/>
+          <g class="eye">
+            <circle cx="51" cy="49" r="3.6" fill="var(--cat-cocoa)" stroke="none"/>
+          </g>
+          <g class="eye">
+            <circle cx="69" cy="49" r="3.6" fill="var(--cat-cocoa)" stroke="none"/>
+          </g>
+          <path d="M57.5 56 h5 l-2.5 3.6 Z" fill="var(--cat-pink)" stroke="none"/>
+          <path d="M60 59.6 q-3 4 -6 1.6 M60 59.6 q3 4 6 1.6" fill="none" stroke-width="2.2"/>
+          <ellipse cx="44" cy="56" rx="4.8" ry="2.8" fill="var(--cat-pink)" stroke="none" opacity=".55"/>
+          <ellipse cx="76" cy="56" rx="4.8" ry="2.8" fill="var(--cat-pink)" stroke="none" opacity=".55"/>
+        </g>
+      </svg>
+      <div class="speech"><b>团子：</b>先说好，下面所有解读都建立在体检正常的前提下。习惯的突然改变，先看医生，再谈行为。</div>
+    </div>
+
+    <h3>一天的精力曲线</h3>
+
+    <figure class="wide">
+      <div class="fig-frame">
+        <svg viewBox="0 0 1096 320" role="img" aria-label="猫一天 24 小时的精力变化时间线：05 到 09 与 17 到 21 两个晨昏高峰，白天与深夜休息">
+          <rect x="270.7" y="36" width="165.3" height="154" fill="var(--coral)" opacity=".06"/>
+          <rect x="766.7" y="36" width="165.3" height="154" fill="var(--coral)" opacity=".06"/>
+
+          <path d="M64 190 H1062" stroke="var(--rule-2)" stroke-width="1.4" fill="none"/>
+          <path d="M1054 184 L1064 190 L1054 196" stroke="var(--rule-2)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M64 190 V38" stroke="var(--rule-2)" stroke-width="1.4" fill="none"/>
+          <path d="M58 46 L64 35 L70 46" stroke="var(--rule-2)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="28" y="54" font-size="12" fill="var(--ink-3)" font-family="var(--sans)">精力</text>
+          <text x="1056" y="180" text-anchor="end" font-size="12" fill="var(--ink-3)" font-family="var(--sans)">时间</text>
+
+          <g font-size="11" fill="var(--ink-3)" font-family="var(--mono)" text-anchor="middle">
+            <text x="64" y="210">00</text>
+            <text x="188" y="210">03</text>
+            <text x="312" y="210">06</text>
+            <text x="436" y="210">09</text>
+            <text x="560" y="210">12</text>
+            <text x="684" y="210">15</text>
+            <text x="808" y="210">18</text>
+            <text x="932" y="210">21</text>
+            <text x="1056" y="210">24</text>
+          </g>
+
+          <path d="M64 150 C104 150 126 176 196 176 C240 176 250 82 290 78 C330 74 360 100 410 128 C460 156 486 168 532 168 C578 168 604 150 650 140 C696 130 722 112 762 114 C796 116 806 70 836 68 C866 66 884 100 904 108 C932 120 958 160 998 160 C1024 160 1044 158 1056 161 L1056 190 L64 190 Z" fill="var(--coral)" opacity=".08"/>
+          <path d="M64 150 C104 150 126 176 196 176 C240 176 250 82 290 78 C330 74 360 100 410 128 C460 156 486 168 532 168 C578 168 604 150 650 140 C696 130 722 112 762 114 C796 116 806 70 836 68 C866 66 884 100 904 108 C932 120 958 160 998 160 C1024 160 1044 158 1056 161" fill="none" stroke="var(--coral)" stroke-width="2.6" stroke-linecap="round"/>
+
+          <text x="353" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="var(--coral-deep)" font-family="var(--sans)">晨间高峰 · 05–09</text>
+          <text x="849" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="var(--coral-deep)" font-family="var(--sans)">黄昏高峰 · 17–21</text>
+
+          <g stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 5">
+            <path d="M270.7 228 V308"/>
+            <path d="M436 228 V308"/>
+            <path d="M766.7 228 V308"/>
+            <path d="M932 228 V308"/>
+          </g>
+
+          <g font-family="var(--sans)">
+            <g>
+              <text x="64" y="240" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">00–05</text>
+              <text x="64" y="262" font-size="15" font-weight="700" fill="var(--ink)">夜间巡游</text>
+              <text x="64" y="282" font-size="12.5" fill="var(--ink-3)">部分猫清醒、巡屋</text>
+            </g>
+            <g>
+              <text x="282" y="240" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">05–09</text>
+              <text x="282" y="262" font-size="15" font-weight="700" fill="var(--ink)">晨间高峰</text>
+              <text x="282" y="282" font-size="12.5" fill="var(--ink-3)">跑酷、扑咬、讨食</text>
+            </g>
+            <g>
+              <text x="448" y="240" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">09–17</text>
+              <text x="448" y="262" font-size="15" font-weight="700" fill="var(--ink)">睡眠与理毛</text>
+              <text x="448" y="282" font-size="12.5" fill="var(--ink-3)">12–16 点深睡；醒后看窗、理毛</text>
+            </g>
+            <g>
+              <text x="778" y="240" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">17–21</text>
+              <text x="778" y="262" font-size="15" font-weight="700" fill="var(--ink)">黄昏高峰</text>
+              <text x="778" y="282" font-size="12.5" fill="var(--ink-3)">互动、玩耍、进食</text>
+            </g>
+            <g>
+              <text x="944" y="240" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">21–24</text>
+              <text x="944" y="262" font-size="15" font-weight="700" fill="var(--ink)">入睡准备</text>
+              <text x="944" y="282" font-size="12.5" fill="var(--ink-3)">踩奶、呼噜</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <figcaption><b>图 2 · 猫的 24 小时精力曲线。</b>晨昏型（crepuscular）节律：黎明与黄昏两个捕猎窗口，白天的长时间睡眠不是懒。曲线是行为节律示意，不是能量测量值；踩奶、呼噜这类舒适行为不挑时段，多出现在休息与入睡前后。</figcaption>
+    </figure>
+
+    <p>
+      对付跑酷，惩罚没用，<b>把狩猎班表挪个位置才有用</b>：睡前用逗猫棒玩 10 分钟“追、扑、抓到”的完整狩猎，紧接着喂一顿当天分量里的正餐
+      （吃饱后的理毛与睡眠是猫的固定剧本），凌晨的冲刺冲动会明显变小。白天再用漏食球把少量口粮藏进“狩猎”里，消耗它的精力预算。
+      自动玩具、另一只年轻猫当玩伴也有效，但都替代不了睡前那 10 分钟<sup class="cite"><a href="#r10">10</a></sup>。
+    </p>
+    <h3>六张翻译卡</h3>
+
+    <div class="mrow mrow--cardtext">
+      <div class="mrow-main">
+    <div class="behavior-grid">
+      <div class="bcard">
+        <div class="b-head">
+          <span class="b-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M3 8 q3.2 -4 6.4 0 t6.4 0 t6.4 0"/>
+              <path d="M3 14 q3.2 -4 6.4 0 t6.4 0 t6.4 0" opacity=".7"/>
+              <path d="M3 20 q3.2 -4 6.4 0 t6.4 0 t6.4 0" opacity=".4"/>
+            </svg>
+          </span>
+          <div class="b-t">呼噜<small>不是开关，是频道</small></div>
+        </div>
+        <p class="b-say"><b>猫在说</b>最常见的场景是放松和满足；但疼痛、紧张时猫也会用呼噜给自己安抚，就诊路上呼噜的猫不少见。</p>
+        <p class="b-do"><b>你可以做</b>结合场景读：窝着晒太阳的呼噜是惬意；诊台上的呼噜未必是“没事”。呼噜伴随躲藏、食欲下降时，按不舒服处理。</p>
+      </div>
+      <div class="bcard">
+        <div class="b-head">
+          <span class="b-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M2 13 Q13 4 24 13 Q13 22 2 13 Z"/>
+              <path d="M6 13 Q13 17 20 13" stroke-width="2.4"/>
+            </svg>
+          </span>
+          <div class="b-t">慢眨眼<small>猫的微笑</small></div>
+        </div>
+        <p class="b-say"><b>猫在说</b>眼睑缓缓压下再睁开，是不设防的信号。2020 年的实验里，猫更常对人发出的慢眨眼做出同款回应，也更愿意靠近慢眨眼的人<sup class="cite"><a href="#r18">18</a></sup>。</p>
+        <p class="b-do"><b>你可以做</b>隔着半米，慢慢眨眼一两次。它回你慢眨眼，就是收下了；别盯着不眨地看，直勾勾的对视在猫语里是压力。</p>
+      </div>
+      <div class="bcard">
+        <div class="b-head">
+          <span class="b-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="8" cy="13" r="4.6"/>
+              <path d="M12.6 13 h6.8" stroke-dasharray="2.6 3"/>
+              <path d="M3 6 q5 -4.6 10 0" opacity=".6"/>
+              <path d="M3 20 q5 4.6 10 0" opacity=".6"/>
+            </svg>
+          </span>
+          <div class="b-t">蹭人与蹭物<small>一封气味邮件</small></div>
+        </div>
+        <p class="b-say"><b>猫在说</b>脸颊、下巴、体侧有气味腺，蹭你是在交换群体气味、标记“我们是一伙的”，顺带留下自己的署名。</p>
+        <p class="b-do"><b>你可以做</b>蹲下接住这份问候。搬家、换家具后多留几个它蹭过的物件，气味连续性能明显降低应激<sup class="cite"><a href="#r10">10</a></sup>。</p>
+      </div>
+      <div class="bcard">
+        <div class="b-head">
+          <span class="b-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <ellipse cx="13" cy="16" rx="9" ry="6"/>
+              <circle cx="8" cy="12" r="1.6" stroke="none" fill="currentColor"/>
+              <circle cx="13" cy="10.6" r="1.6" stroke="none" fill="currentColor"/>
+              <circle cx="18" cy="12" r="1.6" stroke="none" fill="currentColor"/>
+              <path d="M5 21 l-2 3 M21 21 l2 3" stroke-width="2.4"/>
+            </svg>
+          </span>
+          <div class="b-t">露肚皮<small>信任，不是邀请</small></div>
+        </div>
+        <p class="b-say"><b>猫在说</b>肚皮是最没有防护的部位，翻身露出肚皮是对环境的信任宣言；但它的本意常常是“我放松了”，不是“请摸”。</p>
+        <p class="b-do"><b>你可以做</b>想摸先试探：轻碰胸口一秒看反应。真伸手进肚子，被抱住踢咬属于正常反射，不是“翻脸”。</p>
+      </div>
+      <div class="bcard">
+        <div class="b-head">
+          <span class="b-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="4" y="10" width="18" height="11" rx="2.6"/>
+              <path d="M8 14 q2.4 -3 5 0 t5 0" opacity=".7"/>
+              <circle cx="10" cy="7.4" r="1.4" stroke="none" fill="currentColor" opacity=".6"/>
+              <circle cx="15" cy="6.6" r="1.4" stroke="none" fill="currentColor" opacity=".45"/>
+            </svg>
+          </span>
+          <div class="b-t">埋砂与不埋砂<small>两种都是话</small></div>
+        </div>
+        <p class="b-say"><b>猫在说</b>埋砂的原始功能是掩埋粪便气味、躲避天敌；不埋则可能是砂脚感差、盆太小太脏、位置不安心，个别猫是在不留标记宣示地位。</p>
+        <p class="b-do"><b>你可以做</b>习惯突然改变时，先查医学（便秘、疼痛、泌尿），再检查砂盆配置是否符合 §05 的 n+1 与尺寸要求。</p>
+      </div>
+      <div class="bcard">
+        <div class="b-head">
+          <span class="b-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M7 18 q0 -4 4 -4 h5 q4 0 4 4 v2 q0 3 -3 3 H10 q-3 0 -3 -3 Z"/>
+              <path d="M10 14 v-3 M13.5 14 v-4 M17 14 v-3"/>
+              <path d="M3 6 l2.6 2.6 M23 6 l-2.6 2.6" opacity=".6"/>
+            </svg>
+          </span>
+          <div class="b-t">摸两下就咬<small>触觉阈值很低</small></div>
+        </div>
+        <p class="b-say"><b>猫在说</b>不是突然翻脸。抚摸的刺激会累积，尾根、肚子和爪子的阈值更低；尾巴开始抽动、背皮抖动、耳朵后压，都是“快够了”的预告。</p>
+        <p class="b-do"><b>你可以做</b>改短时多次，先摸头、下巴和脸颊；看到预告就停手，让它主动再来。被咬时别抽手、别打，静止并慢慢离开。</p>
+      </div>
+    </div>
+
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">别用惩罚教猫</span>
+      吼叫、喷水、按头“教育”教会猫的只有一件事：你的出现值得防备。行为问题的处理路径永远是
+      找需求、改环境、给替代，而不是压制表达。判断拿不准时，录一段手机视频带给兽医或猫行为顾问，比文字描述有用得多<sup class="cite"><a href="#r20">20</a></sup>。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s7" data-nav="预防">
+  <div class="sec-head"><span class="sec-num">07</span><h2>预防：疫苗、牙齿与老年筛查</h2></div>
+  <div class="paper">
+    <p class="dek">预防最划算的时候，是还没生病的时候。按阶段排一张表，比临时抱佛脚便宜。</p>
+
+    <p>
+      2020 年 AAHA/AAFP 猫疫苗指南把核心疫苗定为三种：<b>猫泛白细胞减少症（猫瘟，FPV）</b>、<b>猫疱疹病毒 1 型（<span class="nw">FHV-1</span>）</b>、
+      <b>猫杯状病毒（FCV）</b>。幼猫不早于 6 周龄开始，每 3–4 周接种一次，直到 16–20 周龄；
+      随后考虑在 6 月龄加强（传统做法是 1 岁），此后核心疫苗按 3 年间隔复种<sup class="cite"><a href="#r11">11</a></sup>。
+      猫白血病病毒（FeLV）属于非核心疫苗，按年龄、外出与多猫风险决定；狂犬疫苗按当地法规。
+    </p>
+
+    <p>
+      生命阶段的划分以 2021 年 AAHA/AAFP 指南为准：幼猫 0–1 岁、年轻成猫 1–6 岁、成熟成猫 7–10 岁、老年猫 10 岁以上<sup class="cite"><a href="#r12">12</a></sup>。
+      阶段不是标签，而是筛查频率与项目的依据：7 岁以后，肾、甲状腺、血压与尿检进入年度清单。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>阶段</th><th>年龄</th><th>频率</th><th>重点</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>幼猫</b></td><td class="num">0–1 岁</td><td>疫苗系列；每 3–4 周复诊至 16–20 周</td><td>体重曲线、社会化、驱虫、口腔检查</td></tr>
+          <tr><td><b>年轻成猫</b></td><td class="num">1–6 岁</td><td>每年 1 次</td><td>体况与肌肉评分、牙科、行为与饮水量</td></tr>
+          <tr><td><b>成熟成猫</b></td><td class="num">7–10 岁</td><td>每年 1 次，含血检与尿检</td><td>肾、甲状腺、血压、口腔、体重趋势</td></tr>
+          <tr><td><b>老年猫</b></td><td class="num">&gt;10 岁</td><td>每 6 个月</td><td>上述项目 + 肌骨、认知、肿瘤筛查</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      慢性肾病（CKD）是老年猫筛查的核心原因之一。2014 年一项研究从 6 个月到 20 岁的四个年龄组随机抽样，
+      以筛查方式判定 CKD 的检出率为 <b>50%</b>；在因退行性关节病招募的猫中为 68.8%<sup class="cite"><a href="#r13">13</a></sup>。
+      这个数字不能外推成“一半的猫肾衰”：它包含 1–2 期、依赖筛查口径与队列构成；但它足以说明：
+      老年猫不查血、不查尿，就会把可管理的早期问题拖到晚期。
+    </p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <p>
+      牙齿同样如此。2019 年 AAHA 牙科指南的立场很明确：家庭口腔护理的核心是<b>刷牙</b>，干粮的机械清洁作用有限；
+      需要时在麻醉下做专业洁治，而不是靠“洁牙零食”替代<sup class="cite"><a href="#r17">17</a></sup>。
+      牙周病在猫中常见，口臭、流涎、单侧咀嚼都值得检查。
+    </p>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">年度体检的最小清单</span>
+      体重与 BCS/MCS、口腔、心脏听诊、腹部触诊、血常规与生化、尿检（比重、蛋白）、血压；
+      7 岁后加 T4。老年猫的体重下降 &gt;5% 不是“正常变老”，要查因。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s8" data-nav="症状">
+  <div class="sec-head"><span class="sec-num">08</span><h2>不对劲时怎么办：常见症状与应对</h2></div>
+  <div class="paper">
+    <p class="dek">猫的天职是把不舒服藏起来，所以“看起来还行”从来不等于没事。这一节是一张症状速查表、一组参考数值，和一条必须当天就医的红线。</p>
+
+    <p>
+      发现问题靠的不是医学知识，是<b>记录的惯性</b>。家庭观察三件套：每周固定时间、同一台秤称体重，画成曲线；每天留意食欲与饮水量
+      （称重碗比肉眼准）；铲砂时数一下尿团大小与数量、看一眼粪便形态。这三条曲线的突变，比任何单一症状都更早提示问题，也直接决定兽医问诊的效率。
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>参考值</th><th>区间</th><th>口径与提醒</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>直肠体温</b></td>
+            <td class="num">约 37.5–39.2 °C<br>（99.5–102.5 °F）</td>
+            <td>不同手册口径略有差异；家用耳温枪与直肠温有系统偏差（对比研究见 <a class="inline" href="#r21">参考 21</a>），判读以兽医直肠测量为准。</td>
+          </tr>
+          <tr>
+            <td><b>心率</b></td>
+            <td class="num">约 140–220 次/分</td>
+            <td>诊室应激会明显抬高读数；意义要结合黏膜颜色与呼吸一起看。</td>
+          </tr>
+          <tr>
+            <td><b>静息 / 睡眠呼吸</b></td>
+            <td class="num">静息中位 27（16–60）<br>睡眠中位 20（9–28）次/分</td>
+            <td>2018 年荷兰 131 只猫的家测数据：安静或睡着时数才有意义，诊室里应激会让读数翻倍以上<sup class="cite"><a href="#r19">19</a></sup>。</td>
+          </tr>
+          <tr>
+            <td><b>体重趋势</b></td>
+            <td class="num">每周 1 次</td>
+            <td>成猫体重下降 &gt;5% 就值得就诊评估，与 §07 的老年筛查口径一致<sup class="cite"><a href="#r12">12</a></sup>。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="instrument wide">
+      <div class="instrument-head">
+        <span class="t">静息呼吸计数仪</span>
+        <span class="s">数 15 秒 × 4 · 趁猫睡着或安静趴着时用</span>
+      </div>
+      <div class="instrument-body">
+        <div>
+          <button class="rr-pad" id="rrPad" type="button" data-on="0">
+            开始 / 每看到一次起伏就点一下
+            <small>15 秒后自动结算；呼吸起伏看胸口或肚子的升降，不用碰猫。</small>
+          </button>
+          <svg class="rr-chest" id="rrChest" viewBox="0 0 200 120" aria-hidden="true">
+            <g stroke="var(--cat-cocoa)" stroke-linecap="round">
+              <ellipse class="breath" cx="100" cy="72" rx="52" ry="34" fill="var(--cat-peach)" stroke-width="3"/>
+              <circle cx="146" cy="46" r="22" fill="var(--cat-peach)" stroke-width="3"/>
+              <path d="M132 30 L128 16 L142 24 Z" fill="var(--cat-peach)" stroke-width="3"/>
+              <path d="M158 28 L164 14 L167 29 Z" fill="var(--cat-peach)" stroke-width="3"/>
+              <path d="M140 44 q3 2.6 6 0 M152 44 q3 2.6 6 0" fill="none" stroke-width="2.4"/>
+              <path d="M145 51 h5 l-2.5 3.6 Z" fill="var(--cat-pink)" stroke="none"/>
+              <path d="M60 96 l-10 12 M100 104 v14 M140 96 l10 12" stroke-width="3.4"/>
+              <path d="M40 60 C22 56 14 44 20 32" fill="none" stroke-width="8"/>
+              <path d="M40 60 C22 56 14 44 20 32" fill="none" stroke="var(--cat-peach)" stroke-width="4.4"/>
+            </g>
+          </svg>
+        </div>
+        <div class="instrument-aside">
+          <div class="box">
+            <div class="k">换算结果</div>
+            <div class="v" id="rrRpm">--<small> 次/分</small></div>
+          </div>
+          <div class="box">
+            <div class="k">判读</div>
+            <div class="v" id="rrState" style="font-size:15px">点「开始」再数</div>
+            <p id="rrHint">睡觉或安静趴着时数最准；紧张、刚玩完、天热时数出来的高值不算数。</p>
+          </div>
+        </div>
+      </div>
+      <div class="instrument-foot">
+        参考：健康猫在家中安静时中位约 <b>27</b> 次/分、睡着约 <b>20</b> 次/分<sup class="cite"><a href="#r19">19</a></sup>。
+        计数器只是训练工具，不构成诊断；读数持续偏高，或伴随张口呼吸、腹部用力，直接进入下面的红线。
+      </div>
+    </div>
+
+    <h3>八张症状速查卡</h3>
+
+    <div class="symptom-grid wide">
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 6 q4 4 9 4 t9 -4"/>
+              <path d="M13 10 v5"/>
+              <path d="M8 20 q5 3 10 0" opacity=".7"/>
+            </svg>
+          </span>
+          <div class="s-t">呕吐<small>先看频率与内容物</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>吃太快吐整粒粮、长毛猫吐毛球、换粮太快；一天多次、带血或伴精神差就不一样了。</p>
+        <p class="s-row s-home"><b>居家应对</b>记录次数、时间、吐了什么，拍照；暂停零食，正常供水。</p>
+        <p class="s-row s-vet"><b>何时就医</b>24 小时内多次呕吐、吐血或咖啡渣样物、伴拒食与沉郁。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M5 5 q8 8 16 8"/>
+              <path d="M5 12 q6 6 12 6" opacity=".7"/>
+              <path d="M5 19 q4 4 8 4" opacity=".45"/>
+            </svg>
+          </span>
+          <div class="s-t">腹泻<small>比便秘常见，比想象中危险</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>换粮、吃坏、寄生虫、应激性肠炎；幼猫脱水速度快，风险按小时计。</p>
+        <p class="s-row s-home"><b>居家应对</b>记录次数与形态（颜色、是否带黏液血丝）；保证饮水，不自行喂止泻药。</p>
+        <p class="s-row s-vet"><b>何时就医</b>持续超过 24 小时、幼猫与老年猫当天就查、伴呕吐或血便直接就医。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M6 5 l3 5 M13 4 l0 5 M20 5 l-3 5"/>
+              <path d="M13 10 q4 0 4 5 t-4 6 t-4 -6 t4 -5 Z" opacity=".8"/>
+            </svg>
+          </span>
+          <div class="s-t">打喷嚏与眼鼻分泌物<small>上呼吸道最常见</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>疱疹病毒、杯状病毒感染占大头，多猫、领养、寄养后高发；异物与牙科问题也会。</p>
+        <p class="s-row s-home"><b>居家应对</b>温水棉球清理分泌物、记录单眼还是双眼；食欲通常靠气味，鼻塞时提供气味重的湿粮。</p>
+        <p class="s-row s-vet"><b>何时就医</b>拒食、呼吸声变粗、脓性分泌物、幼猫症状超过两三天。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 16 q4 -5 9 -3 t9 1"/>
+              <path d="M6 21 h14" opacity=".6"/>
+              <path d="M17 5 l2.6 -2 M19 8 l3 -1" stroke-width="2.4"/>
+            </svg>
+          </span>
+          <div class="s-t">拒食<small>红线最硬的一条</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>应激、口腔疼痛、肠胃病、全身性疾病的前兆；胖猫禁食 2–3 天就可能触发肝脂沉积，风险更高。</p>
+        <p class="s-row s-home"><b>居家应对</b>区分“挑食”与“不吃”：闻闻就走、凑近不吃、完全不理食盆是三件事，分开记录。</p>
+        <p class="s-row s-vet"><b>何时就医</b>成猫完全拒食超过 24 小时就医，幼猫半天就够严重；伴呕吐、沉郁不等满一天。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <ellipse cx="13" cy="17" rx="8" ry="5"/>
+              <path d="M13 4 v8 M13 8 q-3 1 -4 3 M13 8 q3 1 4 3"/>
+            </svg>
+          </span>
+          <div class="s-t">泌尿异常<small>公猫的命门</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>自发性膀胱炎（应激相关）、结晶与结石、尿道栓子；公猫尿道细，堵塞可以在一天内发展为致命的尿闭。</p>
+        <p class="s-row s-home"><b>居家应对</b>数尿团、看颜色（粉红即血尿）、记录进出砂盆的频率；这些信息医生直接要用。</p>
+        <p class="s-row s-vet"><b>何时就医</b>反复进出砂盆却尿不出来、血尿、频繁舔下身、嚎叫不安，按急诊处理，尤其公猫。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M6 8 q7 -5 14 0 M6 14 q7 -5 14 0" opacity=".8"/>
+              <path d="M8 20 h4 M15 20 h4" stroke-width="2.4"/>
+            </svg>
+          </span>
+          <div class="s-t">瘙痒与脱毛<small>先想跳蚤</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>跳蚤叮咬过敏排第一（尾根与背部为主），其次食物与环境过敏、真菌；过度舔毛也会“秃”出对称区域。</p>
+        <p class="s-row s-home"><b>居家应对</b>梳毛收集黑颗粒（跳蚤粪）放在湿纸巾上看是否变红；记录脱毛位置分布图。</p>
+        <p class="s-row s-vet"><b>何时就医</b>大面积脱毛、破皮结痂、对称性脱毛；用药必须用猫专用，犬用菊酯类对猫有毒（见 §09）。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="13" cy="10" r="6.4"/>
+              <path d="M13 16.4 q0 4 -3 5" opacity=".8"/>
+              <path d="M9 8.4 q4 3 8 0" opacity=".6"/>
+            </svg>
+          </span>
+          <div class="s-t">口臭与流涎<small>鼻子下面的问题清单</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>牙结石与牙周病最常见（对应 §07 的刷牙）；口炎、肾脏问题、口腔异物各有气味特征。</p>
+        <p class="s-row s-home"><b>居家应对</b>掀开嘴唇看牙根侧有无黄褐色结石与红线，记录单侧还是双侧咀嚼。</p>
+        <p class="s-row s-vet"><b>何时就医</b>突然大量流涎伴呕吐（先排查中毒）、流涎加抓嘴、牙齿松动、完全不敢嚼干粮。</p>
+      </div>
+      <div class="scard">
+        <div class="s-head">
+          <span class="s-ico" aria-hidden="true">
+            <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M13 4 v4 M13 18 v4 M4 13 h4 M18 13 h4"/>
+              <circle cx="13" cy="13" r="4.6" opacity=".8"/>
+            </svg>
+          </span>
+          <div class="s-t">精神沉郁与躲藏<small>最不特异，最不能拖</small></div>
+        </div>
+        <p class="s-row s-why"><b>可能原因</b>几乎任何全身性疾病的前段都可能这样表现；换环境、新成员也会，但那类“躲”会随时间恢复。</p>
+        <p class="s-row s-home"><b>居家应对</b>对照三件套记录：体重曲线、吃多少、砂盆产出；把水碗食碗挪到它躲藏处附近降低消耗。</p>
+        <p class="s-row s-vet"><b>何时就医</b>沉郁超过 24–48 小时、伴上述任一症状、或“性格突然安静下来”，这种模糊信号恰恰最需要检查。</p>
+      </div>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <div class="redline" role="note" aria-label="就医红线">
+      <div class="rl-t">当天就医的七条红线</div>
+      <ul>
+        <li><b>拒食 &gt; 24 小时</b>（幼猫半天）：肝脂沉积风险随禁食时间上升</li>
+        <li><b>排尿困难或尿闭</b>：反复进出砂盆无尿、血尿，公猫 24–48 小时可致命</li>
+        <li><b>呼吸急促或张口呼吸</b>：安静时持续 &gt;40 次/分，或任何张口呼吸</li>
+        <li><b>反复呕吐</b>：一天多次、带血、伴精神差</li>
+        <li><b>癫痫、瘫软、步态异常</b>：记录发作时长与视频</li>
+        <li><b>疑似中毒</b>：百合、人用对乙酰氨基酚、犬用驱虫剂等（见 §09），不要等症状出现</li>
+        <li><b>创伤与坠落</b>：外表没事也建议拍片，猫很会藏骨折</li>
+      </ul>
+      <div class="rl-note">红线不是“只能等死线”，越早就诊处置越简单、花费越低。带不上猫就用手机拍下砂盆、呕吐物与它的状态，这些是兽医最想要的信息。</div>
+    </div>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">口径说明</span>
+      本节内容是家庭观察与就医决策的科普整理，不能替代兽医检查与诊断；参考区间对应的是健康猫的统计分布，
+      个体基线不同，判读以自家猫的历史记录为准。文中数据出处见 <a class="inline" href="#r19">参考 19</a> 与
+      <a class="inline" href="#r20">参考 20</a>。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s9" data-nav="误区">
+  <div class="sec-head"><span class="sec-num">09</span><h2>毒物与常见误区核查</h2></div>
+  <div class="paper">
+    <p class="dek">先把“碰不得”的列清楚，再把流传最广的六种说法挨个拆。</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>物品</th><th>风险</th><th>处理</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>百合</b></td><td>全株（含花粉、插花水）可致猫急性肾损伤，没有已知安全量<sup class="cite"><a href="#r14">14</a></sup></td><td>家中不养百合；怀疑接触即就医，不要等症状</td></tr>
+          <tr><td><b>葱、蒜、韭菜</b></td><td>破坏红细胞，导致海因茨体贫血</td><td>不喂人食；误食后记录量与时间，联系兽医</td></tr>
+          <tr><td><b>对乙酰氨基酚</b></td><td>猫的 N-乙酰化与葡萄糖醛酸化能力低，代谢物蓄积导致高铁血红蛋白血症与肝损伤<sup class="cite"><a href="#r16">16</a></sup></td><td>人用感冒药、止痛药锁好；误食立即急诊</td></tr>
+          <tr><td><b>犬用菊酯驱虫滴剂</b></td><td>猫代谢慢，可出现流涎、震颤、抽搐</td><td>只用猫专用产品；不把犬用滴剂“减半”给猫</td></tr>
+          <tr><td><b>生肉 / 生鱼</b></td><td>沙门菌、李斯特菌等病原体风险；自制生食易营养失衡<sup class="cite"><a href="#r15">15</a></sup></td><td>不用生食替代全价粮；确需生食时做病原与配方评估</td></tr>
+          <tr><td><b>牛奶</b></td><td>多数成年猫乳糖消化能力下降，大量饮用易腹泻</td><td>不作为常规补水或补钙；清水即可</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>六种说法的核查</h3>
+
+    <div class="mrow">
+      <div class="mrow-main">
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>说法</th><th>核查</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>“猫可以吃素”</td><td>必须人工添加牛磺酸、精氨酸、维生素 A、花生四烯酸，并做完整配方核算；仅靠谷物与蔬菜会缺乏<sup class="cite"><a href="#r2">2</a></sup>。</td></tr>
+          <tr><td>“狗粮营养差不多”</td><td>猫的蛋白、牛磺酸、维生素 A 与花生四烯酸需求按猫设计；长期喂狗粮是慢性缺乏风险，不是“省一点”<sup class="cite"><a href="#r1">1</a></sup>。</td></tr>
+          <tr><td>“干粮能洁牙”</td><td>机械清洁作用有限；家庭护理的标准是刷牙，必要时麻醉洁治<sup class="cite"><a href="#r17">17</a></sup>。</td></tr>
+          <tr><td>“猫会自己控制食量”</td><td>室内绝育猫常见过量进食；定量、称重、按体重趋势调整更可靠<sup class="cite"><a href="#r8">8</a></sup>。</td></tr>
+          <tr><td>“无谷就是低碳水”</td><td>“无谷”只表示不含谷物；豆类、薯类仍是碳水来源。看配方与能量密度，不看营销词。</td></tr>
+          <tr><td>“生骨肉更自然”</td><td>“自然”不是证据。生肉饮食有病原体与营养失衡风险，现有证据不足以支持常规推荐<sup class="cite"><a href="#r15">15</a></sup>。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+          </div>
+
+      <aside class="mnote">
+      <span class="tag">急诊优先</span>
+      猫的“隐蔽”是生存策略：等到呕吐、拒食、躲藏时才被发现，往往已经过了最佳窗口。
+      误食、排尿困难、呼吸急促、持续拒食超过 24 小时，都按急诊处理。
+    </aside>
+      </div>
+  </div>
+</section>
+
+<section id="s10" data-nav="速记">
+  <div class="sec-head"><span class="sec-num">10</span><h2>一页速记</h2></div>
+  <div class="paper">
+    <p class="dek">能打印贴冰箱的一页；数字都能回到对应章节复算。</p>
+
+    <div class="cards wide">
+      <div class="card">
+        <div class="k">每日</div>
+        <ul>
+          <li>按 kcal 称量喂食，湿粮按比例折算</li>
+          <li>换水、洗碗，检查尿团数量</li>
+          <li>10 分钟互动游戏（逗猫棒收尾要“抓到”）</li>
+          <li>铲砂；观察粪便与尿液</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k">每周</div>
+        <ul>
+          <li>固定时间称重，记录到同一张表</li>
+          <li>梳毛，检查耳道、牙龈与指甲</li>
+          <li>清洗水碗与猫砂盆边缘</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k">每月</div>
+        <ul>
+          <li>体况评分（BCS）与肌肉评分（MCS）</li>
+          <li>检查抓挠柱磨损、猫砂盆数量与位置</li>
+          <li>按风险做体外/体内驱虫</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k">每年 / 老年</div>
+        <ul>
+          <li>年度体检：体重、口腔、血检、尿检、血压</li>
+          <li>核心疫苗按 1–3 年间隔评估</li>
+          <li>7 岁后加 T4；10 岁后每 6 个月一次</li>
+          <li>体重下降 &gt;5% 或饮水突增，提前就诊</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>
+      如果只能做四件事：<b>定量喂食、把一部分能量换成湿粮、每周称重、按 n+1 配资源</b>。
+      这四件事覆盖了能量、水分、体重与环境四条主线，剩下的疫苗、牙科与老年筛查交给兽医按阶段安排。
+    </p>
+
+    <p>
+      最后，把丑话说在前面：文中的 RER 系数是临床起点，不是个体精确值；体况轮廓是示意，不是诊断工具；
+      CKD 的 50% 来自特定抽样队列，不能外推为总体患病率。所有数字都附了出处，复算时以原文为准。
+      这篇是科普整理，不构成医疗建议；猫的食欲、体重、排尿与呼吸出现持续变化，交给兽医。
+    </p>
+
+    <div class="cat-tip">
+      <svg class="mascot-sm" viewBox="0 0 120 120" role="img" aria-label="团子挥手告别">
+        <g stroke="var(--cat-cocoa)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M38 34 L33 12 L53 25 Z" fill="var(--cat-peach)"/>
+          <path d="M82 34 L87 12 L67 25 Z" fill="var(--cat-peach)"/>
+          <circle cx="60" cy="52" r="26" fill="var(--cat-peach)"/>
+          <path d="M46 46 q4 -4 8 0 M66 46 q4 -4 8 0" fill="none" stroke-width="2.6"/>
+          <path d="M57.5 56 h5 l-2.5 3.6 Z" fill="var(--cat-pink)" stroke="none"/>
+          <path d="M60 59.6 q-3 4 -6 1.6 M60 59.6 q3 4 6 1.6" fill="none" stroke-width="2.2"/>
+          <ellipse cx="44" cy="56" rx="4.8" ry="2.8" fill="var(--cat-pink)" stroke="none" opacity=".55"/>
+          <ellipse cx="76" cy="56" rx="4.8" ry="2.8" fill="var(--cat-pink)" stroke="none" opacity=".55"/>
+          <path d="M24 62 q-8 -8 -4 -16" fill="none" stroke-width="2.4" opacity=".7"/>
+          <path d="M20 42 l0 -4 M26 44 l3 -3 M16 46 l-3 -2" fill="none" stroke-width="2" opacity=".5"/>
+        </g>
+      </svg>
+      <div class="speech"><b>团子：</b>手册讲完了。记得两周称一次体重，水碗常满，砂盆干净。下次见。</div>
+    </div>
+
+    <h3>参考</h3>
+    <ol class="refs wide">
+      <li id="r1">National Research Council. <i>Nutrient Requirements of Dogs and Cats</i>. Washington, DC: National Academies Press, 2006. <a href="https://www.nationalacademies.org/publications/10668" target="_blank" rel="noopener">nationalacademies.org ↗</a></li>
+      <li id="r2">Zoran DL. The carnivore connection to nutrition in cats. <span class="j">J Am Vet Med Assoc.</span> 2002;221(11):1559–1567. <a href="https://doi.org/10.2460/javma.2002.221.1559" target="_blank" rel="noopener">doi:10.2460/javma.2002.221.1559 ↗</a></li>
+      <li id="r3">Morris JG, Rogers QR. Arginine: an essential amino acid for the cat. <span class="j">J Nutr.</span> 1978;108(12):1944–1953. <a href="https://doi.org/10.1093/jn/108.12.1944" target="_blank" rel="noopener">doi:10.1093/jn/108.12.1944 ↗</a></li>
+      <li id="r4">Pion PD, Kittleson MD, Rogers QR, Morris JG. Myocardial failure in cats associated with low plasma taurine: a reversible cardiomyopathy. <span class="j">Science.</span> 1987;237(4816):764–768. <a href="https://doi.org/10.1126/science.3616607" target="_blank" rel="noopener">doi:10.1126/science.3616607 ↗</a></li>
+      <li id="r5">de Godoy MRC, Swanson KS. Companion Animals Symposium: nutrigenomics: using gene expression and molecular biology data to understand pet obesity. <span class="j">J Anim Sci.</span> 2013;91(7):2949–2964. <a href="https://doi.org/10.2527/jas.2012-5860" target="_blank" rel="noopener">doi:10.2527/jas.2012-5860 ↗</a></li>
+      <li id="r6">Teng KT, McGreevy PD, Toribio JALML, Raubenheimer D, Kendall K, Dhand NK. Strong associations of nine-point body condition scoring with survival and lifespan in cats. <span class="j">J Feline Med Surg.</span> 2018;20(12):1110–1118. <a href="https://doi.org/10.1177/1098612X17752198" target="_blank" rel="noopener">doi:10.1177/1098612X17752198 ↗</a></li>
+      <li id="r7">Cline MG, Burns KM, Coe JB, Downing R, Durzi T, Murphy M, Parker V. 2021 AAHA Nutrition and Weight Management Guidelines for Dogs and Cats. <span class="j">J Am Anim Hosp Assoc.</span> 2021;57(4):153–178. <a href="https://doi.org/10.5326/JAAHA-MS-7232" target="_blank" rel="noopener">doi:10.5326/JAAHA-MS-7232 ↗</a></li>
+      <li id="r8">Rowe JC, Winston JA, Parker VJ, McCool KE, Suchodolski JS, Lopes R, Steiner JM, Gilor C, Rudinsky AJ. Gut microbiota promoting propionic acid production accompanies caloric restriction-induced intentional weight loss in cats. <span class="j">Sci Rep.</span> 2024;14:11901. <a href="https://doi.org/10.1038/s41598-024-62243-4" target="_blank" rel="noopener">doi:10.1038/s41598-024-62243-4 ↗</a></li>
+      <li id="r9">van Diggelen RA, Gillies GJJ, Shoveller AK, Banton S, Kosmal PAL. Water intake and consumption behavior of colony and privately-owned healthy domestic cats fed 100% dry, 50% dry and 50% wet, and 100% wet diets: a comparison of research and home environments. <span class="j">J Anim Sci.</span> 2026;104:skag201. <a href="https://doi.org/10.1093/jas/skag201" target="_blank" rel="noopener">doi:10.1093/jas/skag201 ↗</a></li>
+      <li id="r10">Ellis SLH, Rodan I, Carney HC, Heath S, Rochlitz I, Shearburn LD, Sundahl E, Westropp JL. AAFP and ISFM feline environmental needs guidelines. <span class="j">J Feline Med Surg.</span> 2013;15(3):219–230. <a href="https://doi.org/10.1177/1098612X13477537" target="_blank" rel="noopener">doi:10.1177/1098612X13477537 ↗</a></li>
+      <li id="r11">Stone AES, Brummet GO, Carozza EM, Kass PH, Petersen EP, Sykes J, Westman ME. 2020 AAHA/AAFP Feline Vaccination Guidelines. <span class="j">J Feline Med Surg.</span> 2020;22(9):813–830. <a href="https://doi.org/10.1177/1098612X20941784" target="_blank" rel="noopener">doi:10.1177/1098612X20941784 ↗</a></li>
+      <li id="r12">Quimby J, Gowland S, Carney HC, DePorter T, Plummer P, Westropp J. 2021 AAHA/AAFP Feline Life Stage Guidelines. <span class="j">J Feline Med Surg.</span> 2021;23(3):211–233. <a href="https://doi.org/10.1177/1098612X21993657" target="_blank" rel="noopener">doi:10.1177/1098612X21993657 ↗</a></li>
+      <li id="r13">Marino CL, Lascelles BDX, Vaden SL, Gruen ME, Marks SL. Prevalence and classification of chronic kidney disease in cats randomly selected from four age groups and in cats recruited for degenerative joint disease studies. <span class="j">J Feline Med Surg.</span> 2014;16(6):465–472. <a href="https://doi.org/10.1177/1098612X13511446" target="_blank" rel="noopener">doi:10.1177/1098612X13511446 ↗</a></li>
+      <li id="r14">Fitzgerald KT. Lily toxicity in the cat. <span class="j">Top Companion Anim Med.</span> 2010;25(4):213–217. <a href="https://doi.org/10.1053/j.tcam.2010.09.006" target="_blank" rel="noopener">doi:10.1053/j.tcam.2010.09.006 ↗</a></li>
+      <li id="r15">Freeman LM, Chandler ML, Hamper BA, Weeth LP. Current knowledge about the risks and benefits of raw meat–based diets for dogs and cats. <span class="j">J Am Vet Med Assoc.</span> 2013;243(11):1549–1558. <a href="https://doi.org/10.2460/javma.243.11.1549" target="_blank" rel="noopener">doi:10.2460/javma.243.11.1549 ↗</a></li>
+      <li id="r16">McConkey SE, Grant DM, Cribb AE. The role of para-aminophenol in acetaminophen-induced methemoglobinemia in dogs and cats. <span class="j">J Vet Pharmacol Ther.</span> 2009;32(6):585–595. <a href="https://doi.org/10.1111/j.1365-2885.2009.01080.x" target="_blank" rel="noopener">doi:10.1111/j.1365-2885.2009.01080.x ↗</a></li>
+      <li id="r17">Bellows J, Berg ML, Dennis S, Harvey R, Lobprise HB, Snyder CJ, Stone AES, Van de Wetering AG. 2019 AAHA Dental Care Guidelines for Dogs and Cats. <span class="j">J Am Anim Hosp Assoc.</span> 2019;55(2):49–69. <a href="https://doi.org/10.5326/JAAHA-MS-6933" target="_blank" rel="noopener">doi:10.5326/JAAHA-MS-6933 ↗</a></li>
+      <li id="r18">Humphrey T, Proops L, Forman J, Spooner R, McComb K. The role of cat eye narrowing movements in cat-human communication. <span class="j">Sci Rep.</span> 2020;10:16503. <a href="https://doi.org/10.1038/s41598-020-73426-0" target="_blank" rel="noopener">doi:10.1038/s41598-020-73426-0 ↗</a></li>
+      <li id="r19">Dijkstra E, Teske E, Szatmári V. Respiratory rate of clinically healthy cats measured in veterinary consultation rooms. <span class="j">Vet J.</span> 2018;234. <a href="https://doi.org/10.1016/j.tvjl.2018.02.014" target="_blank" rel="noopener">doi:10.1016/j.tvjl.2018.02.014 ↗</a></li>
+      <li id="r20">Cornell University College of Veterinary Medicine, Feline Health Center. Cat owner resources on behavior and health. <a href="https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center" target="_blank" rel="noopener">vet.cornell.edu ↗</a></li>
+      <li id="r21">Sousa MG, Carareto R, Pereira-Junior VA, Aquino MC. Agreement between auricular and rectal measurements of body temperature in healthy cats. <span class="j">J Feline Med Surg.</span> 2013;15(4). <a href="https://doi.org/10.1177/1098612X12464873" target="_blank" rel="noopener">doi:10.1177/1098612X12464873 ↗</a></li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<footer class="foot">
+  <span>© 2026 灯箱 · LIGHTBOX</span>
+  <span><a href="paper-review-factorsplat.html">← 上一篇</a> · <a href="index.html">全部文章 →</a> · 单文件 · 零外部请求</span>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     0. 主题
+     ============================================================ */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var KEY = 'technotes-theme';
+  var order = ['auto', 'dark', 'light'];
+  var mode = 'auto';
+
+  try { mode = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
+  if (order.indexOf(mode) < 0) mode = 'auto';
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function syncLightClass() {
+    var light = mode === 'light' || (mode === 'auto' && systemLight());
+    root.classList.toggle('is-light', light);
+  }
+
+  function applyTheme(next) {
+    mode = next;
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    syncLightClass();
+    themeBtn.textContent = '主题：' + (mode === 'auto' ? '跟随系统' : (mode === 'dark' ? '深色' : '浅色'));
+    document.dispatchEvent(new CustomEvent('technotes:theme'));
+  }
+
+  applyTheme(mode);
+
+  themeBtn.addEventListener('click', function () {
+    var i = order.indexOf(mode);
+    var next = order[(i + 1) % order.length];
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    applyTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (mode !== 'auto') return;
+      syncLightClass();
+      document.dispatchEvent(new CustomEvent('technotes:theme'));
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  /* ============================================================
+     1. 目录、进度、显现
+     ============================================================ */
+
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[data-nav]'));
+  var links = [];
+
+  sections.forEach(function (section) {
+    var a = document.createElement('a');
+    a.href = '#' + section.id;
+    a.textContent = section.getAttribute('data-nav');
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function updateScroll() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.min(100, Math.max(0, y / max * 100)) : 0;
+    progress.style.width = pct + '%';
+
+    var current = -1;
+    for (var i = 0; i < sections.length; i++) {
+      var top = sections[i].getBoundingClientRect().top;
+      if (top <= window.innerHeight * 0.34) current = i;
+    }
+    links.forEach(function (a, i) {
+      a.classList.toggle('on', i === current);
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  updateScroll();
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    var ioFired = false;
+    var io = new IntersectionObserver(function (entries) {
+      ioFired = true;
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(function (el, i) {
+      el.style.transitionDelay = (i % 3) * 0.06 + 's';
+      io.observe(el);
+    });
+    /* 看门狗：个别内嵌 WebView 不派发 IO 回调，直接显现全部内容 */
+    setTimeout(function () {
+      if (ioFired) return;
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+    }, 1500);
+  }
+
+  /* ============================================================
+     2. 能量与投喂计算器
+     ============================================================ */
+
+  (function () {
+    var w = document.getElementById('cWeight');
+    var f = document.getElementById('cFactor');
+    var d = document.getElementById('cDensity');
+    var m = document.getElementById('cMeals');
+    if (!w || !f || !d || !m) return;
+
+    var rerEl = document.getElementById('cRer');
+    var derEl = document.getElementById('cDer');
+    var gdayEl = document.getElementById('cGday');
+    var gmealEl = document.getElementById('cGmeal');
+    var formulaEl = document.getElementById('cFormula');
+    var shortEl = document.getElementById('cFormulaShort');
+    var bowlGEl = document.getElementById('cBowlG');
+    var bowlFill = document.getElementById('bowlFill');
+    var quipEl = document.getElementById('cQuip');
+    var wVal = document.getElementById('cWeightVal');
+    var fVal = document.getElementById('cFactorVal');
+    var dVal = document.getElementById('cDensityVal');
+    var mVal = document.getElementById('cMealsVal');
+    var chips = Array.prototype.slice.call(document.querySelectorAll('.chip[data-kcal]'));
+
+    function calc() {
+      var bw = parseFloat(w.value) || 4;
+      var factor = parseFloat(f.value) || 1.2;
+      var density = Math.max(40, parseFloat(d.value) || 380);
+      var meals = parseInt(m.value, 10) || 2;
+
+      var rer = 70 * Math.pow(bw, 0.75);
+      /* 与正文的手算步骤一致：先把 DER 取整到 kcal，再换算克数 */
+      var der = Math.round(rer * factor);
+      var gday = der / density * 100;
+      var gmeal = gday / meals;
+
+      rerEl.innerHTML = Math.round(rer) + '<small> kcal/日</small>';
+      derEl.innerHTML = Math.round(der) + '<small> kcal/日</small>';
+      gdayEl.innerHTML = gday.toFixed(1) + '<small> g</small>';
+      gmealEl.innerHTML = gmeal.toFixed(1) + '<small> g</small>';
+
+      if (bowlGEl) bowlGEl.textContent = gday.toFixed(1) + ' g';
+      if (bowlFill) {
+        /* 猫碗刻度随粮型换量程：干粮 120 g，湿粮 320 g */
+        var bowlMax = density < 150 ? 320 : 120;
+        var ratio = Math.max(0.04, Math.min(1, gday / bowlMax));
+        var hgt = 36 * ratio;
+        bowlFill.setAttribute('y', (56 - hgt).toFixed(2));
+        bowlFill.setAttribute('height', hgt.toFixed(2));
+      }
+
+      wVal.textContent = bw.toFixed(1) + ' kg';
+      fVal.textContent = '×' + factor.toFixed(1);
+      dVal.textContent = Math.round(density) + ' kcal/100g';
+      mVal.textContent = meals + ' 餐';
+
+      if (quipEl) {
+        var quip;
+        if (factor <= 0.85) quip = '减重别急，每周 0.5–1% 体重就够了。';
+        else if (factor >= 2.2) quip = '幼猫胃小，分成 3–4 顿更稳。';
+        else if (factor >= 1.05 && factor <= 1.15) quip = '老猫先查牙和肾，再谈加量。';
+        else if (density < 150) quip = '湿粮水多，克数大不等于热量高。';
+        else if (factor >= 1.3) quip = '活跃猫也别无限加，先看腰线。';
+        else quip = '先按这个量喂两周，再让体重秤说话。';
+        quipEl.textContent = quip;
+      }
+
+      formulaEl.textContent = '70 × ' + bw.toFixed(1) + '^0.75 = ' + Math.round(rer) +
+        ' kcal → ×' + factor.toFixed(1) + ' = ' + Math.round(der) + ' kcal/日；÷ ' +
+        Math.round(density) + ' kcal/100g = ' + gday.toFixed(1) + ' g/日';
+      shortEl.textContent = 'RER = ' + Math.round(rer) + ' kcal';
+    }
+
+    [w, f, d, m].forEach(function (el) {
+      el.addEventListener('input', calc);
+      el.addEventListener('change', calc);
+    });
+
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var kcal = parseFloat(chip.getAttribute('data-kcal')) || 380;
+        d.value = kcal;
+        chips.forEach(function (c) { c.classList.toggle('on', c === chip); });
+        calc();
+      });
+    });
+
+    calc();
+  })();
+
+  /* ============================================================
+     3. 体况评分轮廓
+     ============================================================ */
+
+  (function () {
+    var cv = document.getElementById('bcsCv');
+    var range = document.getElementById('bcsRange');
+    if (!cv || !cv.getContext || !range) return;
+
+    var numEl = document.getElementById('bcsNum');
+    var classEl = document.getElementById('bcsClass');
+    var descEl = document.getElementById('bcsDesc');
+    var valEl = document.getElementById('bcsVal');
+
+    function isLight() {
+      return root.classList.contains('is-light');
+    }
+
+    function ensureCanvas() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var rect = cv.getBoundingClientRect();
+      if (!rect.width) return null;
+      var w = Math.max(2, Math.round(rect.width * dpr));
+      var h = Math.max(2, Math.round(w * 340 / 560));
+      if (cv.width !== w || cv.height !== h) {
+        cv.width = w;
+        cv.height = h;
+      }
+      var ctx = cv.getContext('2d');
+      var scale = (w / dpr) / 560;
+      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+      return ctx;
+    }
+
+    function txt(ctx, s, x, y, color, size, align) {
+      /* 画布按 560 单位绘制；窄屏 CSS 宽度更小时，按比例放大字号，
+         保证 11 单位标注在 390px 视口下仍有约 10px 的实际上屏字号。 */
+      var cssW = cv.getBoundingClientRect().width || 560;
+      var boost = Math.max(1, 560 / cssW * 0.95);
+      ctx.font = (size * boost) + 'px "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = color;
+      ctx.textAlign = align || 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(s, x, y);
+    }
+
+    function classify(b) {
+      if (b <= 3) {
+        return {
+          cls: '偏瘦',
+          desc: '肋骨与脊柱易见或易触，无腹部脂肪垫，腹提明显。需排查疾病、牙痛与喂养不足。'
+        };
+      }
+      if (b <= 5) {
+        return {
+          cls: '理想',
+          desc: '肋骨轻覆脂肪、可触及；俯视有腰线；侧面有腹提。5 分为标准。'
+        };
+      }
+      if (b <= 7) {
+        return {
+          cls: '超重',
+          desc: '肋骨需按压才触及；腰线不明显；腹部脂肪垫可见。建议定量喂食并增加互动游戏。'
+        };
+      }
+      return {
+        cls: '肥胖',
+        desc: '肋骨不可触及；无腰线；腹部膨隆下垂。建议在兽医监督下制定减重方案。'
+      };
+    }
+
+    function draw() {
+      var ctx = ensureCanvas();
+      if (!ctx) return;
+
+      var light = isLight();
+      var ink = light ? '#332f2c' : '#efe9e5';
+      var ink2 = light ? '#554d48' : '#c6bfba';
+      var ink3 = light ? '#6e645e' : '#aaa39d';
+      var teal = light ? '#b34f35' : '#f2927a';
+      var amber = light ? '#9a6516' : '#e0b366';
+      var b = parseInt(range.value, 10);
+      var t = (b - 5) / 4;
+
+      ctx.clearRect(0, 0, 560, 340);
+
+      /* 地面线 */
+      ctx.strokeStyle = light ? 'rgba(51,47,44,.10)' : 'rgba(239,233,229,.07)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(24, 300);
+      ctx.lineTo(408, 300);
+      ctx.stroke();
+
+      /* 体型参数：t < 0 偏瘦，t > 0 偏胖 */
+      var belly = 214 + 24 * t;
+      var back = 122 - 3 * t;
+
+      /* 身体轮廓：填充、描边与脂肪层共用同一条路径，脂肪可裁剪在轮廓内 */
+      function traceBody() {
+        ctx.beginPath();
+        ctx.moveTo(152, 128);
+        ctx.bezierCurveTo(186, back - 5, 250, back - 8, 318, back - 4);
+        ctx.bezierCurveTo(368, back - 1, 404, back + 4, 424, 134);
+        ctx.bezierCurveTo(438, 143, 440, 158, 431, 170);
+        ctx.bezierCurveTo(424, 181, 418, 196, 414, 210);
+        ctx.bezierCurveTo(396, belly + 14, 350, belly + 12, 300, belly + 8);
+        ctx.bezierCurveTo(258, belly + 4, 220, belly - 2, 200, 205);
+        ctx.bezierCurveTo(184, 196, 174, 184, 172, 172);
+        ctx.bezierCurveTo(170, 158, 166, 143, 158, 134);
+        ctx.closePath();
+      }
+
+      traceBody();
+      var bodyGrad = ctx.createLinearGradient(160, 118, 430, 250);
+      bodyGrad.addColorStop(0, light ? 'rgba(207,106,77,.24)' : 'rgba(242,146,122,.16)');
+      bodyGrad.addColorStop(.55, light ? 'rgba(154,101,22,.14)' : 'rgba(224,179,102,.09)');
+      bodyGrad.addColorStop(1, light ? 'rgba(127,168,143,.11)' : 'rgba(143,184,156,.07)');
+      ctx.fillStyle = bodyGrad;
+      ctx.fill();
+
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+
+      /* 腿 */
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(208, 202);
+      ctx.bezierCurveTo(202, 232, 200, 260, 201, 284);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(196, 284);
+      ctx.lineTo(210, 284);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(408, 200);
+      ctx.bezierCurveTo(412, 228, 412, 258, 411, 284);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(402, 284);
+      ctx.lineTo(418, 284);
+      ctx.stroke();
+
+      /* 尾巴 */
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 5 + 4.5 * Math.max(0, t);
+      ctx.beginPath();
+      ctx.moveTo(430, 152);
+      ctx.bezierCurveTo(452, 140, 462, 118, 462, 94);
+      ctx.stroke();
+
+      /* 头与耳 */
+      ctx.fillStyle = light ? 'rgba(207,106,77,.10)' : 'rgba(242,146,122,.10)';
+      ctx.beginPath();
+      ctx.ellipse(132, 152, 26, 23, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(112, 136);
+      ctx.lineTo(116, 108);
+      ctx.lineTo(132, 128);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(140, 127);
+      ctx.lineTo(152, 108);
+      ctx.lineTo(154, 136);
+      ctx.closePath();
+      ctx.stroke();
+
+      /* 眼与鼻 */
+      ctx.fillStyle = ink;
+      ctx.beginPath();
+      ctx.arc(138, 148, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(106, 158);
+      ctx.lineTo(112, 161);
+      ctx.lineTo(106, 164);
+      ctx.closePath();
+      ctx.fill();
+
+      /* 腮红、项圈与小铃铛：一点点可爱，不影响读数 */
+      ctx.fillStyle = light ? 'rgba(207,106,77,.34)' : 'rgba(242,146,122,.30)';
+      ctx.beginPath();
+      ctx.ellipse(120, 160, 7, 4.5, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = light ? '#b34f35' : '#f2927a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(150, 172);
+      ctx.quadraticCurveTo(161, 179, 173, 170);
+      ctx.stroke();
+
+      ctx.fillStyle = light ? '#9a6516' : '#e0b366';
+      ctx.beginPath();
+      ctx.arc(161, 180, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* 胡须 */
+      ctx.strokeStyle = light ? 'rgba(51,47,44,.35)' : 'rgba(239,233,229,.28)';
+      ctx.lineWidth = 1;
+      [[110, 158, 88, 150], [110, 161, 86, 162], [110, 164, 90, 174]].forEach(function (p) {
+        ctx.beginPath();
+        ctx.moveTo(p[0], p[1]);
+        ctx.lineTo(p[2], p[3]);
+        ctx.stroke();
+      });
+
+      /* 肋骨：偏瘦时出现 */
+      var ribAlpha = Math.max(0, Math.min(1, (5.2 - b) / 3.4));
+      if (ribAlpha > 0.02) {
+        ctx.strokeStyle = teal;
+        ctx.globalAlpha = ribAlpha * 0.75;
+        ctx.lineWidth = 1.4;
+        for (var i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(236 + i * 15, 142);
+          ctx.quadraticCurveTo(256 + i * 15, 168, 233 + i * 15, 194);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      /* 脂肪层：偏胖时沿腹线加厚，裁剪在身体轮廓内 */
+      if (t > 0.02) {
+        ctx.save();
+        traceBody();
+        ctx.clip();
+        ctx.strokeStyle = amber;
+        ctx.globalAlpha = 0.16 + 0.3 * t;
+        ctx.lineWidth = 10 + 10 * t;
+        ctx.beginPath();
+        ctx.moveTo(200, belly - 8);
+        ctx.bezierCurveTo(250, belly + 2, 310, belly + 6, 370, belly);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+
+      /* 俯视小图：放在右下空白区，避开尾巴与后腿 */
+      var wx = 13 * Math.max(0, -t) - 9 * Math.max(0, t);
+      ctx.beginPath();
+      ctx.moveTo(500, 188);
+      ctx.bezierCurveTo(528, 194, 536, 214, 536 - wx, 240);
+      ctx.bezierCurveTo(534, 264, 526, 280, 500, 292);
+      ctx.bezierCurveTo(474, 280, 466, 264, 464 + wx, 240);
+      ctx.bezierCurveTo(464, 214, 472, 194, 500, 188);
+      ctx.closePath();
+      ctx.fillStyle = light ? 'rgba(207,106,77,.08)' : 'rgba(242,146,122,.10)';
+      ctx.fill();
+      ctx.strokeStyle = ink2;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(500, 180, 11, 0, Math.PI * 2);
+      ctx.fillStyle = light ? 'rgba(207,106,77,.08)' : 'rgba(242,146,122,.10)';
+      ctx.fill();
+      ctx.strokeStyle = ink2;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      /* 腰线指示 */
+      ctx.strokeStyle = teal;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(536 - wx, 240);
+      ctx.lineTo(549, 226);
+      ctx.stroke();
+      txt(ctx, '腰线', 549, 218, teal, 10.5, 'right');
+
+      /* 标注 */
+      ctx.strokeStyle = light ? 'rgba(85,77,72,.6)' : 'rgba(198,191,186,.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(252, 112);
+      ctx.lineTo(246, 144);
+      ctx.stroke();
+      txt(ctx, '肋骨', 252, 104, ink2, 11, 'center');
+
+      ctx.beginPath();
+      ctx.moveTo(300, belly + 44);
+      ctx.lineTo(300, belly + 10);
+      ctx.stroke();
+      txt(ctx, '腹线', 300, belly + 54, ink2, 11, 'center');
+
+      txt(ctx, '侧视', 36, 34, ink3, 11, 'left');
+      txt(ctx, '俯视', 500, 312, ink3, 11, 'center');
+    }
+
+    function render() {
+      var b = parseInt(range.value, 10);
+      var c = classify(b);
+      var warn = b <= 3 || b >= 7;
+      numEl.textContent = b + ' / 9';
+      classEl.textContent = c.cls;
+      descEl.textContent = c.desc;
+      valEl.textContent = String(b);
+      numEl.style.color = warn ? 'var(--amber)' : 'var(--cyan)';
+      classEl.style.color = warn ? 'var(--amber)' : 'var(--cyan)';
+      valEl.style.color = warn ? 'var(--amber)' : 'var(--cyan)';
+      draw();
+    }
+
+    range.addEventListener('input', render);
+    range.addEventListener('change', render);
+    document.addEventListener('technotes:theme', render);
+    window.addEventListener('resize', render);
+
+    render();
+    setTimeout(render, 300);
+    /* 看门狗：内嵌 WebView 可能不派发 IO/rAF，定时重绘最省事 */
+    setInterval(function () {
+      if (document.hidden) return;
+      render();
+    }, 1600);
+  })();
+
+  /* ============================================================
+     4. 静息呼吸计数仪：15 秒点按窗口，×4 换算，按 20–30 / 40 分档
+     ============================================================ */
+
+  (function () {
+    var pad = document.getElementById('rrPad');
+    var rpmEl = document.getElementById('rrRpm');
+    var stateEl = document.getElementById('rrState');
+    if (!pad || !rpmEl || !stateEl) return;
+
+    var WINDOW_MS = 15000;
+    var counting = false;
+    var t0 = 0;
+    var timer = null;
+    var ticks = [];
+
+    function showRpm(v) {
+      rpmEl.innerHTML = v + '<small> 次/分</small>';
+    }
+
+    function stop() {
+      counting = false;
+      pad.setAttribute('data-on', '0');
+      if (timer) { clearTimeout(timer); timer = null; }
+      var n = ticks.length;
+      if (n === 0) {
+        stateEl.style.color = '';
+        stateEl.textContent = '这 15 秒里没有点到起伏，歇口气再来一次。';
+        return;
+      }
+      var rpm = Math.round(n * (60000 / WINDOW_MS));
+      showRpm(rpm);
+      if (rpm > 40) {
+        stateEl.style.color = 'var(--rose)';
+        stateEl.textContent = rpm + ' 次/分：高于 40，是就医红线。让猫彻底放松后复数一次，仍高就别再等。';
+      } else if (rpm >= 31) {
+        stateEl.style.color = 'var(--amber)';
+        stateEl.textContent = rpm + ' 次/分：偏快。确认猫在放松状态，过 10 分钟复数；持续偏快值得留意。';
+      } else if (rpm >= 20) {
+        stateEl.style.color = 'var(--cyan)';
+        stateEl.textContent = rpm + ' 次/分：落在安静时的正常范围（健康猫家测中位约 27）。';
+      } else {
+        stateEl.style.color = '';
+        stateEl.textContent = rpm + ' 次/分：偏慢，深睡时可以出现；确认是安静状态后记作它的基线。';
+      }
+    }
+
+    function start() {
+      counting = true;
+      ticks = [];
+      t0 = Date.now();
+      pad.setAttribute('data-on', '1');
+      showRpm('--');
+      stateEl.style.color = '';
+      stateEl.textContent = '数起来：每看到一次胸口的起伏点一下。';
+      timer = setTimeout(stop, WINDOW_MS);
+    }
+
+    pad.addEventListener('click', function () {
+      if (!counting) { start(); return; }
+      var left = WINDOW_MS - (Date.now() - t0);
+      if (left <= 300) { stop(); return; }
+      ticks.push(Date.now());
+      stateEl.textContent = '还剩 ' + Math.ceil(left / 1000) + ' 秒，已数 ' + ticks.length + ' 次。';
+    });
+  })();
+
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGE2NDIwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNiA1LjJ2NE02IDUuMmwzLjggMy4yTTE4IDUuMnY0TTE4IDUuMmwtMy44IDMuMiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTMuNSIgcj0iNi4yIi8+PHBhdGggZD0iTTkuNiAxMi42aC4wMU0xNC40IDEyLjZoLjAxTTEwLjYgMTYuNGMuOS44IDEuOS44IDIuOCAwIi8+PC9nPjwvc3ZnPg==";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNiA1LjJ2NE02IDUuMmwzLjggMy4yTTE4IDUuMnY0TTE4IDUuMmwtMy44IDMuMiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTMuNSIgcj0iNi4yIi8+PHBhdGggZD0iTTkuNiAxMi42aC4wMU0xNC40IDEyLjZoLjAxTTEwLjYgMTYuNGMuOS44IDEuOS44IDIuOCAwIi8+PC9nPjwvc3ZnPg==";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

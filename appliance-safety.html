@@ -1,0 +1,3639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家用电器安全使用指南——把回路、插座和延长线算清楚</title>
+<meta name="description" content="常见家用电器安全使用指南：220V 功率与回路负载、空开与 30mA 漏保、10A/16A 插线板与延长线、厨房/浴室/取暖器/锂电池场景，附回路负载与插线板预算两台现场计算器。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="家用电器安全使用指南——把回路、插座和延长线算清楚">
+<meta property="og:description" content="常见家用电器安全使用指南：220V 功率与回路负载、空开与 30mA 漏保、10A/16A 插线板与延长线、厨房/浴室/取暖器/锂电池场景，附回路负载与插线板预算两台现场计算器。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/appliance-safety.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/appliance-safety.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+
+/* ============================================================
+   0. 令牌
+   ============================================================ */
+
+:root {
+  --void: #06080c;
+  --void-2: #0b0f15;
+  --void-3: #111823;
+  --panel: rgba(13, 18, 26, .80);
+  --screen: #080c12;
+  --screen-2: #0d131c;
+  --screen-3: #121b27;
+  --screen-ink: #e9eef5;
+  --screen-ink-2: #b7c2cf;
+  --screen-ink-3: #8492a3;
+  --ink: #e9eef5;
+  --ink-2: #b4bfcc;
+  --ink-3: #7f8b9b;
+  --rule: #18212d;
+  --rule-2: #263343;
+  --ice: #9cc8ff;
+  --cyan: #63d8ff;
+  --amber: #ffb648;
+  --rose: #ff6b6b;
+  --lime: #9ee37d;
+  --amber-dim: rgba(255, 182, 72, .10);
+  --cyan-dim: rgba(99, 216, 255, .10);
+  --rose-dim: rgba(255, 107, 107, .10);
+  --lime-dim: rgba(158, 227, 125, .08);
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 6px;
+  --max: 1180px;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --void: #f4f6f9; --void-2: #eaeef4; --void-3: #dfe6ee;
+    --panel: rgba(255,255,255,.84);
+    --ink: #0f1720; --ink-2: #3a4a5c; --ink-3: #5c6d80;
+    --rule: #dce4ed; --rule-2: #c6d2df;
+    --ice: #1b5fc9; --cyan: #006d8f; --amber: #9a5c00; --rose: #b3261e; --lime: #2f6b2f;
+    --amber-dim: rgba(154,92,0,.07);
+    --cyan-dim: rgba(0,109,143,.07);
+    --rose-dim: rgba(179,38,30,.07);
+    --lime-dim: rgba(47,107,47,.07);
+    --screen: #f8fafc; --screen-2: #eef3f8; --screen-3: #e6edf6;
+    --screen-ink: #0f1720; --screen-ink-2: #3a4a5c; --screen-ink-3: #5c6d80;
+  }
+}
+
+html[data-theme="light"], html.is-light {
+  --void: #f4f6f9; --void-2: #eaeef4; --void-3: #dfe6ee;
+  --panel: rgba(255,255,255,.84);
+  --ink: #0f1720; --ink-2: #3a4a5c; --ink-3: #5c6d80;
+  --rule: #dce4ed; --rule-2: #c6d2df;
+  --ice: #1b5fc9; --cyan: #006d8f; --amber: #9a5c00; --rose: #b3261e; --lime: #2f6b2f;
+  --amber-dim: rgba(154,92,0,.07);
+  --cyan-dim: rgba(0,109,143,.07);
+  --rose-dim: rgba(179,38,30,.07);
+  --lime-dim: rgba(47,107,47,.07);
+  --screen: #f8fafc; --screen-2: #eef3f8; --screen-3: #e6edf6;
+  --screen-ink: #0f1720; --screen-ink-2: #3a4a5c; --screen-ink-3: #5c6d80;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--amber); color: var(--void); }
+
+/* ---- 背景 ---- */
+
+.glow {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(46rem 30rem at 14% -8%, rgba(255,182,72,.08), transparent 62%),
+    radial-gradient(44rem 30rem at 90% 2%, rgba(99,216,255,.06), transparent 62%),
+    radial-gradient(54rem 40rem at 50% 120%, rgba(158,227,125,.035), transparent 66%),
+    var(--void);
+}
+
+.glow::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.6), transparent 78%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.6), transparent 78%);
+}
+
+html.is-light .glow::after, html[data-theme="light"] .glow::after {
+  background-image:
+    linear-gradient(rgba(20,40,60,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,40,60,.035) 1px, transparent 1px);
+}
+
+/* ---- 顶栏 ---- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--void) 84%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .topbar { background: var(--void); }
+}
+
+.topbar-in {
+  max-width: var(--max); margin: 0 auto;
+  padding: 0 24px; height: 58px;
+  display: flex; align-items: center; gap: 18px;
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-decoration: none;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+  flex: none;
+}
+
+.brand-mark { width: 20px; height: 20px; flex: 0 0 auto; display: block; opacity: .95; }
+.brand:hover { color: var(--ink-2); }
+.brand-mark .bm-frame { fill: none; stroke: var(--amber); stroke-width: 1.6; stroke-linejoin: round; }
+.brand-mark .bm-slice { stroke: var(--cyan); stroke-width: 1.35; stroke-linecap: round; opacity: .85; }
+.brand-mark .bm-dot { fill: var(--rose); }
+
+.nav {
+  display: flex; gap: 2px; overflow-x: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 5px 9px;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+}
+
+.nav a:hover { color: var(--ink); background: var(--void-3); }
+.nav a.on { color: var(--ink); background: var(--void-3); }
+
+.spacer { flex: 1 1 auto; }
+
+.theme-btn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .05em;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .18s, border-color .18s;
+}
+
+.theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.progress {
+  position: absolute; left: 0; bottom: -1px; height: 1px; width: 0;
+  background: linear-gradient(90deg, var(--amber), var(--cyan));
+  transition: width .1s linear;
+}
+
+/* ---- 版心 ---- */
+
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+/* ---- 首屏 ---- */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  gap: 44px;
+  align-items: center;
+  padding: 62px 0 52px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+}
+
+.h1-prefix {
+  display: block;
+  font-family: var(--mono);
+  font-size: clamp(12px, 1.2vw, 15px);
+  line-height: 1.4;
+  letter-spacing: .16em;
+  color: var(--amber);
+  margin-bottom: 12px;
+  font-weight: 400;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(40px, 5.2vw, 66px);
+  line-height: 1.1;
+  letter-spacing: -.015em;
+  margin: 0 0 20px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+/* 渐变只挂在纯文本节点上，并限制在自身宽度内；不支持裁剪时回退纯色 */
+h1 em { color: var(--cyan); }
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  h1 em {
+    font-style: normal;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    font-size: .46em;
+    line-height: 1.42;
+    letter-spacing: .004em;
+    margin-top: 14px;
+    background: linear-gradient(96deg, var(--ice), var(--cyan) 48%, var(--amber));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 500;
+  }
+}
+
+.lede {
+  font-size: 17px;
+  line-height: 1.9;
+  color: var(--ink-2);
+  max-width: 40em;
+  margin: 0 0 16px;
+}
+
+.byline {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  margin-top: 18px;
+}
+
+.scope {
+  margin-top: 18px;
+  padding: 10px 14px;
+  border-left: 2px solid var(--rule-2);
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--ink-3);
+  max-width: 42em;
+}
+
+.scope b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 首屏回路面板 ---- */
+
+.hero-lab {
+  position: relative;
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px),
+    radial-gradient(120% 90% at 12% 0%, rgba(255,182,72,.10), transparent 56%),
+    linear-gradient(160deg, rgba(99,216,255,.05), transparent 46%),
+    var(--screen);
+  background-size: 26px 26px, 26px 26px, auto, auto, auto;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255,255,255,.05);
+  padding: 20px 18px 16px;
+  overflow: hidden;
+}
+
+.hero-lab::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: repeating-linear-gradient(135deg, var(--amber) 0 10px, #161b23 10px 20px);
+  opacity: .82;
+}
+
+.hero-lab::after {
+  content: "220";
+  position: absolute; right: 12px; bottom: -28px;
+  font-family: var(--mono);
+  font-size: 112px;
+  line-height: 1;
+  letter-spacing: -.08em;
+  color: rgba(255,255,255,.028);
+  pointer-events: none;
+}
+
+.lab-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-3);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  position: relative;
+  z-index: 1;
+}
+
+.lab-head .live {
+  color: var(--lime);
+  font-weight: 600;
+  letter-spacing: .14em;
+}
+
+.lab-head .live::before {
+  content: "";
+  display: inline-block;
+  width: 5px; height: 5px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  vertical-align: 1px;
+  animation: livePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
+.panel { position: relative; z-index: 1; }
+
+.panel-meter {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr 48px;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 14px;
+}
+
+.meter-main {
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 5px;
+  padding: 9px 12px 8px;
+  background: rgba(255,255,255,.035);
+}
+
+.meter-k {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.meter-v {
+  display: flex; align-items: baseline; gap: 5px;
+  font-family: var(--mono);
+  font-size: 42px;
+  line-height: 1.08;
+  color: var(--amber);
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter-v small { font-size: 12px; color: var(--screen-ink-3); letter-spacing: 0; }
+.meter-v b { font-weight: 500; }
+
+.meter-grid {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+}
+
+.meter-grid > div {
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 4px;
+  padding: 5px 9px;
+  background: rgba(255,255,255,.025);
+}
+
+.meter-grid b {
+  display: flex; align-items: baseline; gap: 3px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--screen-ink);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter-grid b small { font-size: 9.5px; color: var(--screen-ink-2); }
+
+.breaker-visual {
+  position: relative;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 4px;
+  background: #0a0f16;
+  height: 100%;
+  min-height: 76px;
+  overflow: hidden;
+}
+
+.breaker-visual .lever {
+  position: absolute; left: 50%; top: 15px;
+  width: 15px; height: 30px;
+  margin-left: -7.5px;
+  border-radius: 2px;
+  background: linear-gradient(#dfe7ef, #8b98a7);
+  border: 1px solid #556170;
+  transform-origin: 50% 4px;
+  transition: transform .22s cubic-bezier(.2,.8,.3,1), background .22s;
+}
+
+.breaker-visual .lever::after {
+  content: "";
+  position: absolute; left: 2px; right: 2px; top: 5px; height: 2px;
+  background: rgba(0,0,0,.28);
+  box-shadow: 0 5px 0 rgba(0,0,0,.18);
+}
+
+.breaker-visual .lamp {
+  position: absolute; left: 50%; bottom: 15px;
+  width: 6px; height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 8px rgba(158,227,125,.75);
+  transition: background .2s, box-shadow .2s;
+}
+
+.breaker-visual .bv-label {
+  position: absolute; left: 0; right: 0; bottom: 3px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--screen-ink-2);
+}
+
+.breaker-visual.tripped .lever { transform: rotate(-34deg); background: linear-gradient(#ffb3b3, #b63b3b); border-color: #7d2929; }
+.breaker-visual.tripped .lamp { background: var(--rose); box-shadow: 0 0 10px rgba(255,107,107,.85); }
+.breaker-visual.tripped .bv-label { color: var(--rose); }
+
+.load-track {
+  position: relative;
+  height: 10px;
+  margin: 20px 0 0;
+  border-radius: 5px;
+  background: #141c27;
+  border: 1px solid rgba(255,255,255,.07);
+}
+
+.load-fill {
+  position: relative;
+  height: 100%;
+  width: 0;
+  border-radius: 5px;
+  background: linear-gradient(90deg, rgba(158,227,125,.55), var(--lime));
+  transition: width .25s cubic-bezier(.2,.8,.3,1), background .25s;
+  overflow: hidden;
+}
+
+.load-fill::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(115deg, transparent 0 7px, rgba(255,255,255,.28) 7px 9px);
+  opacity: .22;
+  animation: currentFlow 1.15s linear infinite;
+}
+
+@keyframes currentFlow {
+  from { transform: translateX(-18px); }
+  to { transform: translateX(0); }
+}
+
+.load-fill.warn { background: linear-gradient(90deg, rgba(255,182,72,.55), var(--amber)); }
+.load-fill.bad { background: linear-gradient(90deg, rgba(255,107,107,.55), var(--rose)); }
+
+.load-mark {
+  position: absolute; top: -3px; bottom: -3px;
+  width: 1px;
+  background: rgba(255,255,255,.42);
+}
+
+.load-mark-label {
+  position: absolute; top: -16px;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--screen-ink-2);
+  white-space: nowrap;
+}
+
+.load-legend {
+  display: flex; justify-content: space-between; gap: 10px;
+  margin-top: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: var(--screen-ink-2);
+}
+
+.load-legend .ok { color: var(--lime); font-weight: 600; }
+.load-legend .warn { color: var(--amber); }
+.load-legend .bad { color: var(--rose); }
+
+.breaker-row {
+  display: flex; gap: 4px;
+  margin-top: 12px;
+}
+
+.breaker-row button {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  color: var(--screen-ink-2);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 3px;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color .16s, border-color .16s, background .16s;
+}
+
+.breaker-row button:hover { color: var(--screen-ink); }
+.breaker-row button.on { color: var(--amber); border-color: rgba(255,182,72,.5); background: rgba(255,182,72,.08); }
+
+.appliance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 1px 7px;
+  align-items: center;
+  text-align: left;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  background: rgba(255,255,255,.02);
+  color: var(--screen-ink-2);
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s;
+}
+
+.app:hover { border-color: rgba(255,255,255,.18); color: var(--screen-ink); }
+
+.app svg {
+  grid-row: span 2;
+  width: 18px; height: 18px;
+  stroke: currentColor;
+  opacity: .72;
+}
+
+.app-name { font-size: 11.5px; line-height: 1.35; white-space: nowrap; }
+
+.app-w {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--screen-ink-2);
+}
+
+.app.on {
+  border-color: rgba(255,182,72,.45);
+  background: rgba(255,182,72,.09);
+  color: var(--amber);
+}
+
+.app.on svg { opacity: 1; }
+.app.on .app-w { color: rgba(255,182,72,.9); }
+
+.lab-advice {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--screen-ink-3);
+}
+
+.lab-advice b { color: var(--screen-ink-2); font-weight: 600; }
+
+.lab-fine {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: .01em;
+  color: var(--screen-ink-3);
+  opacity: .76;
+}
+
+/* 浅色主题下的仪器面板 */
+
+html[data-theme="light"] .hero-lab,
+html.is-light .hero-lab {
+  background:
+    linear-gradient(rgba(20,40,60,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,40,60,.035) 1px, transparent 1px),
+    radial-gradient(120% 90% at 12% 0%, rgba(154,92,0,.08), transparent 56%),
+    linear-gradient(160deg, rgba(0,109,143,.04), transparent 46%),
+    var(--screen);
+  background-size: 26px 26px, 26px 26px, auto, auto, auto;
+  box-shadow: 0 18px 50px rgba(30, 45, 60, .10), inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+html[data-theme="light"] .lab-head,
+html.is-light .lab-head { border-bottom-color: rgba(20,30,45,.1); }
+
+html[data-theme="light"] .meter-main,
+html.is-light .meter-main,
+html[data-theme="light"] .meter-grid > div,
+html.is-light .meter-grid > div {
+  background: #fff;
+  border-color: #e0e7ef;
+}
+
+html[data-theme="light"] .breaker-visual,
+html.is-light .breaker-visual { background: #eef2f7; border-color: #d5dee8; }
+
+html[data-theme="light"] .load-track,
+html.is-light .load-track { background: #e6edf4; border-color: #d5dee8; }
+
+html[data-theme="light"] .load-mark,
+html.is-light .load-mark { background: rgba(20,30,45,.35); }
+
+html[data-theme="light"] .breaker-row button,
+html.is-light .breaker-row button { border-color: #d5dee8; }
+
+html[data-theme="light"] .app,
+html.is-light .app { background: #fff; border-color: #e0e7ef; }
+
+html[data-theme="light"] .app.on,
+html.is-light .app.on { background: rgba(154,92,0,.07); border-color: rgba(154,92,0,.35); }
+
+/* ---- 章节 ---- */
+
+section { padding: 60px 0 8px; border-bottom: 1px solid var(--rule); scroll-margin-top: 70px; }
+section:last-of-type { border-bottom: 0; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--rose);
+  letter-spacing: .12em;
+  flex: none;
+  padding-top: 6px;
+}
+
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(24px, 2.7vw, 32px);
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -.005em;
+  text-wrap: balance;
+}
+
+.dek {
+  color: var(--ink-3);
+  font-size: 14.5px;
+  margin: 0 0 30px;
+}
+
+.paper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  column-gap: 44px;
+  align-items: start;
+}
+
+.paper > * { grid-column: 1; }
+.paper > .mnote { grid-column: 1; }
+.paper > .wide { grid-column: 1 / -1; }
+
+h3 {
+  font-size: 16.5px;
+  letter-spacing: .01em;
+  margin: 30px 0 10px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+h4 { font-size: 14.5px; margin: 18px 0 6px; color: var(--ink); font-weight: 600; }
+
+p { margin: 0 0 15px; color: var(--ink-2); }
+p b, p strong { color: var(--ink); font-weight: 600; }
+
+a.inline {
+  color: var(--ice);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(140,196,255,.3);
+}
+
+a.inline:hover { border-bottom-color: var(--ice); }
+
+sup.cite {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--rose);
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+sup.cite a { color: inherit; text-decoration: none; }
+sup.cite a:hover { text-decoration: underline; }
+
+/* ---- 边注 ---- */
+
+.mnote {
+  font-size: 12.5px;
+  line-height: 1.72;
+  color: var(--ink-3);
+  border-left: 1px solid var(--rule-2);
+  padding: 2px 0 2px 14px;
+  margin: 6px 0 18px;
+}
+
+.mnote b { color: var(--ink-2); font-weight: 600; }
+
+/* 宽图/仪器之后的注释改为通栏脚注，避免孤零零挂在右栏 */
+.paper > .wide + .mnote {
+  grid-column: 1 / -1;
+  max-width: min(100%, 852px);
+  margin-top: 0;
+  border-left: 0;
+  border-top: 1px solid var(--rule-2);
+  padding: 10px 0 0 18px;
+}
+
+.mnote .tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 5px;
+}
+
+/* ---- 速览列表 ---- */
+
+.quick {
+  list-style: none;
+  counter-reset: q;
+  margin: 18px 0 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 34px;
+}
+
+.quick li {
+  counter-increment: q;
+  position: relative;
+  padding: 14px 0 14px 34px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.quick li::before {
+  content: counter(q, decimal-leading-zero);
+  position: absolute; left: 0; top: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: .08em;
+}
+
+.quick b { color: var(--ink); font-weight: 600; }
+
+/* ---- 统计条 ---- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 26px 0;
+}
+
+.stat {
+  background: var(--void-2);
+  padding: 16px 14px;
+}
+
+.stat .n {
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.4vw, 27px);
+  line-height: 1.15;
+  color: var(--ink);
+  letter-spacing: -.02em;
+}
+
+.stat .n small { font-size: 11px; color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.stat .l { font-size: 12px; color: var(--ink-3); line-height: 1.6; margin-top: 5px; }
+.stat .l b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 图 ---- */
+
+figure { margin: 28px 0; }
+
+.fig-frame {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  padding: 18px;
+  overflow-x: auto;
+}
+
+figcaption {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+figcaption b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 仪器分解：插座与插头 ---- */
+
+.ex-frame {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ex-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--rule-2);
+  font-family: var(--mono);
+}
+
+.ex-head .t {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.ex-head .s {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--screen-ink-2);
+}
+
+.ex-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 272px;
+}
+
+.ex-stage {
+  position: relative;
+  padding: 8px 6px 0;
+  border-right: 1px solid var(--rule-2);
+  background-image:
+    linear-gradient(rgba(99,216,255,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,216,255,.055) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.ex-stage svg { display: block; width: 100%; height: auto; }
+
+.ex-part {
+  cursor: pointer;
+  opacity: .84;
+  transition: opacity .22s;
+}
+
+.ex-stage.has-sel .ex-part { opacity: .36; }
+.ex-stage.has-sel .ex-part.on { opacity: 1; }
+.ex-stage.has-sel .ex-part:hover { opacity: .72; }
+
+.ex-outline {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+  transition: stroke .2s;
+}
+
+.ex-part.on .ex-outline { stroke: var(--amber); }
+
+.ex-face { fill: var(--screen-2); stroke: var(--rule-2); stroke-width: 1; }
+.ex-top { fill: var(--screen-3); stroke: var(--rule-2); stroke-width: 1; }
+.ex-side { fill: var(--void-3); stroke: var(--rule-2); stroke-width: 1; }
+.ex-inner { fill: var(--screen); stroke: var(--screen-ink-3); stroke-width: .8; opacity: .8; }
+.ex-cavity { fill: #05080c; stroke: var(--screen-ink-3); stroke-width: .8; }
+.ex-detail { fill: none; stroke: var(--screen-ink-3); stroke-width: 1; }
+.ex-hole { fill: #05080c; stroke: var(--screen-ink-3); stroke-width: .8; }
+.ex-copper { fill: none; stroke: var(--amber); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.ex-copper-dot { fill: var(--amber); }
+.ex-coil { fill: none; stroke: var(--amber); stroke-width: 2.4; opacity: .9; }
+.ex-handle { fill: var(--screen-3); stroke: var(--rule-2); stroke-width: 1; }
+.ex-body-line { fill: none; stroke: var(--screen-ink-3); stroke-width: 1.2; opacity: .65; }
+.ex-water { fill: var(--cyan); opacity: .18; }
+.ex-screw { fill: var(--screen-3); stroke: var(--screen-ink-3); stroke-width: 1; }
+.ex-pin { fill: #b9c6d4; stroke: #7f8e9f; stroke-width: 1; }
+.ex-pin-top { fill: #dbe5ee; stroke: #7f8e9f; stroke-width: 1; }
+.ex-pin-side { fill: #8b9aa9; stroke: #7f8e9f; stroke-width: 1; }
+.ex-cut { fill: var(--screen); stroke: var(--screen-ink-3); stroke-width: .8; stroke-dasharray: 2 2; }
+.ex-cable { fill: none; stroke: #1a2430; stroke-width: 15; stroke-linecap: round; }
+
+.ex-wire { fill: none; stroke-width: 3; stroke-linecap: round; }
+.ex-wire-L { stroke: #b07a4f; }
+.ex-wire-N { stroke: #5a86cf; }
+.ex-wire-PE { stroke: #8fbf5a; }
+.ex-pe-stripe { fill: none; stroke: #d8c34a; stroke-width: 1.1; stroke-dasharray: 3 3; }
+
+.ex-dash { fill: none; stroke: var(--screen-ink-3); stroke-width: .8; stroke-dasharray: 3 6; opacity: .3; }
+.ex-leader { fill: none; stroke: var(--screen-ink-3); stroke-width: .8; stroke-dasharray: 2 3; opacity: .55; }
+.ex-wall { fill: none; stroke: var(--screen-ink-3); stroke-width: .9; stroke-dasharray: 2 5; opacity: .5; }
+.ex-wall-label { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; fill: var(--screen-ink-2); opacity: 1; }
+
+.ex-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  fill: var(--screen-ink-2);
+}
+
+.ex-label .no { fill: var(--amber); font-weight: 600; }
+.ex-zone { font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .12em; fill: var(--screen-ink-3); opacity: .92; }
+.ex-hint { font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .06em; fill: var(--cyan); opacity: .95; }
+.ex-note { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .04em; fill: var(--lime); }
+
+.ex-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 18px;
+}
+
+.ex-panel .k {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.ex-panel h3 {
+  margin: 7px 0 8px;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--screen-ink);
+}
+
+.ex-panel p {
+  font-size: 12.5px;
+  line-height: 1.78;
+  color: var(--screen-ink-3);
+}
+
+.ex-panel .fine {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.65;
+  color: var(--screen-ink-3);
+  opacity: .88;
+}
+
+.ex-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 11px 18px 13px;
+  border-top: 1px solid var(--rule-2);
+}
+
+.ex-chip {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: var(--screen-ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  padding: 5px 7px;
+  cursor: pointer;
+  transition: color .16s, border-color .16s, background .16s;
+}
+
+.ex-chip:hover { color: var(--screen-ink); }
+.ex-chip.on { color: var(--amber); border-color: rgba(255,182,72,.5); background: var(--amber-dim); }
+.ex-chip:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+html[data-theme="light"] .ex-stage,
+html.is-light .ex-stage {
+  background-image:
+    linear-gradient(rgba(20,30,45,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,30,45,.055) 1px, transparent 1px);
+}
+
+html[data-theme="light"] .ex-cavity,
+html[data-theme="light"] .ex-hole,
+html.is-light .ex-cavity,
+html.is-light .ex-hole { fill: #d7e0ea; }
+
+html[data-theme="light"] .ex-pin,
+html.is-light .ex-pin { fill: #a8b4c2; stroke: #71808f; }
+
+/* ---- 三因素卡片 ---- */
+
+.factor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin: 22px 0;
+}
+
+.factor {
+  border: 1px solid var(--rule-2);
+  border-top: 2px solid var(--amber);
+  border-radius: 0 0 var(--r) var(--r);
+  padding: 13px 14px;
+  background: var(--void-2);
+}
+
+.factor .t {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 4px;
+}
+
+.factor .h { font-size: 14px; color: var(--ink); font-weight: 600; margin-bottom: 5px; }
+.factor .d { font-size: 12px; line-height: 1.72; color: var(--ink-3); }
+
+/* ---- 表格 ---- */
+
+.tbl-wrap { overflow-x: auto; margin: 22px 0; border: 1px solid var(--rule); border-radius: var(--r); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.7;
+  min-width: 560px;
+}
+
+thead th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 500;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule-2);
+  background: var(--void-2);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  vertical-align: top;
+}
+
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: rgba(255,182,72,.03); }
+tbody td b { color: var(--ink); font-weight: 600; }
+td.num { font-family: var(--mono); white-space: nowrap; }
+
+/* ---- 仪器 ---- */
+
+.instrument {
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  background: var(--screen);
+  color: var(--screen-ink);
+  margin: 28px 0;
+  overflow: hidden;
+}
+
+.instrument-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+}
+
+.instrument-head .t {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.instrument-head .s {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  color: var(--screen-ink-2);
+}
+
+.instrument-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, .65fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.instrument-body.single { grid-template-columns: 1fr; }
+
+.instrument-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.instrument-aside .box {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  padding: 11px 13px;
+  background: rgba(255,255,255,.025);
+}
+
+.instrument-aside .box .k {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+}
+
+.instrument-aside .box .v {
+  font-family: var(--mono);
+  font-size: 21px;
+  color: var(--screen-ink);
+  line-height: 1.3;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.instrument-aside .box .v small { font-size: 10px; color: var(--screen-ink-2); margin-left: 2px; }
+.instrument-aside .box p { font-size: 11px; line-height: 1.65; color: var(--screen-ink-2); margin: 4px 0 0; }
+
+.instrument-foot {
+  padding: 0 18px 16px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--screen-ink-2);
+}
+
+.instrument-foot b { color: var(--screen-ink-2); font-weight: 600; }
+
+html[data-theme="light"] .instrument,
+html.is-light .instrument {
+  background: linear-gradient(160deg, #fbfcfd, #eef2f7);
+  border-color: #d7e0ea;
+}
+
+html[data-theme="light"] .instrument-head,
+html.is-light .instrument-head {
+  background: rgba(20,30,45,.02);
+  border-bottom-color: rgba(20,30,45,.08);
+}
+
+html[data-theme="light"] .instrument-aside .box,
+html.is-light .instrument-aside .box {
+  background: #fff;
+  border-color: #e0e7ef;
+}
+
+/* ---- 功率地图 ---- */
+
+.power-map { padding: 18px 20px 14px; }
+
+.pm-head {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--screen-ink-2);
+  margin-bottom: 12px;
+}
+
+.pm-axis {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 64px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.pm-axis-track {
+  position: relative;
+  height: 14px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--screen-ink-2);
+}
+
+.pm-axis-track i {
+  position: absolute; top: 0;
+  transform: translateX(-50%);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.pm-axis-track i::after {
+  content: "";
+  position: absolute; left: 50%; top: 12px;
+  width: 1px; height: 6px;
+  background: rgba(255,255,255,.25);
+}
+
+.pm-axis-track .l10 { color: var(--amber); }
+.pm-axis-track .l16 { color: var(--cyan); }
+
+.pm-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 64px;
+  gap: 12px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.pm-name { font-size: 12px; color: var(--screen-ink-2); white-space: nowrap; }
+
+.pm-track {
+  position: relative;
+  height: 11px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.055);
+  overflow: hidden;
+}
+
+.pm-track i {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(99,216,255,.55), var(--cyan) 45%, var(--amber));
+}
+
+.pm-track::before,
+.pm-track::after {
+  content: "";
+  position: absolute; top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(255,255,255,.18);
+  z-index: 1;
+}
+
+.pm-track::before { left: 55%; }
+.pm-track::after { left: 88%; }
+
+.pm-val {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--screen-ink-2);
+  text-align: right;
+}
+
+.pm-foot {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--screen-ink-2);
+  line-height: 1.7;
+}
+
+html[data-theme="light"] .pm-track,
+html.is-light .pm-track { background: #e6edf4; }
+
+html[data-theme="light"] .pm-track::before,
+html[data-theme="light"] .pm-track::after,
+html.is-light .pm-track::before,
+html.is-light .pm-track::after { background: rgba(20,30,45,.25); }
+
+html[data-theme="light"] .pm-axis-track i::after,
+html.is-light .pm-axis-track i::after { background: rgba(20,30,45,.25); }
+
+/* ---- 单线图 ---- */
+
+.singleline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 22px 18px 18px;
+}
+
+.sl-node {
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  background: var(--void-2);
+  padding: 9px 12px;
+  min-width: 88px;
+}
+
+.sl-node .sl-k {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 2px;
+}
+
+.sl-node b { font-size: 13px; color: var(--ink); font-weight: 600; white-space: nowrap; }
+.sl-node.rcd { border-color: rgba(255,182,72,.45); }
+.sl-node.mcb { border-color: rgba(99,216,255,.4); }
+.sl-node.load { border-color: rgba(158,227,125,.35); }
+
+.sl-arrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  flex: none;
+}
+
+.sl-earth {
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule-2);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  color: var(--ink-2);
+}
+
+.sl-earth b { color: var(--lime); font-weight: 600; }
+
+/* ---- 规则卡 ---- */
+
+.rules {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 20px 0;
+}
+
+.rule {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule-2);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 12px 14px;
+  background: var(--void-2);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+.rule.no { border-left-color: var(--rose); }
+.rule.yes { border-left-color: var(--lime); }
+
+.rule b { display: block; color: var(--ink); margin-bottom: 2px; font-weight: 600; }
+
+/* ---- 提示框 ---- */
+
+.callout {
+  border: 1px solid var(--rule-2);
+  border-left: 3px solid var(--amber);
+  border-radius: 0 var(--r) var(--r) 0;
+  background: var(--amber-dim);
+  padding: 13px 16px;
+  margin: 22px 0;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.callout.danger { border-left-color: var(--rose); background: var(--rose-dim); }
+
+.callout .ck {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 4px;
+}
+
+.callout.danger .ck { color: var(--rose); }
+
+/* ---- 步骤 ---- */
+
+.steps { list-style: none; counter-reset: step; margin: 18px 0; }
+
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 14px 38px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute; left: 0; top: 2px;
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--amber);
+  border: 1px solid var(--rule-2);
+  border-radius: 50%;
+}
+
+.steps b { color: var(--ink); font-weight: 600; }
+
+/* ---- 浴室分区 ---- */
+
+.zones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin: 22px 0;
+}
+
+.zone {
+  border: 1px solid var(--rule-2);
+  border-top: 3px solid var(--amber);
+  border-radius: 0 0 var(--r) var(--r);
+  padding: 13px 15px;
+  background: var(--void-2);
+}
+
+.zone.z0 { border-top-color: var(--rose); }
+.zone.z2 { border-top-color: var(--cyan); }
+
+.zone .zk {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 3px;
+}
+
+.zone.z0 .zk { color: var(--rose); }
+.zone.z2 .zk { color: var(--cyan); }
+.zone h4 { margin: 0 0 4px; font-size: 14px; }
+.zone p { font-size: 12px; line-height: 1.7; color: var(--ink-3); margin: 0; }
+
+/* ---- 插线板仪器 ---- */
+
+.strip-body { grid-template-columns: minmax(0, 1.3fr) minmax(240px, .7fr); }
+
+.strip-wrap {
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 5px;
+  background: rgba(255,255,255,.025);
+  padding: 8px 10px 4px;
+}
+
+.strip-svg { display: block; width: 100%; height: auto; }
+
+.strip-svg .strip-body-shape { fill: #111a24; stroke: rgba(255,255,255,.18); }
+.strip-svg .strip-slot { fill: #1b2735; stroke: rgba(255,255,255,.16); }
+.strip-svg .strip-slot.on { fill: rgba(255,182,72,.22); stroke: var(--amber); }
+.strip-svg .strip-hole { fill: #05090e; }
+.strip-svg .strip-led { fill: var(--lime); }
+.strip-svg .strip-cable { stroke: rgba(255,255,255,.25); }
+
+html[data-theme="light"] .strip-svg .strip-body-shape,
+html.is-light .strip-svg .strip-body-shape { fill: #eef3f8; stroke: #c6d2df; }
+html[data-theme="light"] .strip-svg .strip-slot,
+html.is-light .strip-svg .strip-slot { fill: #fff; stroke: #c6d2df; }
+html[data-theme="light"] .strip-svg .strip-hole,
+html.is-light .strip-svg .strip-hole { fill: #cfd9e3; }
+
+.strip-apps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.strip-app {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 0 6px;
+  align-items: center;
+  text-align: left;
+  padding: 6px 7px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 3px;
+  background: rgba(255,255,255,.02);
+  color: var(--screen-ink-2);
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s;
+}
+
+.strip-app svg { width: 16px; height: 16px; stroke: currentColor; opacity: .65; }
+.strip-app .n { font-size: 10.5px; font-weight: 500; line-height: 1.3; white-space: nowrap; }
+.strip-app .w { font-family: var(--mono); font-size: 9.5px; font-weight: 500; color: var(--screen-ink-2); }
+.strip-app.on { border-color: rgba(99,216,255,.45); background: rgba(99,216,255,.08); color: var(--cyan); }
+.strip-app.on svg { opacity: 1; }
+.strip-app.on .w { color: rgba(99,216,255,.9); }
+
+.strip-rate {
+  display: flex; gap: 5px; margin-top: 8px;
+}
+
+.strip-rate button {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--screen-ink-2);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 3px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.strip-rate button.on { color: var(--cyan); border-color: rgba(99,216,255,.45); background: rgba(99,216,255,.08); }
+
+.coil-line {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--screen-ink-3);
+  cursor: pointer;
+}
+
+.coil-line input { accent-color: var(--amber); }
+
+.heatbar {
+  height: 9px;
+  border-radius: 5px;
+  background: #141c27;
+  border: 1px solid rgba(255,255,255,.07);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.heatbar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--lime), var(--amber));
+  transition: width .25s, background .25s;
+}
+
+.heatbar i.hot { background: linear-gradient(90deg, var(--amber), var(--rose)); }
+.heatbar i.over { background: var(--rose); }
+
+html[data-theme="light"] .heatbar,
+html.is-light .heatbar { background: #e6edf4; border-color: #d5dee8; }
+
+/* ---- 清单卡片 ---- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.card {
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  background: var(--void-2);
+}
+
+.card .k {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 7px;
+}
+
+.card ul { list-style: none; }
+.card li { font-size: 12.5px; line-height: 1.75; color: var(--ink-2); padding-left: 12px; position: relative; }
+.card li::before { content: "·"; position: absolute; left: 0; color: var(--ink-3); }
+
+/* ---- 参考 ---- */
+
+.refs {
+  margin: 18px 0 0;
+  padding-left: 26px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+.refs li { margin-bottom: 8px; scroll-margin-top: 78px; }
+.refs li:target { background: var(--amber-dim); }
+.refs a { color: var(--ice); text-decoration: none; border-bottom: 1px solid rgba(140,196,255,.25); }
+.refs a:hover { border-bottom-color: var(--ice); }
+.refs .j { color: var(--ink-3); }
+
+/* ---- 页脚 ---- */
+
+.foot {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 30px 24px 44px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+.foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+.foot a:hover { color: var(--ink); }
+
+/* ---- 入场 ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity .65s cubic-bezier(.2,.7,.3,1), transform .65s cubic-bezier(.2,.7,.3,1);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+}
+
+/* ---- 响应式 ---- */
+
+@media (max-width: 1080px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 34px; }
+  .hero-lab { max-width: 560px; }
+  .paper { grid-template-columns: minmax(0, 1fr); }
+  .paper > .mnote { grid-column: 1; border-left: 0; border-top: 1px solid var(--rule-2); padding: 10px 0 0; }
+  .paper > .wide + .mnote { max-width: none; }
+  .paper > .wide { grid-column: 1; }
+  .quick { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .factor-grid { grid-template-columns: 1fr; }
+  .zones { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr 1fr; }
+  .ex-frame { display: flex; flex-direction: column; }
+  .ex-head { order: 0; }
+  .ex-parts { order: 1; border-top: 0; border-bottom: 1px solid var(--rule-2); }
+  .ex-body { order: 2; grid-template-columns: 1fr; }
+  .ex-stage { border-right: 0; border-bottom: 1px solid var(--rule-2); }
+  .ex-panel { min-height: 0; }
+}
+
+@media (max-width: 860px) {
+  .ex-label { font-size: 12px; }
+  .ex-zone { font-size: 10px; }
+  .ex-hint { font-size: 10px; }
+  .ex-wall-label { font-size: 12px; }
+}
+
+@media (max-width: 860px) {
+  .nav { display: none; }
+  .hero { padding-top: 46px; }
+  .instrument-body, .strip-body { grid-template-columns: 1fr; }
+  .instrument-aside { flex-direction: row; flex-wrap: wrap; }
+  .instrument-aside .box { flex: 1 1 150px; }
+  .strip-apps { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .singleline { justify-content: center; }
+}
+
+@media (max-width: 620px) {
+  .topbar-in { padding: 0 16px; gap: 10px; }
+  .brand { font-size: 10px; letter-spacing: .08em; }
+  .brand-mark { width: 17px; height: 17px; }
+  .wrap { padding: 0 18px; }
+  h1 { font-size: clamp(32px, 9.6vw, 44px); }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .rules { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr; }
+  .appliance-grid { grid-template-columns: 1fr 1fr; }
+  .pm-row, .pm-axis { grid-template-columns: 78px minmax(0, 1fr) 52px; gap: 8px; }
+  .pm-name { font-size: 11px; }
+  .pm-val { font-size: 10px; }
+  .pm-axis-track i { font-size: 8.5px; letter-spacing: 0; }
+  .pm-axis-track i span { display: none; }
+  .singleline { gap: 6px; justify-content: center; }
+  .sl-node { min-width: 76px; padding: 7px 9px; }
+  .sl-arrow { display: none; }
+  .foot { flex-direction: column; gap: 6px; padding: 24px 18px 36px; }
+  .breaker-row button, .strip-rate button { min-height: 34px; font-size: 10px; }
+  .lab-fine { font-size: 10px; opacity: .8; }
+  .ex-head { flex-wrap: wrap; gap: 4px; padding: 11px 14px; }
+  .ex-head .s { font-size: 9px; }
+  .ex-stage { padding: 4px 2px 0; }
+  .ex-label, .ex-leader, .ex-zone, .ex-hint, .ex-note, .ex-wall-label { display: none; }
+  .ex-panel { padding: 16px 14px; }
+  .ex-panel h3 { font-size: 17px; }
+  .ex-parts { padding: 10px 14px 12px; gap: 4px; }
+  .ex-chip { font-size: 9.5px; padding: 5px 6px; min-height: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .load-fill, .heatbar i, .breaker-visual .lever { transition: none; }
+  .load-fill::after, .lab-head .live::before { animation: none; }
+}
+
+</style>
+<style id="layout-contract">
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+  --mnote-rule: var(--line-2, var(--rule-2, var(--line, var(--rule, currentColor))));
+}
+
+.paper { grid-template-columns:minmax(0,1fr); max-width:1132px; }
+.paper > :not(.wide):not(.mrow):not(.refs) { max-width:852px; }
+.paper > .wide { max-width:1132px; }
+.paper > .mnote { grid-column:1; max-width:852px; }
+.wide-note { max-width:852px; margin:0 0 24px; padding:10px 0 0; border-left:0;
+  border-top:1px solid var(--rule); }
+
+/* ---- margin-note contract: target in .mrow-main, note pinned right/bottom ---- */
+.mrow { position:relative; display:flow-root; min-width:0; margin:22px 0; }
+.mrow > .mrow-main { max-width:852px; }
+.mrow > .mrow-main > :first-child { margin-top:0; }
+.mrow > .mrow-main > :last-child { margin-bottom:0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom:0; }
+.mrow > .mnote {
+  position:absolute; right:0; bottom:0; width:236px; margin:0;
+  padding:0 0 0 16px; border:0; border-left:1.6px dashed var(--mnote-rule);
+  border-radius:0; background:transparent; display:block;
+}
+.mrow--cardtext > .mnote { bottom:var(--card-lift, 14px); }
+@media (max-width:1179px) {
+  .mrow > .mnote {
+    position:static; width:auto; max-width:852px; margin:18px 0 0;
+    padding:11px 0 0; border-left:0; border-top:1.6px dashed var(--mnote-rule);
+  }
+}
+
+figure.wide > figcaption, .wide > figcaption,
+.wide figure > figcaption { max-width:852px; }
+
+.paper > .stats + p,
+.paper > .cards + p,
+.paper > .papers + p,
+.paper > .err-grid + p,
+.paper > .metric-dash + p,
+.paper > .factor-grid + p,
+.paper > .zones + p,
+.paper > .appliance-grid + p,
+.paper > .meter-grid + p { margin-top:32px; }
+
+.paper > .refs { max-width:1132px; columns:2; column-gap:44px; }
+@media (max-width:860px) { .paper > .refs { columns:1; max-width:852px; } }
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAzLjJ2NC42TTE1IDMuMnY0LjYiLz48cGF0aCBkPSJNNyA3LjhoMTB2Mi42YTUgNSAwIDAgMS0xMCAweiIvPjxwYXRoIGQ9Ik0xMiAxNS40djUuNCIvPjwvZz48L3N2Zz4=">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="文章目录"></nav>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">主题：深色</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="reveal">
+    <p class="kicker">Home Electrical Safety · 220 V / 50 Hz</p>
+    <h1><span class="h1-prefix">指南 · 家用电气</span>家电安全<em>把回路、插座和延长线算清楚</em></h1>
+    <p class="lede">
+      家电事故很少是“电器自己爆炸”。更常见的剧本是：一台 2000 W 的暖风机插进 10 A 插线板，
+      再和电水壶共享一个 16 A 回路；插线板卷着放在地毯下，插头慢慢发黑。
+      这篇把家里的电拆成四本账——电流怎么伤人、配电箱有哪三道防线、一个回路能带多少瓦、
+      插线板和电器该怎么用。旁边是一台回路负载计算器，先把今晚打算同时开的东西点一遍。
+    </p>
+    <div class="byline">
+      <span>约 24 分钟</span>
+      <span>18 条参考</span>
+      <span>2 台仪器</span>
+      <span>以 220 V / 50 Hz 为算术口径</span>
+    </div>
+    <p class="scope">
+      <b>口径说明：</b>本文以中国大陆常见的 220 V / 50 Hz、10 A / 16 A 插座与插线板为算术口径。
+      其他地区的电压、插头形状和电气规范不同，具体安装与改造以当地标准、产品说明书和持证电工的现场判断为准。
+    </p>
+  </div>
+
+  <aside class="hero-lab reveal" aria-label="回路负载计算器">
+    <div class="lab-head">
+      <span><span class="live">LIVE</span> · 回路负载</span>
+      <span id="hFormula">220 V × 16 A = 3,520 W</span>
+    </div>
+
+    <div class="panel">
+      <div class="panel-meter">
+        <div class="meter-main">
+          <span class="meter-k">当前电流</span>
+          <span class="meter-v"><b id="hAmp">9.4</b><small>A</small></span>
+        </div>
+        <div class="meter-grid">
+          <div><span class="meter-k">总功率</span><b id="hWatt">2,065<small>W</small></b></div>
+          <div><span class="meter-k">断路器</span><b id="hBreaker">16<small>A</small></b></div>
+        </div>
+        <div class="breaker-visual" id="hBreakerVisual" aria-hidden="true">
+          <span class="lever"></span>
+          <span class="lamp"></span>
+          <span class="bv-label" id="hTripLabel">ON</span>
+        </div>
+      </div>
+
+      <div class="load-track" aria-hidden="true">
+        <div class="load-fill" id="hFill" style="width:58.7%"></div>
+        <i class="load-mark" style="left:80%"></i>
+        <span class="load-mark-label" style="left:80%">80% 保守线</span>
+      </div>
+      <div class="load-legend">
+        <span class="ok" id="hStatus" aria-live="polite">余量充足</span>
+        <span id="hHeadroom">按 80% 线还剩 751 W</span>
+      </div>
+
+      <div class="breaker-row" role="group" aria-label="断路器额定电流">
+        <button type="button" data-amp="10" aria-pressed="false">10 A</button>
+        <button type="button" class="on" data-amp="16" aria-pressed="true">16 A</button>
+        <button type="button" data-amp="20" aria-pressed="false">20 A</button>
+        <button type="button" data-amp="25" aria-pressed="false">25 A</button>
+        <button type="button" data-amp="32" aria-pressed="false">32 A</button>
+      </div>
+
+      <div class="appliance-grid" role="group" aria-label="同时开启的电器">
+        <button class="app on" type="button" data-w="2000" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M8 9v4M12 9v4M16 9v4M8 20h8"/></svg>
+          <span class="app-name">电暖器</span>
+          <span class="app-w">2000 W</span>
+        </button>
+        <button class="app" type="button" data-w="2000" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9h9l-1 9H8L7 9Z"/><path d="M16 10h2a2 2 0 0 1 0 4h-1"/><path d="M9 6h5"/></svg>
+          <span class="app-name">电水壶</span>
+          <span class="app-w">2000 W</span>
+        </button>
+        <button class="app" type="button" data-w="2000" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v8M8 12h8"/></svg>
+          <span class="app-name">电磁炉</span>
+          <span class="app-w">2000 W</span>
+        </button>
+        <button class="app" type="button" data-w="1200" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6" y="9" width="8" height="6" rx="1"/><path d="M17 9v6M18.5 12h.01"/></svg>
+          <span class="app-name">微波炉</span>
+          <span class="app-w">1200 W</span>
+        </button>
+        <button class="app" type="button" data-w="1800" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h8a4 4 0 0 1 0 8H4z"/><path d="M6 9V6h4v3M12 17l2 4M16 12h4"/></svg>
+          <span class="app-name">吹风机</span>
+          <span class="app-w">1800 W</span>
+        </button>
+        <button class="app" type="button" data-w="1200" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="8" rx="2"/><path d="M6 9h12M8 16c0 2 2 2 2 4M12 15c0 3 3 3 3 5M16 16c0 2 2 2 2 4"/></svg>
+          <span class="app-name">空调</span>
+          <span class="app-w">1200 W</span>
+        </button>
+        <button class="app" type="button" data-w="2500" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M8 6h.01M11 6h.01M8 13h8M8 17h8"/></svg>
+          <span class="app-name">电烤箱</span>
+          <span class="app-w">2500 W</span>
+        </button>
+        <button class="app on" type="button" data-w="65" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="10" rx="1.5"/><path d="M2 19h20l-2-4H4l-2 4Z"/></svg>
+          <span class="app-name">笔记本</span>
+          <span class="app-w">65 W</span>
+        </button>
+      </div>
+
+      <p class="lab-advice" id="hAdvice"><b>还有余量。</b>大功率电器仍然建议直接上墙插，不接插线板。</p>
+      <p class="lab-fine">功率预算，不是脱扣曲线仿真；断路器额定只是上限，墙内线径与插座也要匹配。</p>
+    </div>
+  </aside>
+</section>
+
+<section id="s0" data-nav="速览">
+  <div class="sec-head"><span class="sec-num">00</span><h2>速览：六条先记住</h2></div>
+  <div class="paper">
+    <p class="dek">赶时间的话，先看这六条；每一条后面都能回到对应章节复算。</p>
+
+    <ol class="quick">
+      <li><b>先看铭牌，不看广告词。</b>功率、电流、电压以机身铭牌为准；220 V 下，瓦数除以 220 就是电流。</li>
+      <li><b>一个回路别养两个“发热大户”。</b>电暖器、电水壶、电磁炉、烤箱、吹风机，任意两台就可能把 16 A 回路推到 80% 以上。</li>
+      <li><b>插线板不扩容。</b>常见 10 A、16 A 两种规格；插孔再多也不增加总额定值，不要串联，不要卷着用大功率。</li>
+      <li><b>漏保保命，空开保线。</b>30 mA 漏保管“漏到地”，空开管过载和短路；漏保每月按一次试验键。</li>
+      <li><b>三个高风险场景。</b>水边（浴室）、热源边（取暖器、灶台）、床上或走道充电（锂电池）。</li>
+      <li><b>出事顺序。</b>先断电，再呼救；不徒手拉触电者；电气火灾不用水，撤离并报火警。</li>
+    </ol>
+
+    <div class="wide">
+      <div class="stats">
+        <div class="stat"><div class="n">220<small> V</small></div><div class="l"><b>中国家庭名义电压</b><br>50 Hz；其他地区不同</div></div>
+        <div class="stat"><div class="n">10<small> A</small></div><div class="l"><b>常见插座额定电流</b><br>× 220 V = 2200 W</div></div>
+        <div class="stat"><div class="n">30<small> mA</small></div><div class="l"><b>常见人身防护漏保</b><br>动作电流量级</div></div>
+        <div class="stat"><div class="n">80<small>%</small></div><div class="l"><b>长期负载的保守余量</b><br>不是法规，是工程习惯</div></div>
+      </div>
+    </div>
+
+    <aside class="mnote wide-note">
+      <span class="tag">怎么读</span>
+      关心“为什么会被电到”，看 <a class="inline" href="#s1">§01</a>；关心配电箱，看 <a class="inline" href="#s2">§02</a>；
+      关心瓦数怎么算，看 <a class="inline" href="#s3">§03</a>；插线板在 <a class="inline" href="#s4">§04</a>；
+      厨房、浴室、卧室分别对应 <a class="inline" href="#s5">§05</a>、<a class="inline" href="#s6">§06</a>、<a class="inline" href="#s7">§07</a>。
+    </aside></div>
+</section>
+
+<section id="s1" data-nav="电流">
+  <div class="sec-head"><span class="sec-num">01</span><h2>电伤人的是电流，不是电压标签</h2></div>
+  <div class="paper">
+    <p class="dek">电压是推手，电流才是下手的那一个；时间决定它下多重的手。</p>
+
+    <p>
+      “被电了一下”之所以不能当小事，是因为电流在体内走的路径可能穿过心脏、膈肌和神经。
+      IEC 60479-1 把后果拆成电流大小、持续时间、电流路径、接触面积和皮肤状态几件事<sup class="cite"><a href="#r2">2</a></sup>。
+      家用 220 V 在干燥、小面积接触时，人体阻抗可能把电流限制在较小的量级；但湿手、出汗、破皮、大面积接触会让阻抗明显下降，
+      同样 220 V 下的电流可能成倍变大。浴室和厨房之所以危险，不只是“有水”，而是水把人体这条路径变通了。
+    </p>
+
+    <p>
+      一个常被忽略的阈值是“抓放效应”（no-let-go）：50 Hz 交流下，大约 10 mA 量级就可能让手部肌肉持续收缩，
+      想松手却松不开。瑞典 523 名电工的调查里，经历过 no-let-go 的人报告了更多持续症状<sup class="cite"><a href="#r15">15</a></sup>。
+      这也是为什么“赶紧甩开”不能当作安全预案——真到了那个电流，手可能不听使唤。
+    </p>
+
+    <div class="factor-grid">
+      <div class="factor">
+        <div class="t">Factor 01</div>
+        <div class="h">电流大小</div>
+        <div class="d">同样的电压，湿手、破皮、大面积接触会让电流更大。不要用“就碰一下”来估算风险。</div>
+      </div>
+      <div class="factor">
+        <div class="t">Factor 02</div>
+        <div class="h">持续时间</div>
+        <div class="d">0.1 秒和 5 秒是两种事故。漏保的意义，就是把“持续时间”尽量压短。</div>
+      </div>
+      <div class="factor">
+        <div class="t">Factor 03</div>
+        <div class="h">电流路径</div>
+        <div class="d">左手到右脚、穿过胸腔，比手指之间的电流危险得多。先断电、保持干燥，都是在改变路径和阻抗。</div>
+      </div>
+    </div>
+
+    <p>
+      电伤也不是“外表没事就没事”。2025 年一项 189 例急诊回顾中，21.2% 出现心律失常；高压暴露（≥1000 V）的比值比为 2.03<sup class="cite"><a href="#r16">16</a></sup>。
+      2026 年的综述把心脏、肾脏、肌肉、神经和眼部并发症都列为需要急诊评估的问题<sup class="cite"><a href="#r14">14</a></sup>。
+      因此，被电到后如果出现心悸、胸闷、意识丧失、烧伤，或者本身怀孕、接触的是高压电，不要用“我没事”结案。
+    </p>
+
+    <h3>家里能立刻做的五件事</h3>
+    <div class="mrow"><div class="mrow-main">
+<ul class="quick">
+      <li><b>不用湿手插拔。</b>手上有水或汗，先擦干；拔插头捏住插头本体，不拉电线。</li>
+      <li><b>不徒手拉触电者。</b>先断电；做不到就呼救，用干燥的绝缘物分离，别把自己搭进去。</li>
+      <li><b>不自己带电拆插座。</b>换开关、改线路、加接地，找持证电工；断电、验电、挂牌，一个都不能省。</li>
+      <li><b>给孩子装插座保护盖。</b>老旧插座松动、插不紧，直接换，不要用纸片或胶带垫。</li>
+      <li><b>浴室按湿区处理。</b>见 <a class="inline" href="#s6">§06</a>：分区、漏保、IP 等级，三件事一起看。</li>
+    </ul></div><aside class="mnote">
+      <span class="tag">别赌</span>
+      “220 V 电不死人”是幸存者偏差。是否致命取决于电流路径和时间，不取决于电压标签。
+    </aside></div>
+  </div>
+</section>
+
+<section id="s2" data-nav="配电箱">
+  <div class="sec-head"><span class="sec-num">02</span><h2>配电箱：三道防线，各管一件事</h2></div>
+  <div class="paper">
+    <p class="dek">空开管过载和短路，漏保管漏电，地线给故障电流一条低阻抗的路。三者的分工不能互相替代。</p>
+
+    <p>
+      配电箱不是“跳闸了就推上去”的盒子。它至少有三道防线：过载/短路保护、剩余电流保护、保护接地。
+      很多人把“跳闸”当成电器脾气不好，实际上它是线路在替你踩刹车。先弄清是哪一道在动作，再决定怎么处理。
+    </p>
+
+    <h3>空开：保护电线，不保护人</h3>
+    <p>
+      微型断路器（MCB）里通常有两套脱扣：热脱扣对过载有延时，电磁脱扣对短路几乎瞬时。
+      它按线路的载流量选，不是按电器功率“越大越好”。16 A 的空开可以长时间通过接近 16 A 的电流；
+      如果后面接的是 10 A 插线板，插线板会先热起来，空开不一定跳。换句话说，<b>空开保护的是墙里的线，不是你的插线板，更不是人</b><sup class="cite"><a href="#r3">3</a></sup>。
+    </p>
+
+    <h3>漏保：比较火线和零线</h3>
+    <p>
+      剩余电流装置（RCD）持续比较火线与零线的电流差。差值超过阈值，说明有电流从别处“漏”走——可能通过人体、水或破损绝缘。
+      作为人身附加保护，家用常见 30 mA 规格<sup class="cite"><a href="#r6">6</a>,<a href="#r7">7</a></sup>。
+      它不负责过载，也不负责短路；所以常见做法是漏保加空开，或者用带过流保护的漏保空开（RCBO）。
+    </p>
+    <p>
+      漏保上通常有一个“T/试验”按钮，按下去应当跳闸。每月按一次，跳了再合；不跳，说明它可能已经失效，找电工换。
+      这个按钮不是“测试你家有没有电”，它测试的是漏保自己的脱扣机构。按完记得把开关合回去。
+    </p>
+
+    <h3>地线：给故障电流一条回家的路</h3>
+    <p>
+      三孔插座的 PE 孔不是摆设。设备外壳带电时，PE 把故障电流引回电源，让空开或漏保尽快动作。
+      把地线剪掉、用两孔转接头、把三孔插头硬插进两孔插座，都是把这条命脉断开。
+      有些人以为“摸上去没感觉”就没事，但故障可能在下一次潮湿、下一次绝缘老化时才出现<sup class="cite"><a href="#r1">1</a></sup>。
+    </p>
+
+    <div class="wide">
+      <figure>
+        <div class="fig-frame singleline" role="img" aria-label="从电网到插座的单线示意：电表、主开关、漏保、分路空开、插座，以及保护地线">
+          <div class="sl-node"><span class="sl-k">电网</span><b>220 V / 50 Hz</b></div>
+          <span class="sl-arrow">→</span>
+          <div class="sl-node"><span class="sl-k">电表</span><b>计量</b></div>
+          <span class="sl-arrow">→</span>
+          <div class="sl-node"><span class="sl-k">主开关</span><b>总控</b></div>
+          <span class="sl-arrow">→</span>
+          <div class="sl-node rcd"><span class="sl-k">漏保</span><b>30 mA</b></div>
+          <span class="sl-arrow">→</span>
+          <div class="sl-node mcb"><span class="sl-k">分路空开</span><b>16 A</b></div>
+          <span class="sl-arrow">→</span>
+          <div class="sl-node load"><span class="sl-k">插座</span><b>16 A</b></div>
+          <div class="sl-earth"><b>PE 保护地线</b> → 接地极：外壳带电时，把故障电流引回电源，让保护装置动作。</div>
+        </div>
+        <figcaption><b>图 1 · 家用配电的单线示意。</b>漏保和空开不是二选一：一个管“漏到地”，一个管“电流过大”。实际配电箱的分路、极数和接地形式以本地规范与电工设计为准。</figcaption>
+      </figure>
+    </div>
+
+    <div class="wide">
+      <figure class="exploded-figure" id="fig-socket">
+        <div class="fig-frame ex-frame" data-fig="socket">
+          <div class="ex-head">
+            <span class="t">仪器分解 · 插座与插头</span>
+              <span class="s">10 A 三孔 · 点击图层</span>
+          </div>
+          <div class="ex-body">
+            <div class="ex-stage">
+              <svg viewBox="0 108 840 314" role="img" aria-labelledby="exSvgTitle exSvgDesc">
+                <title id="exSvgTitle">插座与插头分解示意</title>
+                <desc id="exSvgDesc">从墙内到墙外依次为底盒、接线端子、插套、保护门、面板、插头和三芯线；虚线表示装配关系。</desc>
+
+                <path class="ex-wall" d="M526 132 V352"/>
+                <text class="ex-wall-label" x="526" y="124" text-anchor="middle">墙面</text>
+                <path class="ex-dash" d="M160 196 H592 M160 246 H592 M160 296 H592"/>
+
+                <g class="ex-part" data-part="box">
+                  <polygon class="ex-top" points="55,150 81,134 181,134 155,150"/>
+                  <polygon class="ex-side" points="155,150 181,134 181,324 155,340"/>
+                  <rect class="ex-face" x="55" y="150" width="100" height="190" rx="4"/>
+                  <rect class="ex-inner" x="67" y="162" width="76" height="166" rx="3"/>
+                  <circle class="ex-detail" cx="75" cy="170" r="2.5"/>
+                  <circle class="ex-detail" cx="135" cy="170" r="2.5"/>
+                  <circle class="ex-detail" cx="75" cy="320" r="2.5"/>
+                  <circle class="ex-detail" cx="135" cy="320" r="2.5"/>
+                  <circle class="ex-detail" cx="85" cy="329" r="5.5" stroke-dasharray="2 3"/>
+                  <circle class="ex-detail" cx="125" cy="329" r="5.5" stroke-dasharray="2 3"/>
+                  <rect class="ex-outline" x="50" y="130" width="136" height="216" rx="6"/>
+                  <text class="ex-label" x="105" y="372" text-anchor="middle"><tspan class="no">01</tspan> 底盒</text>
+                </g>
+
+                <g class="ex-part" data-part="term">
+                  <polygon class="ex-top" points="190,160 204,150 262,150 248,160"/>
+                  <polygon class="ex-side" points="248,160 262,150 262,320 248,330"/>
+                  <rect class="ex-face" x="190" y="160" width="58" height="170" rx="3"/>
+                  <rect class="ex-inner" x="199" y="175" width="40" height="42" rx="2"/>
+                  <rect class="ex-inner" x="199" y="225" width="40" height="42" rx="2"/>
+                  <rect class="ex-inner" x="199" y="275" width="40" height="42" rx="2"/>
+                  <circle class="ex-screw" cx="219" cy="196" r="7"/>
+                  <circle class="ex-screw" cx="219" cy="246" r="7"/>
+                  <circle class="ex-screw" cx="219" cy="296" r="7"/>
+                  <path class="ex-detail" d="M213 196h12M213 246h12M213 296h12"/>
+                  <text class="ex-zone" x="201" y="189">L</text>
+                  <text class="ex-zone" x="201" y="239">N</text>
+                  <text class="ex-zone" x="201" y="289">PE</text>
+                  <path class="ex-wire ex-wire-L" d="M226 196 C238 196 244 196 262 196"/>
+                  <path class="ex-wire ex-wire-N" d="M226 246 C238 246 244 246 262 246"/>
+                  <path class="ex-wire ex-wire-PE" d="M226 296 C238 296 244 296 262 296"/>
+                  <path class="ex-pe-stripe" d="M226 296 C238 296 244 296 262 296"/>
+                  <rect class="ex-outline" x="186" y="146" width="74" height="190" rx="5"/>
+                  <text class="ex-label" x="219" y="372" text-anchor="middle"><tspan class="no">02</tspan> 接线端子</text>
+                </g>
+
+                <g class="ex-part" data-part="contact">
+                  <polygon class="ex-top" points="290,150 302,142 346,142 334,150"/>
+                  <polygon class="ex-side" points="334,150 346,142 346,332 334,340"/>
+                  <rect class="ex-face" x="290" y="150" width="56" height="190" rx="3"/>
+                  <path class="ex-copper" d="M336 182 H306 V210 H336"/>
+                  <path class="ex-copper" d="M336 232 H306 V260 H336"/>
+                  <path class="ex-copper" d="M336 282 H306 V310 H336"/>
+                  <circle class="ex-copper-dot" cx="332" cy="196" r="2"/>
+                  <circle class="ex-copper-dot" cx="332" cy="246" r="2"/>
+                  <circle class="ex-copper-dot" cx="332" cy="296" r="2"/>
+                  <path class="ex-detail" d="M294 222 H342 M294 272 H342" opacity=".3"/>
+                  <rect class="ex-outline" x="286" y="146" width="64" height="198" rx="5"/>
+                  <text class="ex-label" x="318" y="372" text-anchor="middle"><tspan class="no">03</tspan> 插套</text>
+                </g>
+
+                <g class="ex-part" data-part="shutter">
+                  <polygon class="ex-top" points="385,160 395,154 439,154 429,160"/>
+                  <polygon class="ex-side" points="429,160 439,154 439,324 429,330"/>
+                  <rect class="ex-face" x="385" y="160" width="44" height="170" rx="3"/>
+                  <rect class="ex-hole" x="393" y="192" width="28" height="9" rx="4.5"/>
+                  <rect class="ex-hole" x="393" y="292" width="28" height="9" rx="4.5"/>
+                  <rect class="ex-hole" x="402" y="232" width="9" height="28" rx="4.5"/>
+                  <rect class="ex-face" x="391" y="190" width="14" height="13" rx="2"/>
+                  <rect class="ex-face" x="391" y="290" width="14" height="13" rx="2"/>
+                  <rect class="ex-face" x="400" y="230" width="13" height="14" rx="2"/>
+                  <path class="ex-detail" d="M405 196 h4 l2 -3 v6 l2 -6 v6 l2 -3 h4"/>
+                  <path class="ex-detail" d="M405 296 h4 l2 -3 v6 l2 -6 v6 l2 -3 h4"/>
+                  <path class="ex-detail" d="M406 244 v4 l-3 2 6 2 -6 2 3 2 v4"/>
+                  <rect class="ex-outline" x="381" y="156" width="58" height="178" rx="5"/>
+                  <text class="ex-label" x="407" y="372" text-anchor="middle"><tspan class="no">04</tspan> 保护门</text>
+                </g>
+
+                <g class="ex-part" data-part="plate">
+                  <polygon class="ex-top" points="465,150 477,142 525,142 513,150"/>
+                  <polygon class="ex-side" points="513,150 525,142 525,332 513,340"/>
+                  <rect class="ex-face" x="465" y="150" width="48" height="190" rx="4"/>
+                  <rect class="ex-detail" x="470" y="155" width="38" height="180" rx="3" opacity=".55"/>
+                  <rect class="ex-hole" x="475" y="192" width="28" height="9" rx="4.5"/>
+                  <rect class="ex-hole" x="475" y="292" width="28" height="9" rx="4.5"/>
+                  <rect class="ex-hole" x="484" y="232" width="9" height="28" rx="4.5"/>
+                  <circle class="ex-detail" cx="489" cy="166" r="2.5"/>
+                  <circle class="ex-detail" cx="489" cy="324" r="2.5"/>
+                  <rect class="ex-outline" x="461" y="146" width="62" height="198" rx="6"/>
+                  <text class="ex-label" x="489" y="372" text-anchor="middle"><tspan class="no">05</tspan> 面板</text>
+                </g>
+
+                <g class="ex-part" data-part="plug">
+                  <polygon class="ex-pin-top" points="538,192 544,188 598,188 592,192"/>
+                  <polygon class="ex-pin-side" points="592,192 598,188 598,197 592,201"/>
+                  <rect class="ex-pin" x="538" y="192" width="54" height="9" rx="2"/>
+                  <polygon class="ex-pin-top" points="538,292 544,288 598,288 592,292"/>
+                  <polygon class="ex-pin-side" points="592,292 598,288 598,297 592,301"/>
+                  <rect class="ex-pin" x="538" y="292" width="54" height="9" rx="2"/>
+                  <polygon class="ex-pin-top" points="531,241 537,237 598,237 592,241"/>
+                  <polygon class="ex-pin-side" points="592,241 598,237 598,247 592,251"/>
+                  <rect class="ex-pin" x="531" y="241" width="61" height="10" rx="2"/>
+                  <polygon class="ex-top" points="592,150 610,136 710,136 692,150"/>
+                  <polygon class="ex-side" points="692,150 710,136 710,326 692,340"/>
+                  <rect class="ex-face" x="592" y="150" width="100" height="190" rx="14"/>
+                  <rect class="ex-cavity" x="608" y="178" width="66" height="76" rx="4"/>
+                  <circle class="ex-screw" cx="620" cy="194" r="5"/>
+                  <circle class="ex-screw" cx="620" cy="214" r="5"/>
+                  <circle class="ex-screw" cx="620" cy="234" r="5"/>
+                  <path class="ex-wire ex-wire-L" d="M625 194 H672"/>
+                  <path class="ex-wire ex-wire-N" d="M625 214 H672"/>
+                  <path class="ex-wire ex-wire-PE" d="M625 234 H672"/>
+                  <path class="ex-pe-stripe" d="M625 234 H672"/>
+                  <rect class="ex-face" x="692" y="222" width="18" height="48" rx="7"/>
+                  <path class="ex-detail" d="M697 230h8M697 238h8M697 246h8M697 254h8M697 262h8"/>
+                  <rect class="ex-outline" x="529" y="146" width="180" height="198" rx="10"/>
+                  <text class="ex-label" x="642" y="372" text-anchor="middle"><tspan class="no">06</tspan> 插头</text>
+                </g>
+
+                <g class="ex-part" data-part="cable">
+                  <path class="ex-cable" d="M710 246 C736 246 744 246 766 246 C786 246 794 230 806 222"/>
+                  <rect class="ex-cut" x="728" y="231" width="40" height="30" rx="4"/>
+                  <path class="ex-wire ex-wire-L" d="M730 240 H766"/>
+                  <path class="ex-wire ex-wire-N" d="M730 246 H766"/>
+                  <path class="ex-wire ex-wire-PE" d="M730 252 H766"/>
+                  <path class="ex-pe-stripe" d="M730 252 H766"/>
+                  <rect class="ex-face" x="706" y="238" width="12" height="16" rx="2"/>
+                  <circle class="ex-screw" cx="712" cy="246" r="2"/>
+                  <rect class="ex-outline" x="708" y="214" width="122" height="48" rx="24"/>
+                  <text class="ex-label" x="764" y="372" text-anchor="middle"><tspan class="no">07</tspan> 三芯线</text>
+                </g>
+
+                <text class="ex-note" x="552" y="232">PE 更长</text>
+                <path class="ex-detail" d="M558 235 L562 241" opacity=".65"/>
+                <text class="ex-zone" x="105" y="398" text-anchor="middle">墙内</text>
+                <text class="ex-zone" x="642" y="398" text-anchor="middle">墙外</text>
+                <text class="ex-hint" x="420" y="414" text-anchor="middle">点击图层查看说明</text>
+              </svg>
+            </div>
+            <aside class="ex-panel" aria-live="polite">
+                <div class="k ex-kicker">部件 00 · 总览</div>
+                <h3 class="ex-title">从墙内到墙外，七层</h3>
+                <p class="ex-text">点任意一层或编号，看看它在用电安全里管什么。虚线是装配关系，不是电线走向。</p>
+                <div class="fine">结构示意，不按具体型号比例绘制；实际产品以拆解实物与铭牌为准。</div>
+              </aside></div>
+          <div class="ex-parts" role="group" aria-label="选择分解图部件">
+            <button class="ex-chip" type="button" data-part="box" aria-pressed="false">01 底盒</button>
+            <button class="ex-chip" type="button" data-part="term" aria-pressed="false">02 接线端子</button>
+            <button class="ex-chip" type="button" data-part="contact" aria-pressed="false">03 插套</button>
+            <button class="ex-chip" type="button" data-part="shutter" aria-pressed="false">04 保护门</button>
+            <button class="ex-chip" type="button" data-part="plate" aria-pressed="false">05 面板</button>
+            <button class="ex-chip" type="button" data-part="plug" aria-pressed="false">06 插头</button>
+            <button class="ex-chip" type="button" data-part="cable" aria-pressed="false">07 三芯线</button>
+          </div>
+        </div>
+        <figcaption><b>图 2 · 插座与插头的分解。</b>从左到右是墙内到墙外：底盒、接线端子、插套、保护门、面板、插头、三芯线。分解图为了看清层次，省略了卡扣、部分固定螺钉和加强筋；实际产品结构以拆解实物为准。</figcaption>
+      </figure>
+    </div>
+
+    <div class="mrow"><div class="mrow-main">
+<div class="callout danger">
+      <span class="ck">跳闸之后</span>
+      先拔掉或关掉这一路的大功率电器，再合闸。合上又跳，说明还有故障，找电工；
+      不要换更大空开，不要用铜丝/铁丝绑住开关，不要拿胶带缠一缠继续用。空开跳闸是结果，不是原因。
+    </div></div><aside class="mnote">
+      <span class="tag">边界</span>
+      漏保不是万能的：两手同时碰火线和零线，电流不经过地，漏保可能不动作；它保的是“漏到地”的故障。
+    </aside></div>
+  </div>
+</section>
+
+<section id="s3" data-nav="功率">
+  <div class="sec-head"><span class="sec-num">03</span><h2>功率账：220 V 下的乘除法</h2></div>
+  <div class="paper">
+    <p class="dek">回路、插线板、电线各有各的额定值；实际能用的上限，取三者最小的那个。</p>
+
+    <p>
+      家用估算只需要一个公式：<b>P = U × I</b>。220 V 下，功率除以 220 就是电流；反过来，额定电流乘 220 就是功率。
+      但“回路能带多少”不等于“空开多大”：墙里的线径、敷设方式、插线板和插座，都会把上限往下拉<sup class="cite"><a href="#r4">4</a></sup>。
+    </p>
+
+    <div class="tbl-wrap wide">
+      <table>
+        <thead>
+          <tr><th>回路额定</th><th>额定功率 @ 220 V</th><th>80% 保守线</th><th>常见用途（参考）</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>10 A</b></td><td class="num">2,200 W</td><td class="num">1,760 W</td><td>照明、小功率插座</td></tr>
+          <tr><td><b>16 A</b></td><td class="num">3,520 W</td><td class="num">2,816 W</td><td>普通房间插座</td></tr>
+          <tr><td><b>20 A</b></td><td class="num">4,400 W</td><td class="num">3,520 W</td><td>厨房、空调等专线</td></tr>
+          <tr><td><b>25 A</b></td><td class="num">5,500 W</td><td class="num">4,400 W</td><td>大功率专线</td></tr>
+          <tr><td><b>32 A</b></td><td class="num">7,040 W</td><td class="num">5,632 W</td><td>入户或大容量专线</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="dek" style="margin-top:-12px">回路的实际载流量受线径、敷设方式、长度、环境温度影响；表中是常见参考，不是施工依据。固定线路的选型交给持证电工。</p>
+
+    <h3>一笔账：16 A 回路能同时开什么</h3>
+    <p>
+      16 A 回路：220 × 16 = <b>3,520 W</b>；按 80% 留余量，长期负载不超过 <b>2,816 W</b>。
+      电暖器 2000 W 加微波炉 1200 W，合计 3,200 W，电流 14.5 A，已经到额定的 91%，越过 80% 线。
+      短时间热个饭或许没出事，但连续几小时这样用，插头、插座和线缆都在积热。
+    </p>
+    <p>
+      10 A 插线板更紧：220 × 10 = <b>2,200 W</b>。2000 W 电暖器单独用就是 9.1 A（91%），再加水壶 2000 W，
+      总功率 4,000 W、电流 18.2 A，直接超载。这不是“跳闸再说”的场景，插线板可能先于空开发热。
+    </p>
+
+    <div class="callout">
+      <span class="ck">80% 是什么</span>
+      “80%”不是法规里的普适数字，而是一个保守的工程习惯：长时间接近额定值，插头、插座、线缆和断路器都会积热<sup class="cite"><a href="#r5">5</a></sup>，
+      留 20% 余量能让它们凉快一些。短时使用（比如烧一壶水）和连续几小时（比如电暖器）不是一回事。
+    </div>
+
+    <h3>启动电流：铭牌上的数字不是全部</h3>
+    <p>
+      空调、冰箱、洗衣机、吸尘器带电机或压缩机，启动瞬间的电流可能明显高于铭牌额定值；变频机好一些，定频机更明显。
+      不要把“额定功率相加刚好等于空开”当成安全边界。反过来，也不要因为“空开没跳”就认为长期满载没问题——
+      空开的任务是不让墙里的线烧起来，不是替你优化电费或插线板寿命。
+    </p>
+
+    <div class="wide">
+      <figure>
+        <div class="fig-frame power-map" role="img" aria-label="常见家用电器典型输入功率条形图，标出 10 A 与 16 A 在 220 V 下的额定功率线">
+          <div class="pm-head"><span>典型输入功率</span><span>220 V · 单位 W</span></div>
+          <div class="pm-axis">
+            <span></span>
+            <div class="pm-axis-track"><i class="l10" style="left:55%">10 A<span> · 2200 W</span></i><i class="l16" style="left:88%">16 A<span> · 3520 W</span></i></div>
+            <span></span>
+          </div>
+          <div class="pm-row"><span class="pm-name">电烤箱</span><div class="pm-track"><i style="width:62.5%"></i></div><span class="pm-val">2500</span></div>
+          <div class="pm-row"><span class="pm-name">电暖器</span><div class="pm-track"><i style="width:55%"></i></div><span class="pm-val">2200</span></div>
+          <div class="pm-row"><span class="pm-name">电水壶</span><div class="pm-track"><i style="width:50%"></i></div><span class="pm-val">2000</span></div>
+          <div class="pm-row"><span class="pm-name">电磁炉</span><div class="pm-track"><i style="width:50%"></i></div><span class="pm-val">2000</span></div>
+          <div class="pm-row"><span class="pm-name">吹风机</span><div class="pm-track"><i style="width:45%"></i></div><span class="pm-val">1800</span></div>
+          <div class="pm-row"><span class="pm-name">空气炸锅</span><div class="pm-track"><i style="width:40%"></i></div><span class="pm-val">1600</span></div>
+          <div class="pm-row"><span class="pm-name">微波炉</span><div class="pm-track"><i style="width:32.5%"></i></div><span class="pm-val">1300</span></div>
+          <div class="pm-row"><span class="pm-name">1.5 匹空调</span><div class="pm-track"><i style="width:30%"></i></div><span class="pm-val">1200</span></div>
+          <div class="pm-row"><span class="pm-name">冰箱</span><div class="pm-track"><i style="width:3.75%"></i></div><span class="pm-val">150</span></div>
+          <div class="pm-row"><span class="pm-name">笔记本</span><div class="pm-track"><i style="width:1.6%"></i></div><span class="pm-val">65</span></div>
+          <div class="pm-foot">条形图为典型值，实际以铭牌为准；虚线为 10 A / 16 A 在 220 V 下的额定功率位置。空调、微波炉的“匹数/输出功率”不等于输入功率。</div>
+        </div>
+        <figcaption><b>图 3 · 功率地图。</b>高功率电器集中在 1,500–2,500 W：一台就可能吃掉 10 A 插线板的大半，两台就能把 16 A 回路推到 80% 以上。</figcaption>
+      </figure>
+    </div>
+
+    <aside class="mnote wide-note">
+      <span class="tag">看铭牌</span>
+      铭牌上的“输入功率”才是电网要给的功率；空调的“制冷量”、微波炉的“输出功率”都不是输入功率。
+      买之前看铭牌，别只看宣传页。
+    </aside></div>
+</section>
+
+<section id="s4" data-nav="插线板">
+  <div class="sec-head"><span class="sec-num">04</span><h2>插线板与延长线：不扩容，只分配</h2></div>
+  <div class="paper">
+    <p class="dek">插线板只有一个额定电流。插孔再多，也不会把 10 A 变成 20 A；它只是把同一个上限分给更多电器。</p>
+
+    <p>
+      插线板（延长线插座）常见 10 A / 2500 W 和 16 A / 4000 W 两种规格，具体以产品铭牌为准。
+      产品标称常按 250 V 写，按 220 V 算就是 2200 W / 3520 W；本文后面统一按 220 V 计算。
+      插孔数量不会改变这个上限；USB 口、开关、防雷模块也一样吃这份预算。
+      插线板上的电器总功率一旦超过额定值，发热的先是插线板自己的线和插套，而不是配电箱里的空开<sup class="cite"><a href="#r8">8</a></sup>。
+    </p>
+
+    <div class="wide">
+      <figure class="exploded-figure" id="fig-strip">
+        <div class="fig-frame ex-frame" data-fig="strip">
+          <div class="ex-head">
+            <span class="t">仪器分解 · 插线板</span>
+            <span class="s">10 A · 4 位示意 · 点击图层</span>
+          </div>
+          <div class="ex-body">
+            <div class="ex-stage">
+              <svg viewBox="0 38 840 386" role="img" aria-labelledby="exStripTitle exStripDesc">
+                <title id="exStripTitle">插线板分解示意</title>
+                <desc id="exStripDesc">从上到下依次为上盖、开关、铜排、插套、下盖，右侧为线缆；虚线表示装配关系。</desc>
+
+                <path class="ex-dash" d="M270 120 V280 M365 120 V280 M460 120 V280 M555 120 V280 M215 106 V280"/>
+
+                <g class="ex-part" data-part="top">
+                  <polygon class="ex-top" points="180,70 194,58 634,58 620,70"/>
+                  <polygon class="ex-side" points="620,70 634,58 634,108 620,120"/>
+                  <rect class="ex-face" x="180" y="70" width="440" height="50" rx="10"/>
+                  <rect class="ex-hole" x="195" y="80" width="40" height="26" rx="5"/>
+                  <g class="ex-detail" opacity=".36">
+                    <rect x="240" y="76" width="60" height="38" rx="6"/>
+                    <rect x="335" y="76" width="60" height="38" rx="6"/>
+                    <rect x="430" y="76" width="60" height="38" rx="6"/>
+                    <rect x="525" y="76" width="60" height="38" rx="6"/>
+                  </g>
+                  <g class="ex-hole">
+                    <rect x="254" y="82" width="8" height="18" rx="4"/>
+                    <rect x="278" y="82" width="8" height="18" rx="4"/>
+                    <rect x="260" y="104" width="20" height="6" rx="3"/>
+                    <rect x="349" y="82" width="8" height="18" rx="4"/>
+                    <rect x="373" y="82" width="8" height="18" rx="4"/>
+                    <rect x="355" y="104" width="20" height="6" rx="3"/>
+                    <rect x="444" y="82" width="8" height="18" rx="4"/>
+                    <rect x="468" y="82" width="8" height="18" rx="4"/>
+                    <rect x="450" y="104" width="20" height="6" rx="3"/>
+                    <rect x="539" y="82" width="8" height="18" rx="4"/>
+                    <rect x="563" y="82" width="8" height="18" rx="4"/>
+                    <rect x="545" y="104" width="20" height="6" rx="3"/>
+                  </g>
+                  <rect class="ex-outline" x="176" y="54" width="462" height="70" rx="12"/>
+                  <text class="ex-label" x="120" y="100" text-anchor="middle"><tspan class="no">01</tspan> 上盖</text>
+                  <path class="ex-leader" d="M148 96 H176"/>
+                </g>
+
+                <g class="ex-part" data-part="switch">
+                  <polygon class="ex-top" points="195,132 203,126 243,126 235,132"/>
+                  <polygon class="ex-side" points="235,132 243,126 243,152 235,158"/>
+                  <rect class="ex-face" x="195" y="132" width="40" height="26" rx="4"/>
+                  <path class="ex-detail" d="M205 145 H225"/>
+                  <circle class="ex-copper-dot" cx="215" cy="140" r="1.5"/>
+                  <rect class="ex-outline" x="191" y="126" width="48" height="34" rx="5"/>
+                  <text class="ex-label" x="120" y="145" text-anchor="middle"><tspan class="no">02</tspan> 开关</text>
+                  <path class="ex-leader" d="M148 141 H191"/>
+                </g>
+
+                <g class="ex-part" data-part="bus">
+                  <polygon class="ex-top" points="180,170 190,162 630,162 620,170"/>
+                  <polygon class="ex-side" points="620,170 630,162 630,200 620,208"/>
+                  <rect class="ex-face" x="180" y="170" width="440" height="38" rx="5"/>
+                  <path class="ex-copper" d="M195 178 H605"/>
+                  <path class="ex-copper" d="M195 186 H605"/>
+                  <path class="ex-copper" d="M195 194 H605"/>
+                  <circle class="ex-copper-dot" cx="197" cy="178" r="2"/>
+                  <circle class="ex-copper-dot" cx="197" cy="186" r="2"/>
+                  <circle class="ex-copper-dot" cx="197" cy="194" r="2"/>
+                  <circle class="ex-copper-dot" cx="603" cy="178" r="2"/>
+                  <circle class="ex-copper-dot" cx="603" cy="186" r="2"/>
+                  <circle class="ex-copper-dot" cx="603" cy="194" r="2"/>
+                  <rect class="ex-outline" x="176" y="158" width="458" height="54" rx="6"/>
+                  <text class="ex-label" x="120" y="188" text-anchor="middle"><tspan class="no">03</tspan> 铜排</text>
+                  <path class="ex-leader" d="M148 184 H176"/>
+                </g>
+
+                <g class="ex-part" data-part="contact">
+                  <polygon class="ex-top" points="180,220 190,212 630,212 620,220"/>
+                  <polygon class="ex-side" points="620,220 630,212 630,250 620,258"/>
+                  <rect class="ex-face" x="180" y="220" width="440" height="38" rx="5"/>
+                  <path class="ex-copper" d="M248 228 V238 H260 V228"/>
+                  <path class="ex-copper" d="M280 228 V238 H292 V228"/>
+                  <path class="ex-copper" d="M264 242 V252 H276 V242"/>
+                  <path class="ex-copper" d="M343 228 V238 H355 V228"/>
+                  <path class="ex-copper" d="M375 228 V238 H387 V228"/>
+                  <path class="ex-copper" d="M359 242 V252 H371 V242"/>
+                  <path class="ex-copper" d="M438 228 V238 H450 V228"/>
+                  <path class="ex-copper" d="M470 228 V238 H482 V228"/>
+                  <path class="ex-copper" d="M454 242 V252 H466 V242"/>
+                  <path class="ex-copper" d="M533 228 V238 H545 V228"/>
+                  <path class="ex-copper" d="M565 228 V238 H577 V228"/>
+                  <path class="ex-copper" d="M549 242 V252 H561 V242"/>
+                  <rect class="ex-outline" x="176" y="208" width="458" height="54" rx="6"/>
+                  <text class="ex-label" x="120" y="238" text-anchor="middle"><tspan class="no">04</tspan> 插套</text>
+                  <path class="ex-leader" d="M148 234 H176"/>
+                </g>
+
+                <g class="ex-part" data-part="base">
+                  <polygon class="ex-top" points="180,280 190,272 630,272 620,280"/>
+                  <polygon class="ex-side" points="620,280 630,272 630,324 620,332"/>
+                  <rect class="ex-face" x="180" y="280" width="440" height="52" rx="10"/>
+                  <rect class="ex-detail" x="192" y="287" width="416" height="38" rx="6" opacity=".3"/>
+                  <circle class="ex-hole" cx="610" cy="306" r="7"/>
+                  <path class="ex-detail" d="M250 294 V318 M350 294 V318 M450 294 V318 M550 294 V318" opacity=".4"/>
+                  <circle class="ex-screw" cx="200" cy="316" r="3"/>
+                  <circle class="ex-screw" cx="600" cy="316" r="3"/>
+                  <rect class="ex-outline" x="176" y="268" width="458" height="68" rx="12"/>
+                  <text class="ex-label" x="120" y="306" text-anchor="middle"><tspan class="no">05</tspan> 下盖</text>
+                  <path class="ex-leader" d="M148 302 H176"/>
+                </g>
+
+                <g class="ex-part" data-part="cable">
+                  <path class="ex-cable" d="M620 306 H780"/>
+                  <rect class="ex-cut" x="655" y="291" width="40" height="30" rx="4"/>
+                  <path class="ex-wire ex-wire-L" d="M657 300 H695"/>
+                  <path class="ex-wire ex-wire-N" d="M657 306 H695"/>
+                  <path class="ex-wire ex-wire-PE" d="M657 312 H695"/>
+                  <path class="ex-pe-stripe" d="M657 312 H695"/>
+                  <rect class="ex-face" x="620" y="296" width="18" height="20" rx="4"/>
+                  <path class="ex-detail" d="M624 300 H634 M624 304 H634 M624 308 H634" opacity=".6"/>
+                  <rect class="ex-outline" x="616" y="288" width="168" height="36" rx="18"/>
+                  <text class="ex-label" x="700" y="345" text-anchor="middle"><tspan class="no">06</tspan> 线缆</text>
+                  <path class="ex-leader" d="M700 332 V326"/>
+                </g>
+
+                <text class="ex-hint" x="420" y="414" text-anchor="middle">点击图层查看说明</text>
+              </svg>
+            </div>
+            <aside class="ex-panel" aria-live="polite">
+              <div class="k ex-kicker">部件 00 · 总览</div>
+              <h3 class="ex-title">从外壳到铜排，六层</h3>
+              <p class="ex-text">点任意一层或编号，看看插线板内部哪里最容易热。虚线是装配关系，不是电线走向。</p>
+              <div class="fine">结构示意，不按具体型号比例绘制；实际产品以拆解实物与铭牌为准。</div>
+            </aside></div>
+          <div class="ex-parts" role="group" aria-label="选择分解图部件">
+            <button class="ex-chip" type="button" data-part="top" aria-pressed="false">01 上盖</button>
+            <button class="ex-chip" type="button" data-part="switch" aria-pressed="false">02 开关</button>
+            <button class="ex-chip" type="button" data-part="bus" aria-pressed="false">03 铜排</button>
+            <button class="ex-chip" type="button" data-part="contact" aria-pressed="false">04 插套</button>
+            <button class="ex-chip" type="button" data-part="base" aria-pressed="false">05 下盖</button>
+            <button class="ex-chip" type="button" data-part="cable" aria-pressed="false">06 线缆</button>
+          </div>
+        </div>
+        <figcaption><b>图 4 · 插线板的分解。</b>从上到下是上盖、开关、铜排、插套、下盖，右侧是线缆。四位示意；实际产品的位数、开关位置和铜排结构以拆解实物为准。</figcaption>
+      </figure>
+    </div>
+
+    <h3>四个不要</h3>
+    <div class="rules">
+      <div class="rule no"><b>不要串联</b>插线板接插线板，等于把多个接触电阻串起来；每一处松动都会发热。一个墙插只接一个插线板，插线板上不再接插线板。</div>
+      <div class="rule no"><b>不要卷着用大功率</b>线缆卷在一起，热量散不出去。电暖器、电水壶这种长时间或大功率负载，先把线完全展开。</div>
+      <div class="rule no"><b>不要硬插或改装</b>16 A 插头插不进 10 A 插座，是形状和额定值都不匹配；锉插头、换插头、用万能转接头，都是把安全边界拆掉。</div>
+      <div class="rule no"><b>不要放在水边或热源边</b>厨房台面溅水、灶台高温、地毯下、暖气片旁，都不是插线板的位置。</div>
+    </div>
+
+    <h3>防雷、防浪涌、USB，不是扩容</h3>
+    <p>
+      防雷/防浪涌模块保护的是电压尖峰，不增加额定电流；USB 口只是把 220 V 转成 5 V/9 V/12 V，仍然占插线板的功率预算。
+      一个标着“2500 W”的插线板，不会因为带了三个 USB 口就变成 3000 W。买之前看额定值，不要看插孔数量。
+    </p>
+
+    <h3>卷盘、延长线与室外</h3>
+    <p>
+      卷盘式延长线（电缆盘）要特别注意：IEC 61242 管的就是这类产品<sup class="cite"><a href="#r9">9</a></sup>。
+      线缆卷着时散热条件差，大功率下热量积在盘里；说明书通常会要求“完全展开后再带载”。在阳台上给电动车充电、
+      在院子里接电烤炉，尤其容易忽略这一点。
+    </p>
+    <p>
+      室外或潮湿环境用的插线板，看 IP 等级（IEC 60529）<sup class="cite"><a href="#r10">10</a></sup>。
+      IPX4 防溅水，IPX5 防喷水；但“防水”不等于能泡在水里，也不等于插头可以在湿手里插拔。
+      插线板放在地上、插座朝上，等于给自己接一个雨水杯。
+    </p>
+
+    <div class="instrument wide reveal" aria-label="插线板负载预算计算器">
+      <div class="instrument-head">
+        <span class="t">仪器 02 · 插线板预算</span>
+        <span class="s">10 A / 16 A · 220 V</span>
+      </div>
+      <div class="instrument-body strip-body">
+        <div>
+          <div class="strip-wrap">
+            <svg class="strip-svg" viewBox="0 0 560 116" role="img" aria-label="六位插线板示意，已选电器对应的插孔会点亮">
+              <path class="strip-cable" d="M528 58 C548 58 550 42 558 36" fill="none" stroke-width="3" stroke-linecap="round"/>
+              <rect class="strip-body-shape" x="8" y="34" width="522" height="48" rx="13" stroke-width="1.4"/>
+              <circle class="strip-led" cx="27" cy="58" r="3.2"/>
+              <g class="strip-slot" data-slot="0"><rect x="46" y="44" width="62" height="28" rx="5" stroke-width="1.1"/><rect class="strip-hole" x="64" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="86" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="74" y="64" width="6" height="3" rx="1.5"/></g>
+              <g class="strip-slot" data-slot="1"><rect x="128" y="44" width="62" height="28" rx="5" stroke-width="1.1"/><rect class="strip-hole" x="146" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="168" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="156" y="64" width="6" height="3" rx="1.5"/></g>
+              <g class="strip-slot" data-slot="2"><rect x="210" y="44" width="62" height="28" rx="5" stroke-width="1.1"/><rect class="strip-hole" x="228" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="250" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="238" y="64" width="6" height="3" rx="1.5"/></g>
+              <g class="strip-slot" data-slot="3"><rect x="292" y="44" width="62" height="28" rx="5" stroke-width="1.1"/><rect class="strip-hole" x="310" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="332" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="320" y="64" width="6" height="3" rx="1.5"/></g>
+              <g class="strip-slot" data-slot="4"><rect x="374" y="44" width="62" height="28" rx="5" stroke-width="1.1"/><rect class="strip-hole" x="392" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="414" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="402" y="64" width="6" height="3" rx="1.5"/></g>
+              <g class="strip-slot" data-slot="5"><rect x="456" y="44" width="62" height="28" rx="5" stroke-width="1.1"/><rect class="strip-hole" x="474" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="496" y="50" width="3.5" height="10" rx="1.5"/><rect class="strip-hole" x="484" y="64" width="6" height="3" rx="1.5"/></g>
+            </svg>
+          </div>
+          <div class="strip-apps" role="group" aria-label="插在插线板上的电器">
+            <button class="strip-app" type="button" data-w="2000" data-slot="0" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M8 9v4M12 9v4M16 9v4M8 20h8"/></svg>
+              <span class="n">电暖器</span><span class="w">2000 W</span>
+            </button>
+            <button class="strip-app" type="button" data-w="2000" data-slot="1" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9h9l-1 9H8L7 9Z"/><path d="M16 10h2a2 2 0 0 1 0 4h-1"/><path d="M9 6h5"/></svg>
+              <span class="n">电水壶</span><span class="w">2000 W</span>
+            </button>
+            <button class="strip-app" type="button" data-w="1800" data-slot="2" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h8a4 4 0 0 1 0 8H4z"/><path d="M6 9V6h4v3M12 17l2 4M16 12h4"/></svg>
+              <span class="n">吹风机</span><span class="w">1800 W</span>
+            </button>
+            <button class="strip-app" type="button" data-w="1200" data-slot="3" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6" y="9" width="8" height="6" rx="1"/><path d="M17 9v6M18.5 12h.01"/></svg>
+              <span class="n">微波炉</span><span class="w">1200 W</span>
+            </button>
+            <button class="strip-app" type="button" data-w="1500" data-slot="4" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-2 11H7L5 8Z"/><path d="M8 8V6h8v2M9 12h6"/></svg>
+              <span class="n">空气炸锅</span><span class="w">1500 W</span>
+            </button>
+            <button class="strip-app on" type="button" data-w="65" data-slot="5" aria-pressed="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="10" rx="1.5"/><path d="M2 19h20l-2-4H4l-2 4Z"/></svg>
+              <span class="n">笔记本</span><span class="w">65 W</span>
+            </button>
+          </div>
+          <div class="strip-rate" role="group" aria-label="插线板额定电流">
+            <button type="button" class="on" data-amp="10" aria-pressed="true">10 A · 2200 W</button>
+            <button type="button" data-amp="16" aria-pressed="false">16 A · 3520 W</button>
+          </div>
+          <label class="coil-line"><input type="checkbox" id="sCoil"> 线缆卷着，或压在地毯/家具下面</label>
+        </div>
+
+        <div class="instrument-aside">
+          <div class="box"><div class="k">总功率</div><div class="v" id="sW">65<small> W</small></div></div>
+          <div class="box"><div class="k">总电流</div><div class="v" id="sA">0.3<small> A</small></div></div>
+          <div class="box"><div class="k">插线板额定</div><div class="v" id="sRating">10<small> A · 2,200 W</small></div></div>
+          <div class="box">
+            <div class="k">线缆热负荷（示意）</div>
+            <div class="heatbar" aria-hidden="true"><i id="sHeat" style="width:3%"></i></div>
+            <p id="sHeatLabel">空载或轻载，余量充足。</p>
+          </div>
+        </div>
+      </div>
+      <div class="instrument-foot" id="sFoot"><b>总功率 65 W。</b>按 10 A 插线板的 80% 线，还剩 1,695 W；大功率电器不要和取暖器同板。</div>
+    </div>
+
+    <aside class="mnote wide-note">
+      <span class="tag">手感</span>
+      摸起来温热不等于正常；烫手、变色、焦味、插头发黑，任何一条都足以停用。
+    </aside></div>
+</section>
+
+<section id="s5" data-nav="厨房">
+  <div class="sec-head"><span class="sec-num">05</span><h2>厨房：水、油、热挤在几平方米里</h2></div>
+  <div class="paper">
+    <p class="dek">厨房是全家功率密度最高的房间：两台 2000 W 级的大功率电器就是 4000 W；即使一高一低，也常在 3000 W 上下。</p>
+
+    <p>
+      厨房的事故往往不是单一原因，而是几个小问题叠在一起：插线板放在水槽边、电线横跨灶台、烤箱和电水壶共用一个 10 A 插线板、
+      插座被蒸汽熏得潮湿。单独看都不是大事，凑在一起就很容易越过边界。
+    </p>
+
+    <div class="rules">
+      <div class="rule no"><b>大功率不共板</b>电水壶、电磁炉、烤箱、空气炸锅，任意两台就可能超过 10 A 插线板；能上墙插就上墙插。</div>
+      <div class="rule no"><b>插线板离水槽和灶台</b>不要放在溅水范围、灶台正下方或油烟机旁边；电线不要横跨灶台。</div>
+      <div class="rule no"><b>出气口不对插座</b>电饭煲、空气炸锅、压力锅的蒸汽出口，不要对着插座和插线板。</div>
+      <div class="rule yes"><b>专线优先</b>烤箱、电磁炉如果装修时能各留一条专线，后面省很多事；改造找持证电工，不要自己从普通插座上“借电”。</div>
+    </div>
+
+    <div class="wide">
+      <figure class="exploded-figure" id="fig-kettle">
+        <div class="fig-frame ex-frame" data-fig="kettle">
+          <div class="ex-head">
+            <span class="t">仪器分解 · 电水壶</span>
+            <span class="s">10 A · 1.7 L 示意 · 点击图层</span>
+          </div>
+          <div class="ex-body">
+            <div class="ex-stage">
+              <svg viewBox="0 4 840 488" role="img" aria-labelledby="exKettleTitle exKettleDesc">
+                <title id="exKettleTitle">电水壶分解示意</title>
+                <desc id="exKettleDesc">从上到下依次为壶盖、壶身、发热盘、温控器、底座，右侧为电源线；虚线表示装配关系。</desc>
+
+                <path class="ex-dash" d="M300 78 V390 M360 78 V390 M420 78 V390"/>
+
+                <g class="ex-part" data-part="lid">
+                  <path class="ex-side" d="M255 56 V62 A105 15 0 0 1 465 62 V56"/>
+                  <path class="ex-face" d="M285 48 C295 24 425 24 435 48 Z"/>
+                  <path class="ex-detail" d="M285 48 C295 24 425 24 435 48" opacity=".6"/>
+                  <rect class="ex-top" x="348" y="12" width="24" height="14" rx="7"/>
+                  <ellipse class="ex-top" cx="360" cy="56" rx="105" ry="15"/>
+                  <path class="ex-detail" d="M270 56 A90 12 0 0 0 450 56" opacity=".35"/>
+                  <rect class="ex-outline" x="251" y="8" width="218" height="73" rx="20"/>
+                  <text class="ex-label" x="130" y="50" text-anchor="middle"><tspan class="no">01</tspan> 壶盖</text>
+                  <path class="ex-leader" d="M160 50 H264"/>
+                </g>
+
+                <g class="ex-part" data-part="body">
+                  <path class="ex-face" d="M240 100 V260 A120 16 0 0 1 480 260 V100 Z"/>
+                  <path class="ex-side" d="M440 100 V270 Q460 276 480 260 V100 Z"/>
+                  <path class="ex-body-line" d="M240 100 V260 A120 16 0 0 1 480 260 V100"/>
+                  <ellipse class="ex-top" cx="360" cy="100" rx="120" ry="16"/>
+                  <ellipse class="ex-detail" cx="360" cy="100" rx="108" ry="12" opacity=".4"/>
+                  <path class="ex-face" d="M240 112 L190 88 Q180 83 174 92 L168 106 Q164 116 174 121 L240 148 Z"/>
+                  <path class="ex-detail" d="M240 112 L190 88" opacity=".55"/>
+                  <path class="ex-inner" d="M174 92 L168 106 Q164 116 174 121 L184 114 Z"/>
+                  <path class="ex-handle" d="M470 118 C550 118 580 150 580 185 C580 220 550 252 470 252 L470 234 C530 234 558 214 558 185 C558 153 532 136 470 136 Z"/>
+                  <path class="ex-detail" d="M470 136 C532 136 558 158 558 185 C558 214 530 234 470 234" opacity=".6"/>
+                  <rect class="ex-top" x="248" y="106" width="22" height="148" rx="11" opacity=".2"/>
+                  <rect class="ex-top" x="322" y="112" width="16" height="136" rx="8" opacity=".4"/>
+                  <path class="ex-detail" d="M250 250 A110 14 0 0 0 470 250" opacity=".45"/>
+                  <rect class="ex-cavity" x="282" y="126" width="24" height="108" rx="12"/>
+                  <rect class="ex-water" x="284" y="172" width="20" height="60" rx="10"/>
+                  <path class="ex-detail" d="M286 148 H302" opacity=".7"/>
+                  <path class="ex-detail" d="M286 222 H302" opacity=".5"/>
+                  <rect class="ex-outline" x="158" y="80" width="428" height="200" rx="26"/>
+                  <text class="ex-label" x="130" y="185" text-anchor="middle"><tspan class="no">02</tspan> 壶身</text>
+                  <path class="ex-leader" d="M160 185 H240"/>
+                </g>
+
+                <g class="ex-part" data-part="plate">
+                  <path class="ex-side" d="M250 307 V317 A110 10 0 0 1 470 317 V307"/>
+                  <ellipse class="ex-face" cx="360" cy="307" rx="110" ry="18"/>
+                  <ellipse class="ex-cut" cx="360" cy="307" rx="92" ry="14"/>
+                  <ellipse class="ex-coil" cx="360" cy="307" rx="78" ry="12"/>
+                  <ellipse class="ex-coil" cx="360" cy="307" rx="58" ry="9"/>
+                  <ellipse class="ex-coil" cx="360" cy="307" rx="38" ry="6"/>
+                  <circle class="ex-screw" cx="360" cy="307" r="6"/>
+                  <rect class="ex-outline" x="246" y="285" width="228" height="46" rx="12"/>
+                  <text class="ex-label" x="130" y="312" text-anchor="middle"><tspan class="no">03</tspan> 发热盘</text>
+                  <path class="ex-leader" d="M160 312 H246"/>
+                </g>
+
+                <g class="ex-part" data-part="thermostat">
+                  <path class="ex-side" d="M295 356 V368 A65 12 0 0 1 425 368 V356"/>
+                  <ellipse class="ex-face" cx="360" cy="356" rx="65" ry="12"/>
+                  <ellipse class="ex-copper" cx="360" cy="356" rx="45" ry="8"/>
+                  <path class="ex-detail" d="M320 356 H400" opacity=".6"/>
+                  <circle class="ex-screw" cx="315" cy="363" r="4"/>
+                  <circle class="ex-screw" cx="405" cy="363" r="4"/>
+                  <rect class="ex-outline" x="291" y="340" width="138" height="44" rx="14"/>
+                  <text class="ex-label" x="130" y="361" text-anchor="middle"><tspan class="no">04</tspan> 温控器</text>
+                  <path class="ex-leader" d="M160 361 H291"/>
+                </g>
+
+                <g class="ex-part" data-part="base">
+                  <path class="ex-side" d="M245 414 V427 A115 20 0 0 1 475 427 V414"/>
+                  <ellipse class="ex-face" cx="360" cy="414" rx="115" ry="20"/>
+                  <ellipse class="ex-inner" cx="360" cy="414" rx="90" ry="15"/>
+                  <ellipse class="ex-detail" cx="360" cy="414" rx="45" ry="8"/>
+                  <ellipse class="ex-detail" cx="360" cy="414" rx="28" ry="5"/>
+                  <circle class="ex-copper-dot" cx="330" cy="414" r="4"/>
+                  <circle class="ex-copper-dot" cx="360" cy="409" r="4"/>
+                  <circle class="ex-copper-dot" cx="390" cy="414" r="4"/>
+                  <circle class="ex-screw" cx="360" cy="414" r="5"/>
+                  <circle class="ex-hole" cx="468" cy="424" r="6"/>
+                  <rect class="ex-screw" x="270" y="445" width="14" height="6" rx="3"/>
+                  <rect class="ex-screw" x="436" y="445" width="14" height="6" rx="3"/>
+                  <rect class="ex-outline" x="241" y="390" width="234" height="65" rx="14"/>
+                  <text class="ex-label" x="130" y="419" text-anchor="middle"><tspan class="no">05</tspan> 底座</text>
+                  <path class="ex-leader" d="M160 419 H241"/>
+                </g>
+
+                <g class="ex-part" data-part="cable">
+                  <path class="ex-cable" d="M480 424 H720"/>
+                  <rect class="ex-cut" x="600" y="411" width="40" height="26" rx="4"/>
+                  <path class="ex-wire ex-wire-L" d="M602 418 H638"/>
+                  <path class="ex-wire ex-wire-N" d="M602 424 H638"/>
+                  <path class="ex-wire ex-wire-PE" d="M602 430 H638"/>
+                  <path class="ex-pe-stripe" d="M602 430 H638"/>
+                  <rect class="ex-face" x="480" y="415" width="18" height="18" rx="4"/>
+                  <path class="ex-detail" d="M484 419 H494 M484 423 H494" opacity=".6"/>
+                  <rect class="ex-face" x="720" y="411" width="46" height="28" rx="6"/>
+                  <rect class="ex-pin" x="766" y="416" width="12" height="4" rx="2"/>
+                  <rect class="ex-pin" x="766" y="422" width="12" height="4" rx="2"/>
+                  <rect class="ex-pin" x="766" y="428" width="12" height="4" rx="2"/>
+                  <rect class="ex-outline" x="476" y="405" width="310" height="40" rx="20"/>
+                  <text class="ex-label" x="700" y="461" text-anchor="middle"><tspan class="no">06</tspan> 电源线</text>
+                  <path class="ex-leader" d="M700 450 V446"/>
+                </g>
+
+                <text class="ex-hint" x="420" y="480" text-anchor="middle">点击图层查看说明</text>
+              </svg>
+            </div>
+            <aside class="ex-panel" aria-live="polite">
+              <div class="k ex-kicker">部件 00 · 总览</div>
+              <h3 class="ex-title">从壶盖到电源线，六件</h3>
+              <p class="ex-text">点任意一层或编号，看看水、蒸汽和电在哪里相遇。虚线是装配关系，不是电线走向。</p>
+              <div class="fine">结构示意，不按具体型号比例绘制；实际产品的加热方式、温控数量和耦合结构以拆解实物与铭牌为准。</div>
+            </aside></div>
+          <div class="ex-parts" role="group" aria-label="选择分解图部件">
+            <button class="ex-chip" type="button" data-part="lid" aria-pressed="false">01 壶盖</button>
+            <button class="ex-chip" type="button" data-part="body" aria-pressed="false">02 壶身</button>
+            <button class="ex-chip" type="button" data-part="plate" aria-pressed="false">03 发热盘</button>
+            <button class="ex-chip" type="button" data-part="thermostat" aria-pressed="false">04 温控器</button>
+            <button class="ex-chip" type="button" data-part="base" aria-pressed="false">05 底座</button>
+            <button class="ex-chip" type="button" data-part="cable" aria-pressed="false">06 电源线</button>
+          </div>
+        </div>
+        <figcaption><b>图 5 · 电水壶的分解。</b>从上到下是壶盖、壶身、发热盘、温控器、底座，右侧是电源线。结构示意；实际产品的加热方式、温控数量和底座耦合结构以拆解实物与铭牌为准。</figcaption>
+      </figure>
+    </div>
+
+    <h3>微波炉：门封、容器和一杯水</h3>
+    <p>
+      微波炉是厨房里最容易被误解的电器。FDA 的页面给了三个关键点：合格产品有两套独立联锁和一个监控联锁；
+      门封完整时，2 英寸处的泄漏必须低于 5 mW/cm² 的限值，而这个限值本身远低于已知有害水平；
+      大多数微波炉伤害不是“辐射”，而是烫伤、蒸汽爆沸和容器熔化<sup class="cite"><a href="#r13">13</a></sup>。
+      家用电器安全通用要求里对防触电、温升和机械危险也有系统性要求<sup class="cite"><a href="#r12">12</a></sup>，但前提是产品完好、按说明书使用。
+    </p>
+
+    <div class="rules">
+      <div class="rule no"><b>门封坏了就别用</b>门变形、铰链松、密封条破损、运行时看到火花，停用送修。</div>
+      <div class="rule no"><b>不放金属</b>金属餐具、铝箔、带金边的碗，可能打火；除非说明书明确允许。</div>
+      <div class="rule no"><b>不密封加热</b>带盖的密封盒、整颗鸡蛋、密封罐头，压力无处释放。</div>
+      <div class="rule no"><b>水不要过度加热</b>纯净水在光滑容器里可能超过沸点而不沸腾，取出时突然爆沸；需要热水，用电水壶更稳妥。</div>
+    </div>
+
+    <p>
+      微波炉里能不能放金属架，取决于厂家说明书；有些机型自带金属架，有些明确禁止。不要用“别人家能放”来推断自己家。
+      加热前把容器盖子松开、袋口剪开，取出时先静置几秒，都是低成本的动作。
+    </p>
+
+    <h3>冰箱与其它常驻电器</h3>
+    <div class="mrow"><div class="mrow-main">
+<p>
+      冰箱、冰柜要留散热空间，背后和两侧别塞满；不要频繁拔插头，压缩机停机后立刻重启，启动电流和压力都不友好。
+      洗衣机、洗碗机接水接电，插头要离水源和地面水渍远一点；清洁时先断电，不要用湿手去拔。
+    </p></div><aside class="mnote">
+      <span class="tag">说清楚</span>
+      微波炉的“辐射”是 2.45 GHz 微波，不是核辐射；合格产品门封完整时泄漏远低于限值。
+      真正常见的是烫伤、蒸汽爆沸和容器熔化。
+    </aside></div>
+  </div>
+</section>
+
+<section id="s6" data-nav="浴室">
+  <div class="sec-head"><span class="sec-num">06</span><h2>浴室：先分区，再谈插座</h2></div>
+  <div class="paper">
+    <p class="dek">浴室不是“小心一点”就行的地方：水让皮肤阻抗下降，湿区让漏电更容易通过人体。</p>
+
+    <p>
+      浴室的风险不是“有水”这么简单：水让皮肤阻抗下降，湿区让漏电更容易通过人体；再加上光脚、裸身、单手扶墙，
+      接触面积和电流路径都不利。最稳的做法不是买一个“防水插座”，而是把插座留在浴室外。
+    </p>
+
+    <p>
+      IEC 60364-7-701 把浴室划成 0/1/2 区<sup class="cite"><a href="#r11">11</a></sup>：
+      0 区是浴缸或淋浴盆内部；1 区是正上方与周边；2 区再向外一圈。0 区和 1 区不装普通插座；
+      2 区的插座必须带 30 mA 剩余电流保护。不同地区的落地要求可能更严，装修时让电工按本地规范做。
+    </p>
+
+    <div class="zones">
+      <div class="zone z0">
+        <div class="zk">Zone 0</div>
+        <h4>浴缸 / 淋浴盆内</h4>
+        <p>不装普通插座和开关；只有按标准为 0 区设计的设备才能用。不要在这里给任何手持电器供电。</p>
+      </div>
+      <div class="zone">
+        <div class="zk">Zone 1</div>
+        <h4>正上方与周边</h4>
+        <p>不装普通插座；灯具、热水器等固定设备按说明书和防护等级安装，接线由持证电工完成。</p>
+      </div>
+      <div class="zone z2">
+        <div class="zk">Zone 2</div>
+        <h4>再向外一圈</h4>
+        <p>插座必须带 30 mA 剩余电流保护；最稳妥是把插座留在浴室外。防水面板不能替代分区和漏保。</p>
+      </div>
+    </div>
+    <p class="dek" style="margin-top:-12px">分区为示意，不按比例；具体边界、尺寸与安装要求以 IEC 60364-7-701 和本地规范为准。</p>
+
+    <h3>热水器、吹风机、剃须刀</h3>
+    <p>
+      储水式电热水器要有可靠接地和漏保，插头/开关放在湿区外；不要自己换加热管、改线。
+      即热式热水器功率通常很大，必须按说明书和线路容量安装，不能拿普通插座硬顶。
+    </p>
+    <p>
+      吹风机不要湿手拿，用完拔掉，别放在湿台面上；浴室固定式吹风机按说明书和 IP 等级安装。
+      剃须刀插座通常是隔离型的安全插座，不要用普通插线板替代。手机充电器更不要放在浴缸边或淋浴区。
+    </p>
+    <p>
+      IP 等级看 IEC 60529<sup class="cite"><a href="#r10">10</a></sup>：IPX4 防溅水，IPX5 防喷水；
+      但防水等级不是潜水等级，也不代表可以在湿手里插拔。漏保则按 30 mA 人身防护规格选<sup class="cite"><a href="#r6">6</a></sup>，
+      每月按一次试验键。
+    </p>
+
+    <div class="mrow"><div class="mrow-main">
+<div class="callout danger">
+      <span class="ck">浴室里不要做的三件事</span>
+      把插线板带进浴室；湿手拔插头；在浴缸或淋浴边给手机充电。
+      如果必须用吹风机，先擦干手，站在干燥处，用完立刻拔掉。
+    </div></div><aside class="mnote">
+      <span class="tag">优先级</span>
+      最稳的做法不是买“防水插座”，而是把插座留在浴室外；防水面板不能替代分区和漏保。
+    </aside></div>
+  </div>
+</section>
+
+<section id="s7" data-nav="卧室">
+  <div class="sec-head"><span class="sec-num">07</span><h2>卧室与客厅：取暖器和锂电池</h2></div>
+  <div class="paper">
+    <p class="dek">一个持续把电能变成热，一个可能在几秒内从“正常”进入热失控。这两类东西值得单独盯。</p>
+
+    <h3>取暖器：一米内清空</h3>
+    <p>
+      电暖器、油汀、小太阳、暖风机，周围至少留 1 米的无遮挡空间；不要盖衣服、不要烘鞋、不要贴着床单，
+      不要放在地毯或地垫上（除非说明书允许）。很多说明书也写明了同样的距离，但“能烘衣服”的错觉还是太常见。
+    </p>
+    <p>
+      取暖器直接插墙插，不接插线板；带倾倒断电、过热保护的型号更稳妥；人离开房间就关掉。
+      不要把它放在门后、窗帘边或唯一的逃生路线上。家里有小孩或宠物，加一道物理隔离，比反复说“别碰”有效。
+    </p>
+
+    <h3>电热毯：不折叠、不压重物</h3>
+    <p>
+      电热毯不要折叠通电、不要用针别、不要压在重物下；说明书允许整夜使用的型号按说明用，
+      否则睡前预热、上床关掉更稳妥。出现局部不热、线缆发硬、控制器异响，直接换，不要拆开修。
+    </p>
+
+    <h3>充电：硬表面、通风、别在逃生路线上</h3>
+    <p>
+      手机、笔记本、充电宝、电动车电池，充电时都在产热。放在硬质、通风的表面，不要放在床上、沙发上、枕头下；
+      不要用被子盖住；不要放在门口、楼道、唯一的逃生路线上。充电器发烫、线材破皮、接口松动，换掉，不要凑合。
+    </p>
+    <p>
+      电动车、平衡车、滑板车的锂电池，是家里最值得单独对待的一类：能量密度高，热失控后可能喷火、复燃<sup class="cite"><a href="#r18">18</a></sup>。
+      用原装充电器，按说明书的时间充，不要通宵无人看管，不要放在客厅沙发旁、床边或楼道里；
+      电池鼓包、发热、异味、外壳破损，立即停用。家用电器安全通用要求<sup class="cite"><a href="#r12">12</a></sup>能覆盖正规产品的设计底线，
+      但覆盖不了“摔过的电池继续充”这种使用方式。
+    </p>
+
+    <div class="mrow"><div class="mrow-main">
+<div class="callout danger">
+      <span class="ck">电池冒烟 / 起火</span>
+      不要徒手搬、不要用被子捂、不要尝试自己扑灭。能安全撤离就撤离，关门，报火警；不要为了拿东西返回。
+      锂电池火灾可能复燃，交给消防处理。
+    </div></div><aside class="mnote">
+      <span class="tag">停用线</span>
+      电池鼓包、发热、异味、外壳破损，任何一条都不要再充电；把它移到远离可燃物的室外或通风处，
+      并联系回收或消防，不要放回抽屉。
+    </aside></div>
+  </div>
+</section>
+
+<section id="s8" data-nav="老化">
+  <div class="sec-head"><span class="sec-num">08</span><h2>老化、急救与电气火灾</h2></div>
+  <div class="paper">
+    <p class="dek">很多事故不是“用错一次”，而是“坏了很久还在用”。</p>
+
+    <p>
+      2024 年一项针对 200 户居民的调查发现，大家普遍知道“电危险”，但正确的应急操作和安全实践明显跟不上，
+      不少住宅多年没有做过电气检查<sup class="cite"><a href="#r17">17</a></sup>。知道风险不等于会处理风险，这一节讲的是“坏了怎么办”和“出事了怎么办”。
+    </p>
+
+    <h3>五个停用信号</h3>
+    <div class="rules">
+      <div class="rule no"><b>插头 / 插座发黑、变色</b>接触电阻变大，热量积在接头；不要用砂纸磨一磨继续用。</div>
+      <div class="rule no"><b>电线破皮、露出铜丝</b>不要用绝缘胶带缠一缠继续用；换线或换电器。</div>
+      <div class="rule no"><b>焦味、塑料味、异常嗡嗡声</b>先断电，再检查；不要带电拆外壳。</div>
+      <div class="rule no"><b>插头松动、插不紧</b>换插座或插头，不要用纸片、胶带垫。</div>
+      <div class="rule no"><b>空开频繁跳闸</b>说明有故障；不要换更大空开，找电工查线路和电器。</div>
+    </div>
+
+    <h3>寿命：别让“还能用”变成“还能撑”</h3>
+    <p>
+      不少家电厂家给出的安全使用年限在 8–10 年量级，具体看说明书和铭牌；超过年限，重点检查电源线、插头、开关、外壳和散热。
+      这不是法律强制，也不是“到点必须扔”，而是提醒：老化是渐进的，很多故障在彻底坏掉之前没有明显外观变化。
+      电热毯、取暖器、电热水器这类和热、水长期打交道的电器，检查频率应该更高。
+    </p>
+
+    <h3>触电急救：先断电，再碰人</h3>
+    <ol class="steps">
+      <li><b>切断电源。</b>拉总闸或分闸，拔插头。做不到，先用干燥的绝缘物（木棍、干布、塑料制品）把电线挑开；不要徒手拉人。</li>
+      <li><b>呼救。</b>拨打 120 / 119（中国大陆）；让人去取 AED。</li>
+      <li><b>判断呼吸和意识。</b>无呼吸或只有濒死喘息，开始胸外按压；AED 到了按语音操作。</li>
+      <li><b>处理烧伤。</b>用清洁、干燥的布覆盖，不要涂牙膏、酱油或冰。</li>
+      <li><b>即使清醒也建议就医。</b>出现心悸、胸闷、意识丧失、烧伤、怀孕或高压电击，尽快急诊评估<sup class="cite"><a href="#r14">14</a></sup>。</li>
+    </ol>
+
+    <h3>电气火灾：先断电，不用水</h3>
+    <div class="mrow"><div class="mrow-main">
+<ol class="steps">
+      <li>能安全断电就先断电；不要一边着火一边用水泼。</li>
+      <li>小火用二氧化碳或干粉灭火器；没有灭火器或不会用，立即撤离、关门、报火警。</li>
+      <li>不要打开冒烟的电器外壳；不要用手去拔已经烧焦的插头。</li>
+      <li>吸入烟雾后到通风处；出现咳嗽、胸闷、呼吸困难，及时就医。</li>
+    </ol></div><aside class="mnote">
+      <span class="tag">顺序</span>
+      电气火灾的第一动作是断电，不是找水；如果配电箱已经冒烟或着火，不要靠近，直接撤离报警。
+    </aside></div>
+  </div>
+</section>
+
+<section id="s9" data-nav="速记">
+  <div class="sec-head"><span class="sec-num">09</span><h2>一页速记</h2></div>
+  <div class="paper">
+    <p class="dek">能打印贴冰箱的一页；数字都能回到对应章节复算。</p>
+
+    <div class="cards wide">
+      <div class="card">
+        <div class="k">出门前</div>
+        <ul>
+          <li>关掉取暖器、电热毯、熨斗、烤箱</li>
+          <li>拔掉不用的充电器，检查插座无异味</li>
+          <li>厨房大功率电器全部断电</li>
+          <li>确认没有电器在无人看管下充电</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k">睡前</div>
+        <ul>
+          <li>取暖器离床品、窗帘至少 1 米</li>
+          <li>不在床上、枕头下充电</li>
+          <li>电热毯按说明书使用，不折叠</li>
+          <li>关掉厨房大功率，检查插线板不烫</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k">每月</div>
+        <ul>
+          <li>按一次漏保试验键，确认能跳闸</li>
+          <li>摸插头、插座、插线板有无异常发热</li>
+          <li>检查电线有无破皮、压痕、宠物咬痕</li>
+          <li>清理取暖器周围的可燃物</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k">每年</div>
+        <ul>
+          <li>请电工检查配电箱、线路与接地</li>
+          <li>更换老化、发黄的插线板</li>
+          <li>测试烟感，规划逃生路线</li>
+          <li>核对大功率电器与插座、回路是否匹配</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>
+      如果只能做四件事：<b>大功率上墙插、插线板不串联、漏保每月试、取暖器一米清空</b>。
+      这四件事分别对应回路、插线板、保护装置和热源，覆盖了家庭电气事故最常见的几条路径。
+    </p>
+
+    <p>
+      最后，把边界说清楚：本文是家用电气安全科普，不替代当地电气规范、产品说明书和有资质电工的现场判断；
+      涉及固定线路、配电箱、接地和漏保的改造，请持证电工操作。文中的功率是典型值，具体以铭牌为准；
+      保护装置的规格与动作特性，以产品标注和本地规范为准。
+    </p>
+
+    <h3>参考</h3>
+    <ol class="refs">
+      <li id="r1">IEC 60364-4-41:2005+AMD1:2017 CSV. <i>Low-voltage electrical installations – Part 4-41: Protection for safety – Protection against electric shock</i>. <a href="https://webstore.iec.ch/en/publication/60169" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r2">IEC 60479-1:2018. <i>Effects of current on human beings and livestock – Part 1: General aspects</i>. <a href="https://webstore.iec.ch/en/publication/62980" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r3">IEC 60364-4-43:2023. <i>Low-voltage electrical installations – Part 4-43: Protection for safety – Protection against overcurrent</i>. <a href="https://webstore.iec.ch/en/publication/28432" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r4">IEC 60364-5-52:2009+AMD1:2024 CSV. <i>Low-voltage electrical installations – Part 5-52: Selection and erection of electrical equipment – Wiring systems</i>. <a href="https://webstore.iec.ch/en/publication/103734" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r5">IEC 60364-4-42:2024. <i>Low-voltage electrical installations – Part 4-42: Protection for safety – Protection against thermal effects</i>. <a href="https://webstore.iec.ch/en/publication/65121" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r6">IEC 61008-1:2024. <i>Residual current operated circuit-breakers without integral overcurrent protection for household and similar uses (RCCBs) – Part 1: General rules</i>. <a href="https://webstore.iec.ch/en/publication/67980" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r7">IEC 61009-1:2024. <i>Residual current operated circuit-breakers with integral overcurrent protection for household and similar uses (RCBOs) – Part 1: General rules</i>. <a href="https://webstore.iec.ch/en/publication/67981" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r8">IEC 60884-1:2022. <i>Plugs and socket-outlets for household and similar purposes – Part 1: General requirements</i>. <a href="https://webstore.iec.ch/en/publication/34175" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r9">IEC 61242:1995（含 AMD1:2008、AMD2:2015）. <i>Electrical accessories – Cable reels for household and similar purposes</i>. <a href="https://webstore.iec.ch/en/publication/4973" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r10">IEC 60529:1989+AMD1:1999+AMD2:2013 CSV. <i>Degrees of protection provided by enclosures (IP Code)</i>. <a href="https://webstore.iec.ch/en/publication/2452" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r11">IEC 60364-7-701:2019. <i>Low-voltage electrical installations – Part 7-701: Requirements for special installations or locations – Locations containing a bath or shower</i>. <a href="https://webstore.iec.ch/en/publication/28906" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r12">IEC 60335-1:2020+AMD1:2025 CSV. <i>Household and similar electrical appliances – Safety – Part 1: General requirements</i>. <a href="https://webstore.iec.ch/en/publication/110266" target="_blank" rel="noopener">webstore.iec.ch ↗</a></li>
+      <li id="r13">U.S. Food and Drug Administration. <i>Microwave Ovens</i>. <a href="https://www.fda.gov/radiation-emitting-products/resources-you-radiation-emitting-products/microwave-ovens" target="_blank" rel="noopener">fda.gov ↗</a></li>
+      <li id="r14">Smith I, Kidd S, Kim S, Tennill RM. Assessment and Management of Electrical Injuries in Adults in the Emergency Department. <span class="j">Cureus.</span> 2026. PMID 42147553. <a href="https://doi.org/10.7759/cureus.107162" target="_blank" rel="noopener">doi:10.7759/cureus.107162 ↗</a></li>
+      <li id="r15">Rådman L, Nilsagård Y, Jakobsson K, Ek Å, Gunnarsson LG. Electrical injury in relation to voltage, “no-let-go” phenomenon, symptoms and perceived safety culture: a survey of Swedish male electricians. <span class="j">Int Arch Occup Environ Health.</span> 2016. PMID 26186954. <a href="https://doi.org/10.1007/s00420-015-1069-3" target="_blank" rel="noopener">doi:10.1007/s00420-015-1069-3 ↗</a></li>
+      <li id="r16">Yazıcı R, Bulut B, Genç M, Öz MA, Şahin S, Gür A, Mutlu H. Prevalence and risk factors of developing cardiac arrhythmia in patients presenting to the emergency department with electrical injuries. <span class="j">PLoS One.</span> 2025. PMID 41364707. <a href="https://doi.org/10.1371/journal.pone.0337812" target="_blank" rel="noopener">doi:10.1371/journal.pone.0337812 ↗</a></li>
+      <li id="r17">Kulor F, Apprey MW, Agbevanu KT, Gasper GK, Akorta JA. Invisible threats: An investigation of electrical hazards and safety practices among residential electricity consumers. <span class="j">Heliyon.</span> 2024;10(15):e34470. PMID 39114057. <a href="https://doi.org/10.1016/j.heliyon.2024.e34470" target="_blank" rel="noopener">doi:10.1016/j.heliyon.2024.e34470 ↗</a></li>
+      <li id="r18">Yang JH, Sung JY, Kweon H, Kim S, Kim B, Kim J, Mun J, Kim JH, Kim KJ. A Review of Failure Modes and Safety Strategies of Lithium-Ion Batteries from Materials to Systems. <span class="j">Adv Sci (Weinh).</span> 2026. PMID 42376912. <a href="https://doi.org/10.1002/advs.76228" target="_blank" rel="noopener">doi:10.1002/advs.76228 ↗</a></li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<footer class="foot">
+  <span>© 2026 灯箱 · LIGHTBOX</span>
+  <span><a href="scientific-cat-care.html">← 上一篇：科学养猫</a> · <a href="index.html">全部文章 →</a> · 单文件 · 零外部请求</span>
+</footer>
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     0. 主题
+     ============================================================ */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var KEY = 'technotes-theme';
+  var order = ['auto', 'dark', 'light'];
+  var mode = 'auto';
+
+  try { mode = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
+  if (order.indexOf(mode) < 0) mode = 'auto';
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function syncLightClass() {
+    var light = mode === 'light' || (mode === 'auto' && systemLight());
+    root.classList.toggle('is-light', light);
+  }
+
+  function applyTheme(next) {
+    mode = next;
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    syncLightClass();
+    themeBtn.textContent = '主题：' + (mode === 'auto' ? '跟随系统' : (mode === 'dark' ? '深色' : '浅色'));
+    document.dispatchEvent(new CustomEvent('technotes:theme'));
+  }
+
+  applyTheme(mode);
+
+  themeBtn.addEventListener('click', function () {
+    var i = order.indexOf(mode);
+    var next = order[(i + 1) % order.length];
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    applyTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (mode !== 'auto') return;
+      syncLightClass();
+      document.dispatchEvent(new CustomEvent('technotes:theme'));
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  /* ============================================================
+     1. 目录、进度、显现
+     ============================================================ */
+
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[data-nav]'));
+  var links = [];
+
+  sections.forEach(function (section) {
+    var a = document.createElement('a');
+    a.href = '#' + section.id;
+    a.textContent = section.getAttribute('data-nav');
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function updateScroll() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.min(100, Math.max(0, y / max * 100)) : 0;
+    progress.style.width = pct + '%';
+
+    var current = -1;
+    for (var i = 0; i < sections.length; i++) {
+      var top = sections[i].getBoundingClientRect().top;
+      if (top <= window.innerHeight * 0.34) current = i;
+    }
+    links.forEach(function (a, i) {
+      a.classList.toggle('on', i === current);
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  updateScroll();
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    var ioFired = false;
+    var io = new IntersectionObserver(function (entries) {
+      ioFired = true;
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(function (el, i) {
+      el.style.transitionDelay = (i % 3) * 0.06 + 's';
+      io.observe(el);
+    });
+    /* 看门狗：个别内嵌 WebView 不派发 IO 回调，直接显现全部内容 */
+    setTimeout(function () {
+      if (ioFired) return;
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+    }, 1500);
+  }
+
+  /* ============================================================
+     2. 首屏回路负载计算器
+     ============================================================ */
+
+  (function () {
+    var ampEl = document.getElementById('hAmp');
+    if (!ampEl) return;
+
+    var wattEl = document.getElementById('hWatt');
+    var breakerEl = document.getElementById('hBreaker');
+    var formulaEl = document.getElementById('hFormula');
+    var fillEl = document.getElementById('hFill');
+    var statusEl = document.getElementById('hStatus');
+    var headroomEl = document.getElementById('hHeadroom');
+    var adviceEl = document.getElementById('hAdvice');
+    var visualEl = document.getElementById('hBreakerVisual');
+    var tripLabel = document.getElementById('hTripLabel');
+    var ampBtns = Array.prototype.slice.call(document.querySelectorAll('.breaker-row button'));
+    var apps = Array.prototype.slice.call(document.querySelectorAll('.appliance-grid .app'));
+    var breaker = 16;
+
+    function fmt(n) {
+      return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function calc() {
+      var total = 0;
+      apps.forEach(function (app) {
+        if (app.classList.contains('on')) total += parseFloat(app.getAttribute('data-w')) || 0;
+      });
+
+      var amps = total / 220;
+      var breakerW = breaker * 220;
+      var ratio = total / breakerW;
+      var pct = Math.min(100, ratio * 100);
+
+      ampEl.textContent = amps.toFixed(1);
+      wattEl.innerHTML = fmt(total) + '<small>W</small>';
+      breakerEl.innerHTML = breaker + '<small>A</small>';
+      formulaEl.textContent = '220 V × ' + breaker + ' A = ' + fmt(breakerW) + ' W';
+      fillEl.style.width = pct.toFixed(1) + '%';
+
+      fillEl.className = 'load-fill';
+      if (ratio > 1) fillEl.className += ' bad';
+      else if (ratio > 0.8) fillEl.className += ' warn';
+
+      if (ratio > 1) {
+        statusEl.className = 'bad';
+        statusEl.textContent = '超载';
+        headroomEl.textContent = '超出额定 ' + fmt(total - breakerW) + ' W';
+        adviceEl.innerHTML = '<b>超载。</b>先关掉一个大功率，再合闸；不要用更大空开硬顶。';
+        visualEl.classList.add('tripped');
+        tripLabel.textContent = 'TRIP';
+      } else if (ratio > 0.8) {
+        statusEl.className = 'warn';
+        statusEl.textContent = '接近上限';
+        headroomEl.textContent = '已越过 80% 线 ' + fmt(total - breakerW * 0.8) + ' W';
+        adviceEl.innerHTML = '<b>接近上限。</b>短时用可以，长时间别这样开；摸插头或插座，烫就停。';
+        visualEl.classList.remove('tripped');
+        tripLabel.textContent = 'ON';
+      } else {
+        statusEl.className = 'ok';
+        statusEl.textContent = total === 0 ? '空载' : '余量充足';
+        headroomEl.textContent = total === 0
+          ? '按 80% 线还有 ' + fmt(breakerW * 0.8) + ' W'
+          : '按 80% 线还剩 ' + fmt(breakerW * 0.8 - total) + ' W';
+        adviceEl.innerHTML = total === 0
+          ? '<b>空载。</b>点几件你打算同时开的电器。'
+          : '<b>还有余量。</b>大功率电器仍然建议直接上墙插，不接插线板。';
+        visualEl.classList.remove('tripped');
+        tripLabel.textContent = 'ON';
+      }
+    }
+
+    ampBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        breaker = parseInt(btn.getAttribute('data-amp'), 10) || 16;
+        ampBtns.forEach(function (b) {
+          var on = b === btn;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        calc();
+      });
+    });
+
+    apps.forEach(function (app) {
+      app.addEventListener('click', function () {
+        var on = !app.classList.contains('on');
+        app.classList.toggle('on', on);
+        app.setAttribute('aria-pressed', on ? 'true' : 'false');
+        calc();
+      });
+    });
+
+    calc();
+  })();
+
+  /* ============================================================
+     3. 插线板预算
+     ============================================================ */
+
+  (function () {
+    var totalEl = document.getElementById('sW');
+    if (!totalEl) return;
+
+    var ampEl = document.getElementById('sA');
+    var ratingEl = document.getElementById('sRating');
+    var heatEl = document.getElementById('sHeat');
+    var heatLabel = document.getElementById('sHeatLabel');
+    var footEl = document.getElementById('sFoot');
+    var coil = document.getElementById('sCoil');
+    var apps = Array.prototype.slice.call(document.querySelectorAll('.strip-app'));
+    var slots = Array.prototype.slice.call(document.querySelectorAll('.strip-slot'));
+    var rateBtns = Array.prototype.slice.call(document.querySelectorAll('.strip-rate button'));
+    var rating = 10;
+
+    function fmt(n) {
+      return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function calc() {
+      var total = 0;
+      apps.forEach(function (app) {
+        if (app.classList.contains('on')) total += parseFloat(app.getAttribute('data-w')) || 0;
+      });
+
+      var amps = total / 220;
+      var ratingW = rating * 220;
+      var ratio = total / ratingW;
+
+      totalEl.innerHTML = fmt(total) + '<small> W</small>';
+      ampEl.innerHTML = amps.toFixed(1) + '<small> A</small>';
+      ratingEl.innerHTML = rating + '<small> A · ' + fmt(ratingW) + ' W</small>';
+      heatEl.style.width = Math.min(100, ratio * 100).toFixed(1) + '%';
+
+      heatEl.className = '';
+      if (ratio > 1) heatEl.className = 'over';
+      else if (ratio > 0.8) heatEl.className = 'hot';
+
+      var label;
+      if (total === 0) label = '空载。';
+      else if (ratio > 1) label = '超载：立刻拔掉大功率。';
+      else if (ratio > 0.8) label = '接近满载：线缆会明显发热，别卷着用。';
+      else if (ratio > 0.5) label = '温热区：大功率时把线完全展开。';
+      else label = '轻载，余量充足。';
+      if (coil && coil.checked && ratio > 0.5) label += ' 线缆卷着或被压住，散热更差。';
+      heatLabel.textContent = label;
+
+      if (ratio > 1) {
+        footEl.innerHTML = '<b>总功率 ' + fmt(total) + ' W，超过插线板额定 ' + fmt(ratingW) + ' W。</b>' +
+          '先拔掉一个大功率；不要靠“跳闸”来保护插线板。';
+      } else if (ratio > 0.8) {
+        footEl.innerHTML = '<b>总功率 ' + fmt(total) + ' W。</b>已越过 80% 保守线 ' +
+          fmt(total - ratingW * 0.8) + ' W；长时间用要减载。';
+      } else {
+        footEl.innerHTML = '<b>总功率 ' + fmt(total) + ' W。</b>按 ' + rating + ' A 插线板的 80% 线，还剩 ' +
+          fmt(ratingW * 0.8 - total) + ' W；大功率电器不要和取暖器同板。';
+      }
+
+      slots.forEach(function (slot) {
+        var idx = slot.getAttribute('data-slot');
+        var on = apps.some(function (app) {
+          return app.getAttribute('data-slot') === idx && app.classList.contains('on');
+        });
+        slot.classList.toggle('on', on);
+      });
+    }
+
+    apps.forEach(function (app) {
+      app.addEventListener('click', function () {
+        var on = !app.classList.contains('on');
+        app.classList.toggle('on', on);
+        app.setAttribute('aria-pressed', on ? 'true' : 'false');
+        calc();
+      });
+    });
+
+    rateBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        rating = parseInt(btn.getAttribute('data-amp'), 10) || 10;
+        rateBtns.forEach(function (b) {
+          var on = b === btn;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        calc();
+      });
+    });
+
+    if (coil) {
+      coil.addEventListener('change', calc);
+    }
+
+    calc();
+  })();
+
+  /* ============================================================
+     4. 插座分解图
+     ============================================================ */
+
+  (function () {
+    var EXPLODED = {
+      socket: {
+        intro: {
+          no: '00', name: '总览',
+          title: '从墙内到墙外，七层',
+          text: '点任意一层或编号，看看它在用电安全里管什么。虚线是装配关系，不是电线走向。'
+        },
+        box: {
+          no: '01', name: '底盒',
+          title: '先有安装空间，才有防护',
+          text: '底盒把接线藏在墙内，也给面板和插座模块提供固定。底盒破裂、进潮或虫鼠做窝，绝缘和接触都会变差；换面板前先看底盒有没有裂纹、积水。'
+        },
+        term: {
+          no: '02', name: '接线端子',
+          title: '三根线，各接各的',
+          text: 'L 接火线、N 接零线、PE 接地线。PE 端子必须可靠压紧；剪掉地线、用两孔转接头，都是把这条故障电流的路断开。端子松动会发热，严重时烧蚀。'
+        },
+        contact: {
+          no: '03', name: '插套',
+          title: '接触电阻决定它会不会热',
+          text: '插套的铜片提供弹性和接触面积。插头松动、插拔次数过多、铜片疲劳，都会让接触电阻上升；同样的电流下，发热更多。10 A 与 16 A 插套尺寸不同，不能靠硬插兼容。'
+        },
+        shutter: {
+          no: '04', name: '保护门',
+          title: '挡的是误插，不是电',
+          text: '保护门靠弹簧复位，设计上要挡住单孔误插。它是防误触的附加措施，不能替代接地、漏保和正确接线；卡滞或损坏时不要自己撬。'
+        },
+        plate: {
+          no: '05', name: '面板',
+          title: '绝缘外壳也是结构件',
+          text: '面板把带电部件隔开，并固定插座模块。发黄、开裂、插孔松旷、插头一碰就晃，都是更换信号；不要用胶带、纸片垫插头。'
+        },
+        plug: {
+          no: '06', name: '插头',
+          title: '插脚尺寸是硬约束',
+          text: '10 A 与 16 A 插头的插脚宽度和间距不同，16 A 插头不能硬插 10 A 插孔。PE 插脚通常更长，插合时先接触、拔出时后断开；插脚发黑、变形或本体发热，直接换。'
+        },
+        cable: {
+          no: '07', name: '三芯线',
+          title: '拉力不该传到端子上',
+          text: '棕 L、蓝 N、黄绿 PE；线径要与插头和回路额定电流匹配。压线卡夹住外皮，拉力由它承担；经常拽线拔插头，会把端子拉松。卷曲、压在地毯下会聚热。'
+        }
+      },
+      strip: {
+        intro: {
+          no: '00', name: '总览',
+          title: '从外壳到铜排，六层',
+          text: '点任意一层或编号，看看插线板内部哪里最容易热。虚线是装配关系，不是电线走向。'
+        },
+        top: {
+          no: '01', name: '上盖',
+          title: '外壳也是防火件',
+          text: '上盖把带电铜排隔开，阻燃外壳在故障时争取时间。外壳发黄、变形、插孔松旷，说明过热或结构疲劳；不要用胶带补，也不要把外壳拆掉继续用。'
+        },
+        switch: {
+          no: '02', name: '开关',
+          title: '单极开关不是隔离措施',
+          text: '设计上开关串在 L 上；两脚插头没有固定极性，反插时断的可能是 N。开关容量不足或频繁打火，会让触点粘连、发热；手感发涩、外壳烫，直接换。'
+        },
+        bus: {
+          no: '03', name: '铜排',
+          title: '截面积决定温升',
+          text: '一体化铜排比细导线加焊点更能承受电流。铜排越薄、越窄，电阻越大；同样的功率下，发热更多。10 A 与 16 A 的差别不只在插孔数量。'
+        },
+        contact: {
+          no: '04', name: '插套',
+          title: '松了，接触电阻就上来了',
+          text: '插套靠弹性夹住插脚。插拔次数多、铜片疲劳、插头进水氧化，都会让接触电阻上升；同样的电流下，发热更多。插头一碰就晃，别再凑合。'
+        },
+        base: {
+          no: '05', name: '下盖',
+          title: '绝缘和固定都靠它',
+          text: '下盖支撑铜排和插套，也把带电部件与桌面隔开。进线孔、散热孔进灰进水，或者外壳破裂，都不该继续用；不要用胶带封住散热孔。'
+        },
+        cable: {
+          no: '06', name: '线缆',
+          title: '线径和压线卡，决定线会不会先热',
+          text: '线缆截面积要与 10 A / 16 A 匹配；压线卡夹住外皮，拉力不传到铜排。卷着用大功率，热量散不出去；线缆发硬、破皮、插头发黑，直接换。'
+        }
+      },
+      kettle: {
+        intro: {
+          no: '00', name: '总览',
+          title: '从壶盖到电源线，六件',
+          text: '点任意一层或编号，看看水、蒸汽和电在哪里相遇。虚线是装配关系，不是电线走向。'
+        },
+        lid: {
+          no: '01', name: '壶盖',
+          title: '蒸汽从这里走',
+          text: '壶盖要盖到位：水位超过 MAX、壶盖开着，沸腾时水容易从壶嘴和盖缝喷出。不少蒸汽开关依赖盖好后的蒸汽通道，别用东西压住或堵住。'
+        },
+        body: {
+          no: '02', name: '壶身',
+          title: '水位上限不是建议',
+          text: 'MAX 线以下才留得出沸腾空间；水太少则发热盘可能露出水面，干烧保护再动作也需要时间。密封圈老化会渗水，发现壶底有水、跳闸，先停用。'
+        },
+        plate: {
+          no: '03', name: '发热盘',
+          title: '水垢是隔热层',
+          text: '1,500–2,000 W 的功率集中在盘底。水垢越厚，热量越传不进水里，盘面温度更高；定期除垢，别把壶体或底座泡进水里洗。'
+        },
+        thermostat: {
+          no: '04', name: '温控器',
+          title: '盘底的双金属片，是干烧后备',
+          text: '发热盘底部通常贴着双金属温控器：盘温过高时切断，冷却后复位；有的型号还有一次性热熔断器。它测的是盘温，不是水温，水开后主要靠壶盖或手柄里的蒸汽开关断电。别把干烧保护当成日常开关。'
+        },
+        base: {
+          no: '05', name: '底座',
+          title: '耦合器只该在干燥处工作',
+          text: '360° 耦合器的带电触点藏在塑料里，但底座进水、积灰、外壳开裂，仍可能漏电或打火。底座保持干燥，不要带水放壶，也不要自己改线。'
+        },
+        cable: {
+          no: '06', name: '电源线',
+          title: '10 A 的线，别卷着用',
+          text: '电水壶电流接近 10 A，线盘在一起热量散不出去；插头/插座发黑、线皮发硬，直接换。短时高功率电器，别和取暖器、烤箱共用一个插线板。'
+        }
+      }
+    };
+
+    function initExploded(root) {
+      var data = EXPLODED[root.getAttribute('data-fig')];
+      if (!data) return;
+      var stage = root.querySelector('.ex-stage');
+      var panelK = root.querySelector('.ex-kicker');
+      var panelT = root.querySelector('.ex-title');
+      var panelP = root.querySelector('.ex-text');
+      if (!stage || !panelK || !panelT || !panelP) return;
+
+      var chips = Array.prototype.slice.call(root.querySelectorAll('.ex-chip'));
+      var groups = Array.prototype.slice.call(root.querySelectorAll('.ex-part'));
+      var current = null;
+      var intro = data.intro;
+
+      function render(id) {
+        var d = id ? data[id] : intro;
+        if (!d) return;
+        current = id;
+        panelK.textContent = '部件 ' + d.no + ' · ' + d.name;
+        panelT.textContent = d.title;
+        panelP.textContent = d.text;
+        stage.classList.toggle('has-sel', !!id);
+        groups.forEach(function (g) {
+          g.classList.toggle('on', g.getAttribute('data-part') === id);
+        });
+        chips.forEach(function (c) {
+          var on = c.getAttribute('data-part') === id;
+          c.classList.toggle('on', on);
+          c.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+
+      chips.forEach(function (c) {
+        c.addEventListener('click', function () {
+          var id = c.getAttribute('data-part');
+          render(current === id ? null : id);
+        });
+      });
+
+      groups.forEach(function (g) {
+        g.addEventListener('click', function () {
+          var id = g.getAttribute('data-part');
+          render(current === id ? null : id);
+        });
+      });
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.ex-frame[data-fig]'), initExploded);
+  })();
+})();
+</script>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGE2NDIwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAzLjJ2NC42TTE1IDMuMnY0LjYiLz48cGF0aCBkPSJNNyA3LjhoMTB2Mi42YTUgNSAwIDAgMS0xMCAweiIvPjxwYXRoIGQ9Ik0xMiAxNS40djUuNCIvPjwvZz48L3N2Zz4=";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAzLjJ2NC42TTE1IDMuMnY0LjYiLz48cGF0aCBkPSJNNyA3LjhoMTB2Mi42YTUgNSAwIDAgMS0xMCAweiIvPjxwYXRoIGQ9Ik0xMiAxNS40djUuNCIvPjwvZz48L3N2Zz4=";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

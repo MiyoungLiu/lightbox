@@ -1,0 +1,2966 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>神经网络训练优化 · 从学习率到部署</title>
+<meta name="description" content="承接《神经网络全景》的续篇：优化器从 SGD 到 AdamW 与 Muon，学习率调度与正则，bf16/fp8 与 ZeRO/LoRA 的显存账，量化、编译与推理引擎的部署优化。含优化器竞速台与量化失真台两个现场计算演示。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="神经网络训练优化 · 从学习率到部署">
+<meta property="og:description" content="承接《神经网络全景》的续篇：优化器从 SGD 到 AdamW 与 Muon，学习率调度与正则，bf16/fp8 与 ZeRO/LoRA 的显存账，量化、编译与推理引擎的部署优化。含优化器竞速台与量化失真台两个现场计算演示。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/neural-network-training-optimization.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/neural-network-training-optimization.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+/* ============================================================
+   设计系统 · 九十年代桌面软件（Chicago / Win95 视觉语言）
+   青绿桌面 + 银灰立体窗口（双描边浮雕）+ 像素图标 + 标题栏。
+   颜色承担语义：藏青 = 激活/选中，青 = 洞察，琥珀 = 警示，栗 = 失效。
+   宋体承担界面与正文（时代一致），等宽承担数据。
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --desk:   #0d7d73;   /* 桌面青绿 */
+  --chrome: #c0c0c0;   /* 窗口银灰 */
+  --hi:     #ffffff;   /* 浮雕亮边 */
+  --lo:     #808080;   /* 浮雕暗边 1 */
+  --dk:     #404040;   /* 浮雕暗边 2 */
+  --title:  #000080;   /* 标题栏藏青 */
+  --paper:  #ffffff;   /* 窗口内容纸面 */
+  --panel:  #c0c0c0;
+  --panel2: #efefef;   /* 凹陷字段底 */
+
+  --ink:  #000000;
+  --ink2: #404040;
+  --ink3: #757575;
+
+  --rule:  #a0a0a0;
+  --rule2: #808080;
+
+  --insight: #008080;
+  --warn:    #806000;
+  --fail:    #800000;
+  --ok:      #008000;
+  --mark:    #a8d5cd;
+
+  --accent:  #000080;
+  --accent2: #008080;
+  --lead:    #000080;   /* 侧窗指向线 */
+
+  --heroA: #0a5a52;
+  --heroB: #7fd4c8;
+  --bg1:   #dcdcdc;   /* 仪器热力图高损失端 */
+
+  --sans: "SimSun", "NSimSun", "MS Song", "Microsoft YaHei", serif;
+  --ui:  "SimSun", "NSimSun", Tahoma, "Microsoft YaHei", sans-serif;
+  --mono: "Cascadia Mono", Consolas, "SF Mono", "Liberation Mono", monospace;
+
+  --r: 0px;
+  --width: 1160px;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --desk: #0b2622;
+  --heroA: #062c27;
+  --heroB: #4db8aa;
+  --lead: #7fd4c8;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --desk: #0b2622;
+    --heroA: #062c27;
+    --heroB: #4db8aa;
+    --lead: #7fd4c8;
+    color-scheme: dark;
+  }
+}
+
+html { scroll-behavior: smooth; background: var(--desk); scrollbar-color: var(--chrome) var(--panel2); }
+
+body {
+  margin: 0;
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 2;
+}
+
+::selection { background: var(--title); color: #fff; }
+:focus-visible { outline: 1px dotted var(--ink); outline-offset: 2px; }
+
+/* ---------- 桌面：细密抖动纹理 ---------- */
+
+.bg {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+}
+.bg::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: repeating-conic-gradient(rgba(255,255,255,.045) 0 25%, transparent 0 50%);
+  background-size: 4px 4px;
+}
+
+/* ---------- 浮雕基元 ---------- */
+
+.bevel-out {
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+}
+.bevel-in {
+  border: 1px solid;
+  border-color: var(--dk) var(--hi) var(--hi) var(--dk);
+  box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 #dfdfdf;
+}
+
+/* ---------- 像素图标 ---------- */
+
+.pix {
+  width: 14px; height: 14px;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+.pix.s12 { width: 12px; height: 12px; }
+.pix.s16 { width: 16px; height: 16px; }
+
+/* ---------- 布局骨架：左栏 + 窗口纵列 ---------- */
+
+.shell {
+  position: relative; z-index: 1;
+  display: flex;
+  min-height: 100vh;
+  gap: 12px;
+  padding: 12px;
+  align-items: flex-start;
+}
+
+/* ---------- 左栏：程序侧栏 ---------- */
+
+.rail {
+  width: 204px;
+  flex: 0 0 204px;
+  position: sticky;
+  top: 12px;
+  min-height: calc(100vh - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  background: var(--chrome);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rbtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  padding: 6px 8px;
+  cursor: pointer;
+  text-decoration: none;
+  width: 100%;
+}
+.rbtn:active {
+  border-color: var(--dk) var(--hi) var(--hi) var(--dk);
+  box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 #dfdfdf;
+  padding: 7px 7px 5px 9px;
+}
+.rbtn:hover { color: var(--ink); }
+
+.rail .group {
+  border: 0;
+  margin: 0;
+  padding: 4px 6px 8px;
+  min-width: 0;
+  position: relative;
+}
+.rail .group::before {
+  content: "";
+  position: absolute; inset: 8px 0 2px;
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  pointer-events: none;
+}
+.rail .group > legend,
+.rail .group > .lg {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--ink2);
+  background: var(--chrome);
+  padding: 0 4px;
+  margin: 0 0 2px;
+}
+
+.rail ol {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+}
+.rail ol a {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 4px 6px;
+}
+.rail ol a:hover { background: var(--title); color: #fff; }
+.rail li.cur a {
+  background: var(--title);
+  color: #fff;
+}
+
+.pbar {
+  height: 16px;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  padding: 2px;
+}
+.pfill {
+  height: 100%;
+  width: 100%;
+  background: repeating-linear-gradient(90deg, var(--title) 0 6px, transparent 6px 8px);
+  animation: pfillw linear both;
+  animation-timeline: scroll(root);
+}
+@keyframes pfillw { from { width: 2%; } to { width: 100%; } }
+@supports not (animation-timeline: scroll()) {
+  .pfill { width: 100%; opacity: .35; }
+}
+
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+
+.rail-status .rs {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--ink2);
+}
+.rail-status .rs b {
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 窗口 ---------- */
+
+.main {
+  flex: 1;
+  min-width: 0;
+  max-width: var(--width);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- 宽屏侧航道（≥1700px 才出现） ---------- */
+
+.lane {
+  display: none;
+  position: relative;
+  flex: 0 0 280px;
+  width: 280px;
+  align-self: stretch;
+}
+
+.leads {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+.leads path { fill: none; stroke: var(--lead); stroke-width: 1; stroke-dasharray: 3 2; }
+.leads rect { fill: var(--lead); }
+
+/* 侧窗：为窄栏重排，不是把通栏图缩小 */
+.sat { position: absolute; top: 0; left: 0; width: 100%; }
+.sat .sat-body { padding: 12px 12px 14px; }
+.sat-kicker {
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink3);
+}
+.pipe { list-style: none; margin: 0; padding: 0; position: relative; }
+.pipe::before {
+  content: "";
+  position: absolute;
+  left: 9px; top: 14px; bottom: 18px;
+  border-left: 1px dashed var(--rule2);
+}
+.pipe li { position: relative; display: flex; gap: 8px; padding-bottom: 10px; }
+.pipe-n {
+  position: relative; z-index: 1;
+  flex: 0 0 20px;
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--title);
+}
+.pipe-t { flex: 1; min-width: 0; }
+.pipe-h { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.pipe-h b { font-size: 12.5px; line-height: 1.6; color: var(--ink); }
+.pipe-h em { font-style: normal; font-family: var(--mono); font-size: 9.5px; color: var(--ink3); white-space: nowrap; }
+.pipe-t span { display: block; font-family: var(--mono); font-size: 9.8px; line-height: 1.7; color: var(--ink2); }
+.sat-note {
+  margin: 2px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule2);
+  font-family: var(--mono);
+  font-size: 9.8px;
+  line-height: 1.7;
+  color: var(--ink3);
+}
+
+/* 侧窗：步长曲线 */
+.sched { display: block; width: 100%; height: auto; margin: 2px 0 0; overflow: visible; }
+.sched .ax { stroke: var(--rule2); }
+.sched .curve { fill: none; stroke: var(--insight); stroke-width: 1.8; }
+.sched .peak { fill: var(--insight); }
+
+/* 侧窗：显存构成 */
+.vram-bar {
+  display: flex;
+  height: 18px;
+  margin: 2px 0 0;
+  padding: 1px;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+.vram-bar i { display: block; height: 100%; }
+.vram-bar .s1, .vram-key .s1 { background: var(--ink2); }
+.vram-bar .s2, .vram-key .s2 { background: var(--ink3); }
+.vram-bar .s3, .vram-key .s3 { background: var(--warn); }
+.vram-bar .s4, .vram-key .s4 { background: var(--fail); }
+.vram-key {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 10px;
+  font-family: var(--mono);
+  font-size: 9.8px;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+.vram-key li { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.vram-key i { flex: 0 0 8px; width: 8px; height: 8px; }
+.vram-key b { margin-left: auto; font-weight: 700; color: var(--ink); }
+.vram-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--rule2);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink2);
+}
+.vram-total b { font-size: 15px; color: var(--ink); }
+
+/* 侧窗：KV 缓存相对大小 */
+.cache { list-style: none; margin: 4px 0 0; padding: 0; }
+.cache li {
+  margin: 0 0 9px;
+  font-family: var(--mono);
+  font-size: 9.8px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+.cache .row { display: flex; justify-content: space-between; gap: 8px; }
+.cache .row b { font-weight: 700; color: var(--ink); white-space: nowrap; }
+.cache .bar {
+  height: 7px;
+  margin-top: 3px;
+  padding: 1px;
+  background: var(--panel2);
+  border: 1px solid var(--rule2);
+}
+.cache .bar i { display: block; height: 100%; background: var(--ink3); }
+.cache li.gqa .bar i { background: var(--ok); }
+.cache li.mla .bar i { background: var(--insight); }
+
+.win {
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo), 2px 2px 0 rgba(0,0,0,.25);
+}
+
+/* 标题栏（章节 h2 与英雄区共用视觉） */
+.tbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--title);
+  color: #fff;
+  margin: 2px;
+  padding: 3px 4px 3px 6px;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.tbar .tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tbar .pix { color: #fff; }
+
+.wbtns { display: flex; gap: 2px; }
+.wb {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 18px; height: 16px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  color: var(--ink);
+}
+.wb svg { width: 9px; height: 8px; fill: currentColor; shape-rendering: crispEdges; }
+
+/* 菜单栏 */
+.menubar {
+  display: flex;
+  gap: 2px;
+  font-family: var(--ui);
+  font-size: 12px;
+  padding: 2px 6px 4px;
+  color: var(--ink);
+  user-select: none;
+}
+.menubar span { padding: 1px 7px; cursor: default; }
+.menubar span:hover { background: var(--title); color: #fff; }
+
+/* 窗口主体 */
+.wbody {
+  margin: 2px;
+  margin-top: 0;
+  background: var(--paper);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  padding: 18px 22px 20px;
+}
+
+/* ---------- 正文 ---------- */
+
+p { margin: 0 0 18px; }
+
+a { color: #0000ee; text-decoration: underline; }
+a:hover { color: var(--title); }
+
+strong { font-weight: 700; }
+
+.mono { font-family: var(--mono); font-size: .9em; }
+.var {
+  font-family: var(--mono); font-size: .85em;
+  padding: 0 4px;
+  background: var(--panel2);
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+/* ---------- 英雄区窗口 ---------- */
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 18px;
+  align-items: start;
+  margin: 0 0 6px;
+}
+
+.hero-kicker {
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--ink2);
+  margin: 0 0 10px;
+}
+.hero-kicker a { color: var(--title); text-decoration: underline; }
+
+h1 {
+  margin: 0 0 14px;
+  font-family: var(--sans);
+  font-size: clamp(28px, 3.6vw, 40px);
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--title);
+  letter-spacing: .02em;
+  text-shadow: 3px 3px 0 var(--panel);
+}
+
+.hero-stand {
+  font-size: 16px;
+  line-height: 2;
+  color: var(--ink2);
+  margin: 0 0 12px;
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--ink);
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+.hero-meta li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+}
+.hero-meta .num { color: var(--title); font-weight: 700; }
+
+/* 右侧：CRT 监视器 */
+.crt {
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  padding: 4px;
+}
+.crt-screen { position: relative; }
+.crt-screen canvas { display: block; width: 100%; height: auto; background: var(--panel2); }
+.crt-cap {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink2);
+  padding: 3px 2px 0;
+}
+
+/* 开篇简报（前置阅读 + 三分钟）合入英雄窗口，紧贴排布 */
+.brief {
+  margin-top: 10px;
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  background: var(--panel2);
+  padding: 12px 14px 10px;
+}
+
+.premise {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 2;
+  color: var(--ink2);
+  margin: 0;
+}
+
+.threemin {
+  margin-top: 10px;
+  border-top: 1px dashed var(--rule2);
+  padding-top: 10px;
+}
+.threemin h2 {
+  margin: 0 0 8px;
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--title);
+}
+.threemin ol { margin: 0; padding-left: 20px; }
+.threemin li { margin-bottom: 6px; font-size: 14.5px; line-height: 1.9; }
+
+/* ---------- 章节 ---------- */
+
+section.win .tbar { font-size: 13px; }
+
+.sec-q {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--ink2);
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 10px;
+}
+
+h3 {
+  margin: 30px 0 12px;
+  font-size: 17.5px;
+  line-height: 1.6;
+  font-weight: 700;
+  scroll-margin-top: 16px;
+}
+h3::before {
+  content: "■";
+  color: var(--title);
+  font-size: 11px;
+  margin-right: 8px;
+  vertical-align: 2px;
+}
+
+h3 .en {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink3);
+  margin-left: 8px;
+}
+
+ul, ol { margin: 0 0 18px; padding-left: 22px; }
+li { margin-bottom: 6px; }
+
+/* ---------- 公式：凹陷字段 ---------- */
+
+.formula {
+  display: block;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 2;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  background: var(--paper);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.formula .lbl { color: var(--ink3); font-size: 12px; }
+
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  font-size: .92em;
+  line-height: 1.15;
+  margin: 0 2px;
+  text-align: center;
+}
+.frac > span:first-child {
+  display: block;
+  padding: 0 5px 2px;
+  border-bottom: 1px solid currentColor;
+}
+.frac > span:last-child { display: block; padding: 2px 5px 0; }
+
+/* ---------- 手算块：窗口中的列表窗格 ---------- */
+
+.calc {
+  margin: 0 0 20px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  overflow-x: auto;
+}
+.calc figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  align-items: baseline;
+  padding: 3px 8px;
+  margin: 2px 2px 0;
+  background: var(--title);
+  color: #fff;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.calc figcaption .t { font-weight: 700; }
+.calc figcaption span:not(.t) { color: #d8d8e8; }
+.calc .calc-body {
+  margin: 2px;
+  margin-top: 0;
+  background: var(--paper);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+.calc table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.85;
+}
+.calc td {
+  padding: 3px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid #e4e4e4;
+  white-space: nowrap;
+}
+.calc tr:last-child td { border-bottom: 0; }
+.calc td.k { color: var(--ink2); }
+.calc td.n { color: var(--ink); }
+.calc td.c { color: var(--ink3); }
+
+/* ---------- 表格：经典数据网格 ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 0 0 20px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  padding: 2px;
+}
+table.grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.7;
+  background: var(--paper);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+table.grid th {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  color: #fff;
+  background: var(--title);
+  padding: 6px 12px;
+  border-right: 1px solid #8080b0;
+  white-space: nowrap;
+}
+table.grid td {
+  padding: 8px 12px;
+  border: 1px solid #d4d4d4;
+  border-right-color: var(--rule2);
+  border-bottom-color: var(--rule2);
+  vertical-align: top;
+}
+table.grid td.num { font-family: var(--mono); white-space: nowrap; font-size: 12.5px; }
+table.grid tbody tr:hover td { background: var(--panel2); }
+
+/* ---------- 提示框：凹陷便签 ---------- */
+
+.note-box {
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  background: var(--panel2);
+  padding: 12px 14px;
+  margin: 0 0 18px;
+}
+.note-box .tag {
+  display: inline-block;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--title);
+  padding: 0 6px;
+  margin-right: 8px;
+}
+.note-box.warn .tag { background: var(--warn); }
+.note-box p { margin: 0; font-size: 14.5px; line-height: 1.95; }
+
+/* ---------- 引用 ---------- */
+
+sup.cite { font-family: var(--mono); font-size: 11px; line-height: 0; }
+sup.cite a { color: var(--title); text-decoration: none; margin-left: 1px; }
+sup.cite a:hover { text-decoration: underline; }
+
+/* ---------- 图：图形窗格 ---------- */
+
+.fig {
+  margin: 0 0 20px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  padding: 2px;
+}
+.fig svg { display: block; width: 100%; height: auto; background: var(--paper); }
+.fig figcaption {
+  margin-top: 2px;
+  padding: 4px 8px;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink2);
+}
+.fig figcaption .t { color: var(--title); font-weight: 700; margin-right: 8px; }
+
+/* ---------- 仪器：嵌套子窗口 ---------- */
+
+.rig {
+  margin: 0 0 22px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  padding: 2px;
+}
+
+.rig-top {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 2px 2px 0;
+  background: var(--paper);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+.rig-canvas { flex: 1 1 460px; min-width: 0; }
+.rig-side {
+  flex: 0 0 212px;
+  border-left: 1px solid var(--rule2);
+  padding: 10px 12px;
+  background: var(--panel2);
+}
+
+.screen { position: relative; }
+.screen canvas { display: block; width: 100%; height: auto; }
+
+.rig-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 5px 10px;
+  margin: 2px 2px 0;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink2);
+}
+.rig-legend i {
+  display: inline-block;
+  width: 9px; height: 9px;
+  margin-right: 5px;
+  vertical-align: -1px;
+  border: 1px solid var(--dk);
+}
+
+.rr { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-size: 12px; line-height: 1.9; }
+.rr-k { color: var(--ink2); white-space: nowrap; }
+.rr-v { color: var(--ink); text-align: right; }
+.rr-v.warn { color: var(--warn); }
+.rr-v.ok { color: var(--ok); }
+.rr-v.fail { color: var(--fail); }
+
+.rig-ctl {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 2px 2px 0;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+.ctl { flex: 1 1 220px; min-width: 180px; padding: 10px 12px 8px; border-right: 1px solid var(--rule); }
+.ctl:last-child { border-right: 0; }
+.ctl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.ctl-head label { cursor: pointer; }
+.ctl-val { font-family: var(--mono); color: var(--title); font-weight: 700; }
+
+input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--title);
+}
+.ctl-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 3px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink3);
+}
+
+/* 工具栏按钮 */
+.rig-btns, .seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 4px 2px;
+}
+.seg .seg-lbl {
+  width: 100%;
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--ink2);
+  margin: 2px 0 0;
+}
+
+.tbtn, .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.tbtn:active, .chip:active {
+  border-color: var(--dk) var(--hi) var(--hi) var(--dk);
+  box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 #dfdfdf;
+}
+.tbtn[aria-pressed="true"], .chip[aria-pressed="true"] {
+  border-color: var(--dk) var(--hi) var(--hi) var(--dk);
+  box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 #dfdfdf;
+  background-image: repeating-conic-gradient(#fff 0 25%, var(--chrome) 0 50%);
+  background-size: 2px 2px;
+  color: var(--title);
+  font-weight: 700;
+}
+
+.rig-caption {
+  margin: 4px 2px 2px;
+  padding: 8px 10px;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: var(--ink2);
+}
+
+/* ---------- 误区 ---------- */
+
+ol.misread { list-style: none; padding: 0; counter-reset: mr; }
+ol.misread li { margin-bottom: 16px; counter-increment: mr; }
+ol.misread li::before {
+  content: counter(mr, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #fff;
+  background: var(--title);
+  padding: 0 5px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+ol.misread strong { display: block; margin-bottom: 4px; }
+ol.misread p { margin: 0; font-size: 14.5px; color: var(--ink2); }
+
+/* ---------- 参考 ---------- */
+
+.refs { padding-left: 0; list-style: none; counter-reset: ref; }
+.refs li {
+  counter-increment: ref;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: var(--ink2);
+  padding: 7px 10px 7px 44px;
+  border-bottom: 1px solid #e4e4e4;
+  position: relative;
+  scroll-margin-top: 16px;
+}
+.refs li::before {
+  content: "[" counter(ref) "]";
+  position: absolute;
+  left: 10px;
+  top: 7px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+}
+.refs li:hover { background: var(--panel2); }
+.refs li:target { background: var(--title); color: #fff; }
+.refs li:target a { color: #fff; }
+.refs li a { word-break: break-all; }
+
+/* ---------- 页脚：状态栏 ---------- */
+
+footer {
+  margin-top: 2px;
+  background: var(--chrome);
+  border: 1px solid;
+  border-color: var(--hi) var(--dk) var(--dk) var(--hi);
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--lo);
+  padding: 4px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+footer p { margin: 0; }
+footer a { color: #0000ee; }
+footer .st {
+  padding: 0 8px;
+  background: var(--panel2);
+  border: 1px solid;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+
+/* ---------- 无障碍 ---------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (min-width: 1700px) {
+  /* 左栏贴左，并加宽吃掉它与正文之间的桌面缝隙；正文与侧窗位置不动
+     204 + (100vw − 1692)/2 化简为 50vw − 642，1692 = 24 边距 + 1644 内容 + 24 栏距 */
+  .shell { justify-content: flex-start; }
+  .rail {
+    width: min(360px, calc(50vw - 642px));
+    flex: 0 0 min(360px, calc(50vw - 642px));
+  }
+  .lane { display: block; }
+  .leads { display: block; }
+  .main, .lane { position: relative; z-index: 1; }
+}
+
+@media (max-width: 1060px) {
+  .shell { flex-direction: column; align-items: stretch; }
+  .rail {
+    position: static;
+    width: auto;
+    min-height: 0;
+    max-height: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .rail .group { display: none; }
+  .rail .rbtn { width: auto; }
+  .rail-foot { margin-top: 0; margin-left: auto; }
+  .rail-foot .rbtn { width: auto; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .main { width: 100%; max-width: none; }
+  .wbody { padding: 14px 14px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+@media print {
+  .rail, .bg, .rig-btns, .seg, .menubar, .wbtns, .lane, .leads { display: none !important; }
+  body { background: #fff; }
+}
+</style>
+<style id="layout-contract">
+.refs { columns:2; column-gap:44px; }
+@media (max-width:860px) { .refs { columns:1; } }
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNC41IDR2MTUuNWgxNSIvPjxwYXRoIGQ9Ik03IDcuNWMyLjguMyAzLjYgNi40IDYgNy42IDIgLjkgMy42LS4zIDUtMS41Ii8+PC9nPjwvc3ZnPg==">
+</head>
+<body id="top">
+
+<div class="bg" aria-hidden="true"></div>
+
+<!-- 像素图标库（16×16，crispEdges） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-home" viewBox="0 0 16 16">
+      <rect x="7" y="1" width="2" height="2"/><rect x="5" y="3" width="6" height="1"/>
+      <rect x="3" y="4" width="10" height="2"/><rect x="2" y="6" width="12" height="2"/>
+      <rect x="3" y="8" width="10" height="7"/>
+    </symbol>
+    <symbol id="ic-doc" viewBox="0 0 16 16">
+      <rect x="3" y="1" width="10" height="1"/><rect x="3" y="14" width="10" height="1"/>
+      <rect x="3" y="2" width="1" height="12"/><rect x="12" y="2" width="1" height="12"/>
+      <rect x="5" y="4" width="6" height="1"/><rect x="5" y="7" width="6" height="1"/><rect x="5" y="10" width="4" height="1"/>
+    </symbol>
+    <symbol id="ic-dial" viewBox="0 0 16 16">
+      <rect x="6" y="1" width="4" height="1"/><rect x="4" y="2" width="2" height="1"/><rect x="10" y="2" width="2" height="1"/>
+      <rect x="3" y="3" width="1" height="2"/><rect x="12" y="3" width="1" height="2"/>
+      <rect x="2" y="5" width="1" height="6"/><rect x="13" y="5" width="1" height="6"/>
+      <rect x="3" y="11" width="1" height="2"/><rect x="12" y="11" width="1" height="2"/>
+      <rect x="4" y="13" width="2" height="1"/><rect x="10" y="13" width="2" height="1"/><rect x="6" y="14" width="4" height="1"/>
+      <rect x="7" y="3" width="2" height="6"/><rect x="7" y="9" width="4" height="1"/>
+    </symbol>
+    <symbol id="ic-chart" viewBox="0 0 16 16">
+      <rect x="2" y="1" width="1" height="13"/><rect x="2" y="14" width="13" height="1"/>
+      <rect x="4" y="9" width="2" height="4"/><rect x="7" y="6" width="2" height="7"/><rect x="10" y="3" width="2" height="10"/>
+    </symbol>
+    <symbol id="ic-clock" viewBox="0 0 16 16">
+      <rect x="6" y="1" width="4" height="1"/><rect x="4" y="2" width="2" height="1"/><rect x="10" y="2" width="2" height="1"/>
+      <rect x="3" y="3" width="1" height="2"/><rect x="12" y="3" width="1" height="2"/>
+      <rect x="2" y="5" width="1" height="6"/><rect x="13" y="5" width="1" height="6"/>
+      <rect x="3" y="11" width="1" height="2"/><rect x="12" y="11" width="1" height="2"/>
+      <rect x="4" y="13" width="2" height="1"/><rect x="10" y="13" width="2" height="1"/><rect x="6" y="14" width="4" height="1"/>
+      <rect x="7" y="4" width="2" height="5"/><rect x="9" y="7" width="4" height="2"/>
+    </symbol>
+    <symbol id="ic-chip" viewBox="0 0 16 16">
+      <rect x="3" y="4" width="10" height="8"/>
+      <rect x="5" y="2" width="1" height="2"/><rect x="8" y="2" width="1" height="2"/><rect x="11" y="2" width="1" height="2"/>
+      <rect x="5" y="12" width="1" height="2"/><rect x="8" y="12" width="1" height="2"/><rect x="11" y="12" width="1" height="2"/>
+      <rect x="1" y="6" width="2" height="1"/><rect x="1" y="9" width="2" height="1"/>
+      <rect x="13" y="6" width="2" height="1"/><rect x="13" y="9" width="2" height="1"/>
+    </symbol>
+    <symbol id="ic-deploy" viewBox="0 0 16 16">
+      <rect x="7" y="1" width="2" height="4"/>
+      <rect x="4" y="5" width="8" height="1"/><rect x="5" y="6" width="6" height="1"/><rect x="6" y="7" width="4" height="1"/><rect x="7" y="8" width="2" height="1"/>
+      <rect x="2" y="10" width="12" height="1"/><rect x="2" y="11" width="1" height="3"/><rect x="13" y="11" width="1" height="3"/><rect x="2" y="14" width="12" height="1"/>
+    </symbol>
+    <symbol id="ic-grid" viewBox="0 0 16 16">
+      <rect x="1" y="2" width="14" height="1"/><rect x="1" y="13" width="14" height="1"/>
+      <rect x="1" y="3" width="1" height="10"/><rect x="14" y="3" width="1" height="10"/>
+      <rect x="1" y="5" width="14" height="1"/><rect x="7" y="6" width="1" height="7"/><rect x="1" y="9" width="14" height="1"/>
+    </symbol>
+    <symbol id="ic-warn" viewBox="0 0 16 16">
+      <rect x="3" y="1" width="10" height="1"/><rect x="3" y="14" width="10" height="1"/>
+      <rect x="3" y="2" width="1" height="12"/><rect x="12" y="2" width="1" height="12"/>
+      <rect x="7" y="3" width="2" height="6"/><rect x="7" y="10" width="2" height="2"/>
+    </symbol>
+    <symbol id="ic-book" viewBox="0 0 16 16">
+      <rect x="2" y="1" width="2" height="13"/>
+      <rect x="4" y="2" width="9" height="1"/><rect x="4" y="12" width="9" height="1"/><rect x="13" y="3" width="1" height="9"/>
+      <rect x="6" y="4" width="5" height="1"/><rect x="6" y="7" width="5" height="1"/><rect x="6" y="10" width="5" height="1"/>
+    </symbol>
+    <symbol id="ic-monitor" viewBox="0 0 16 16">
+      <rect x="1" y="2" width="14" height="1"/><rect x="1" y="10" width="14" height="1"/>
+      <rect x="1" y="3" width="1" height="7"/><rect x="14" y="3" width="1" height="7"/>
+      <rect x="6" y="11" width="4" height="1"/><rect x="4" y="12" width="8" height="2"/>
+    </symbol>
+    <symbol id="ic-play" viewBox="0 0 16 16">
+      <rect x="5" y="2" width="6" height="2"/><rect x="4" y="4" width="8" height="6"/><rect x="5" y="10" width="6" height="2"/>
+    </symbol>
+    <symbol id="ic-pause" viewBox="0 0 16 16">
+      <rect x="4" y="3" width="3" height="10"/><rect x="9" y="3" width="3" height="10"/>
+    </symbol>
+    <symbol id="ic-step" viewBox="0 0 16 16">
+      <rect x="3" y="3" width="5" height="2"/><rect x="2" y="5" width="6" height="4"/><rect x="3" y="9" width="5" height="2"/>
+      <rect x="11" y="3" width="2" height="10"/>
+    </symbol>
+    <symbol id="ic-reset" viewBox="0 0 16 16">
+      <rect x="4" y="2" width="2" height="8"/><rect x="10" y="2" width="2" height="8"/>
+      <rect x="4" y="10" width="8" height="2"/>
+      <rect x="2" y="8" width="2" height="2"/><rect x="1" y="10" width="3" height="2"/>
+    </symbol>
+    <symbol id="ic-mount" viewBox="0 0 16 16">
+      <rect x="1" y="13" width="14" height="1"/>
+      <rect x="6" y="8" width="4" height="1"/><rect x="5" y="9" width="2" height="1"/><rect x="9" y="9" width="2" height="1"/>
+      <rect x="4" y="10" width="2" height="1"/><rect x="10" y="10" width="2" height="1"/>
+      <rect x="3" y="11" width="2" height="1"/><rect x="11" y="11" width="2" height="1"/>
+      <rect x="2" y="12" width="2" height="1"/><rect x="12" y="12" width="2" height="1"/>
+      <rect x="12" y="3" width="2" height="2"/>
+    </symbol>
+    <symbol id="wb-min" viewBox="0 0 8 7"><rect x="1" y="5" width="6" height="1"/></symbol>
+    <symbol id="wb-max" viewBox="0 0 8 7">
+      <rect x="0" y="0" width="8" height="1"/><rect x="0" y="6" width="8" height="1"/>
+      <rect x="0" y="1" width="1" height="5"/><rect x="7" y="1" width="1" height="5"/>
+    </symbol>
+    <symbol id="wb-x" viewBox="0 0 8 7">
+      <rect x="0" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/>
+      <rect x="6" y="0" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+
+<aside class="rail">
+  <nav class="group" aria-label="站点">
+    <span class="lg">程序</span>
+    <a class="rbtn" href="index.html"><svg class="pix" aria-hidden="true"><use href="#ic-home"/></svg>首页 · 灯箱</a>
+  </nav>
+  <fieldset class="group">
+    <legend>目录</legend>
+    <nav aria-label="目录" id="railNav">
+      <ol>
+        <li><a href="#opening"><svg class="pix s12" aria-hidden="true"><use href="#ic-doc"/></svg>开篇</a></li>
+        <li><a href="#sec-loop"><svg class="pix s12" aria-hidden="true"><use href="#ic-dial"/></svg>一、四个旋钮</a></li>
+        <li><a href="#sec-optimizer"><svg class="pix s12" aria-hidden="true"><use href="#ic-chart"/></svg>二、优化器</a></li>
+        <li><a href="#sec-schedule"><svg class="pix s12" aria-hidden="true"><use href="#ic-clock"/></svg>三、步长与纪律</a></li>
+        <li><a href="#sec-memory"><svg class="pix s12" aria-hidden="true"><use href="#ic-chip"/></svg>四、显存与并行</a></li>
+        <li><a href="#sec-deploy"><svg class="pix s12" aria-hidden="true"><use href="#ic-deploy"/></svg>五、部署优化</a></li>
+        <li><a href="#sec-cheatsheet"><svg class="pix s12" aria-hidden="true"><use href="#ic-grid"/></svg>六、选型速查</a></li>
+        <li><a href="#sec-close"><svg class="pix s12" aria-hidden="true"><use href="#ic-warn"/></svg>收尾</a></li>
+        <li><a href="#sec-refs"><svg class="pix s12" aria-hidden="true"><use href="#ic-book"/></svg>参考</a></li>
+      </ol>
+    </nav>
+  </fieldset>
+  <fieldset class="group">
+    <legend>阅读进度</legend>
+    <div class="pbar" aria-hidden="true"><div class="pfill"></div></div>
+  </fieldset>
+  <div class="rail-foot">
+    <fieldset class="group rail-status">
+      <legend>状态</legend>
+      <p class="rs"><span>当前</span><b id="railCur">开篇</b></p>
+      <p class="rs"><span>位置</span><b id="railPos">1 / 9</b></p>
+      <p class="rs"><span>时钟</span><b id="railClock">--:--</b></p>
+    </fieldset>
+    <button class="rbtn" id="themeBtn" type="button"><svg class="pix" aria-hidden="true"><use href="#ic-monitor"/></svg><span id="themeBtnT">主题：跟随系统</span></button>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- ================= 英雄区窗口：开篇 + 前置阅读 ================= -->
+<header class="win hero" id="opening">
+  <div class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-monitor"/></svg>
+    <span class="tt">神经网络训练优化.EXE - 灯箱</span>
+    <span class="wbtns" aria-hidden="true">
+      <i class="wb"><svg><use href="#wb-min"/></svg></i>
+      <i class="wb"><svg><use href="#wb-max"/></svg></i>
+      <i class="wb"><svg><use href="#wb-x"/></svg></i>
+    </span>
+  </div>
+  <div class="menubar" aria-hidden="true"><span>文件(F)</span><span>编辑(E)</span><span>视图(V)</span><span>帮助(H)</span></div>
+  <div class="wbody">
+    <div class="hero-grid">
+      <div>
+        <p class="hero-kicker"><a href="neural-network-overview.html">[ 续《神经网络全景》 ]</a></p>
+        <h1>神经网络训练优化：从学习率到部署</h1>
+        <p class="hero-stand">一次参数更新走对了，只是开始。这一篇接着回答：一场训练靠什么收敛，一个训好的模型靠什么便宜地跑起来。</p>
+        <ul class="hero-meta">
+          <li><span class="num">4</span> 种优化器同场竞速</li>
+          <li><span class="num">2</span> 台现场计算仪器</li>
+          <li><span class="num">35</span> 条可回查出处</li>
+        </ul>
+      </div>
+      <div class="crt">
+        <div class="crt-screen"><canvas id="heroField" role="img" aria-label="损失地形监视器：四种优化器的下降轨迹现场计算演示。"></canvas></div>
+        <div class="crt-cap"><span>LANDSCAPE 50x²+y²</span><span>4 RUNNERS · LIVE</span></div>
+      </div>
+    </div>
+
+    <div class="brief">
+      <p class="premise">前置阅读：《神经网络全景》第三节「训练是怎么发生的」（<span class="mono">w ← w − η·∂L/∂w</span> 与学习率三档）。
+本页沿用同一套记号：<span class="var">w</span> 参数、<span class="var">η</span> 学习率、<span class="var">g</span> 梯度。
+所有显存与加速数字附换算式，可用计算器复核；前沿结论逐条给出论文出处。</p>
+      <div class="threemin">
+        <h2>如果你只有三分钟</h2>
+        <ol>
+          <li><span>优化器决定「往哪走」。AdamW 是稳妥的默认；Muon 把动量正交化，2025 年起在大规模预训练上把同等效果所需算力砍掉约一半，并已进入万亿参数级模型。</span></li>
+          <li><span>模型装不装得进显存，既是工程问题也是算术问题：精度（bf16/fp8）、激活检查点、分片（ZeRO/FSDP）、低秩微调（LoRA）各砍一块，本文给每一块的账。</span></li>
+          <li><span>部署是三级火箭：压缩（量化/蒸馏）→ 编译（算子融合/图优化）→ 服务（连续批处理/KV 缓存/投机解码）。vLLM 一类引擎把吞吐做到朴素实现的 20 倍以上。</span></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 一 ================= -->
+<section id="sec-loop" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-dial"/></svg>
+    <span class="tt">一、一场训练的四个旋钮</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">前篇的仪表演示了「一步」怎么走。这一节先把「一场训练」的循环摆出来，再看每个环节分别由什么手段负责。</p>
+
+    <p>训练一个网络，就是把这个循环转上几千到几百万次：</p>
+
+    <div class="formula"><span class="lbl">训练循环（伪代码）</span>&nbsp;&nbsp;for batch in data: &nbsp;g ← ∇L(batch; w) &nbsp;→&nbsp; w ← update(w, g, η)</div>
+
+    <p>四件事决定这场循环的成败：<b>方向</b>（优化器，把 <span class="var">g</span> 加工成更好的步向）、<b>步长</b>（学习率及其调度）、<b>纪律</b>（正则化，防止把训练集背下来）、<b>预算</b>（显存与并行，决定多大的模型能开训）。循环结束拿到权重，问题才解决一半——把权重变成一个延迟、吞吐、成本达标的在线服务，是另一场工程。</p>
+
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr><th>旋钮</th><th>负责什么</th><th>失败时的样子</th><th>本文章节</th></tr></thead>
+        <tbody>
+          <tr><td>方向</td><td>把梯度加工成更新量</td><td>病态山谷里来回震荡，或绕远路</td><td>二</td></tr>
+          <tr><td>步长</td><td>每步走多远、怎么随时间变化</td><td>发散、或一整天损失不动</td><td>三</td></tr>
+          <tr><td>纪律</td><td>约束容量，让验证集也受益</td><td>训练损失一路降，验证损失回升</td><td>三</td></tr>
+          <tr><td>预算</td><td>精度、显存、卡数、通信</td><td>Out of Memory，训练几天后崩</td><td>四</td></tr>
+          <tr><td>部署</td><td>时延、吞吐、单位成本</td><td>离线指标很好，线上一秒一 token</td><td>五</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-box">
+      <span class="tag">衔接</span>
+      <p>前篇用一维损失 <span class="mono">L(w) = (w − 3)²</span> 演示了「学习率三档」：太慢、恰好、发散。本篇把那座山换成二维、把那一个小球换成四种优化器同场竞速——见第二节的仪表。开篇窗口右侧监视器里的四条轨迹，就是竞速台的预演。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 二 ================= -->
+<section id="sec-optimizer" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-chart"/></svg>
+    <span class="tt">二、优化器：方向的进化</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">同一座山、同一个起点，不同的「方向加工器」走出完全不同的路径。先手工算三步，再上仪表。</p>
+
+    <h3>动量：把历史坡度记下来<span class="en">momentum</span></h3>
+
+    <p>朴素 SGD 只看脚下一步。动量法多记一个速度 <span class="var">v</span>：每步把新梯度累进去、乘一个衰减系数，更新沿 <span class="var">v</span> 走。一致的方向会累加，来回震荡的方向会抵消——这正好对症病态山谷（一个方向陡、一个方向平）：陡方向的震荡被抹平，平方向的推进被累加<sup class="cite"><a href="#ref-1">[1]</a></sup>。</p>
+
+    <div class="formula">v ← μ·v + g&nbsp;&nbsp;&nbsp;&nbsp;w ← w − η·v</div>
+
+    <h3>Adam：给每个参数配一把自己的尺子<span class="en">adaptive</span></h3>
+
+    <p>Adam 为每个参数分别维护梯度的一阶矩 <span class="var">m</span>（均值）和二阶矩 <span class="var">v</span>（未开方的均方），更新量是两者之比<sup class="cite"><a href="#ref-2">[2]</a></sup>。直觉：<span class="var">m/√v</span> 是一个「信噪比」——梯度一直同号说明方向可信，步子接近 <span class="var">η</span>；梯度忽大忽小、忽正忽负，步子自动缩水。陡参数和平参数于是各走各的步长，这正是病态地形需要的。</p>
+
+    <div class="calc">
+      <figcaption><span class="t">手算 · Adam 的前两步</span><span>η = 0.1，β₁ = 0.9，β₂ = 0.999</span><span>设 g₁ = 2.0，g₂ = 1.0</span></figcaption>
+      <div class="calc-body">
+      <table>
+        <tbody>
+          <tr><td class="k">第 1 步</td><td class="n">m₁ = 0.1×2.0 = 0.2</td><td class="n">v₁ = 0.001×4.0 = 0.004</td><td class="c">偏差修正前</td></tr>
+          <tr><td class="k">修正</td><td class="n">m̂₁ = 0.2/(1−0.9) = 2.0</td><td class="n">v̂₁ = 0.004/(1−0.999) = 4.0</td><td class="c">√v̂₁ = 2.0</td></tr>
+          <tr><td class="k">更新</td><td class="n">Δw = 0.1 × 2.0/2.0 = <b>0.100</b></td><td colspan="2" class="c">|g₁| = 2.0，步长却只有 η——自适应在起作用</td></tr>
+          <tr><td class="k">第 2 步</td><td class="n">m₂ = 0.9×0.2 + 0.1×1.0 = 0.28</td><td class="n">v₂ = 0.999×0.004 + 0.001×1.0 ≈ 0.0050</td><td class="c">修正后 √v̂₂ ≈ 1.581</td></tr>
+          <tr><td class="k">更新</td><td class="n">Δw = 0.1 × 1.474/1.581 ≈ <b>0.093</b></td><td colspan="2" class="c">梯度从 2 掉到 1，步长几乎不变——稳态下步长只看「信噪比」</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <p>Adam 把 <span class="var">L2 正则</span>加进梯度，权重衰减会和自适应步长纠缠（衰减量随 <span class="var">1/√v</span> 放大）。<b>AdamW</b> 把两者解耦：衰减直接按比例作用于权重，不经过梯度<sup class="cite"><a href="#ref-3">[3]</a></sup>。这是今天绝大多数训练的默认起点。</p>
+
+    <div class="calc">
+      <figcaption><span class="t">手算 · 解耦衰减的量级</span><span>AdamW，λ = 0.01，η = 0.1</span></figcaption>
+      <div class="calc-body">
+      <table>
+        <tbody>
+          <tr><td class="k">每步</td><td class="n">w ← w × (1 − η·λ) = w × 0.999</td><td class="c">衰减项独立于梯度</td></tr>
+          <tr><td class="k">1000 步</td><td class="n">0.999¹⁰⁰⁰ ≈ e⁻¹ ≈ <b>0.368</b></td><td class="c">权重被压到原来的 37%——量级足以改变泛化</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <h3>前沿：从「更好的一阶矩」到「正交化动量」<span class="en">2013 → 2026</span></h3>
+
+    <figure class="fig">
+      <svg viewBox="0 0 640 178" role="img" aria-label="优化器时间线：2011 年 AdaGrad 到 2026 年 MXFP4 训练配方。横轴为年份，带箭头。">
+        <defs>
+          <marker id="axArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g color="var(--ink2)">
+          <line x1="36" y1="96" x2="606" y2="96" stroke="currentColor" marker-end="url(#axArrow)"/>
+          <g stroke="currentColor">
+            <line x1="60" y1="92" x2="60" y2="100"/><line x1="120" y1="93" x2="120" y2="99"/>
+            <line x1="180" y1="92" x2="180" y2="100"/><line x1="240" y1="93" x2="240" y2="99"/>
+            <line x1="300" y1="92" x2="300" y2="100"/><line x1="360" y1="93" x2="360" y2="99"/>
+            <line x1="420" y1="92" x2="420" y2="100"/><line x1="480" y1="93" x2="480" y2="99"/>
+            <line x1="540" y1="92" x2="540" y2="100"/><line x1="600" y1="93" x2="600" y2="99"/>
+          </g>
+          <g font-family="var(--mono)" font-size="10" fill="var(--ink3)">
+            <text x="57" y="114">2011</text><text x="177" y="114">2014</text>
+            <text x="297" y="114">2017</text><text x="417" y="114">2023</text><text x="537" y="114">2025</text>
+          </g>
+          <g font-family="var(--mono)" font-size="10.5" fill="var(--ink)">
+            <circle cx="78" cy="96" r="3" fill="var(--ink3)"/>
+            <text x="62" y="70">AdaGrad</text>
+            <circle cx="188" cy="96" r="3" fill="var(--ink3)"/>
+            <text x="176" y="124">Adam</text>
+            <circle cx="292" cy="96" r="3" fill="var(--insight)"/>
+            <text x="266" y="70">AdamW</text>
+            <circle cx="432" cy="96" r="3" fill="var(--warn)"/>
+            <text x="396" y="70">Lion·Sophia</text>
+            <circle cx="452" cy="96" r="3" fill="var(--warn)"/>
+            <text x="422" y="124">Sched-Free</text>
+            <circle cx="492" cy="96" r="3" fill="var(--warn)"/>
+            <text x="462" y="70">AdEMAMix</text>
+            <circle cx="487" cy="96" r="3" fill="var(--fail)"/>
+            <text x="474" y="124">Muon</text>
+            <circle cx="530" cy="96" r="3" fill="var(--fail)"/>
+            <text x="504" y="70">Moonlight·K2</text>
+            <circle cx="596" cy="96" r="3" fill="var(--fail)"/>
+            <text x="576" y="124">MXFP4 训练</text>
+          </g>
+        </g>
+      </svg>
+      <figcaption><span class="t">图 1</span>优化器主线：自适应（2011-2014）→ 解耦正则（2017）→ 结构化更新（2023-2026）。颜色标记「已经进入默认配方」（青）与「前沿候选」（琥珀/栗）。</figcaption>
+    </figure>
+
+    <p>2023 年以来的候选优化器都在动「更新量的形状」：</p>
+
+    <ul>
+      <li><b>Lion</b>（2023）把 Adam 的「比值」换成动量的符号，更新量只有 ±η，显存省一份动量，在大规模视觉与语言模型上与 AdamW 打平<sup class="cite"><a href="#ref-4">[4]</a></sup>。</li>
+      <li><b>Sophia</b>（2023）给学习率除以梯度幅度的截断均方根估计，在 125M-770M 的 GPT 规模上报告同等损失所需计算量约为 AdamW 的一半<sup class="cite"><a href="#ref-5">[5]</a></sup>。</li>
+      <li><b>Schedule-Free AdamW</b>（2024）把「训练中要不要衰减学习率」内嵌进优化器：用两份动量的插值替代调度曲线，省掉退火阶段的调参<sup class="cite"><a href="#ref-6">[6]</a></sup>。</li>
+      <li><b>AdEMAMix</b>（2024）在快动量之外再加一份极慢（β₃ ≈ 0.9999）的动量，1.3B 模型用约一半的 token 数追平 AdamW 基线（3.7B 对 1.97B token）<sup class="cite"><a href="#ref-7">[7]</a></sup>。</li>
+      <li><b>Muon</b>（2024-2025）作用于<b>矩阵参数</b>：把动量矩阵用 Newton-Schulz 迭代近似正交化（拉平奇异值），再以固定每坐标 RMS 放大。Moonshot 的 Moonlight 在 3B/16B 的 MoE 上验证：同等效果计算量省约 48%，显存状态省约 33%<sup class="cite"><a href="#ref-8">[8]</a></sup>；此后 Muon 系优化器进入万亿参数级预训练（Kimi K2，15.5T token）与 GLM-4.5 等模型。工程要点：矩阵参数用 Muon、嵌入与输出层仍用 AdamW，更新 RMS 对齐 0.2 并配合权重衰减。</li>
+    </ul>
+
+    <div class="note-box warn">
+      <span class="tag">边界</span>
+      <p>这些倍数都来自各自的论文设定。2025 年的两项独立基准把候选优化器与「认真调过参的 AdamW」对齐比较，发现多数优势会缩小甚至消失，AdamW 在超参鲁棒性上仍然占优<sup class="cite"><a href="#ref-9">[9]</a></sup><sup class="cite"><a href="#ref-10">[10]</a></sup>。合理的读法：Muon 的证据最强（有万亿参数级复现），其余按「值得在自己的任务上跑一组对照」对待。</p>
+    </div>
+
+    <h3>优化器竞速台<span class="en">optimizer race rig</span></h3>
+
+    <p>四种优化器在同一座山上同起点出发。地形可选：病态谷（两个方向曲率差 50 倍）、双谷（两座低洼中间隔一个鞍点）、弯谷（Rosenbrock 缩放版，谷底是抛物线）。<b>Muon 在二维下的正交化就是「方向归一」</b>——把动量除以自身长度，每坐标步幅对齐到 η；真实 Muon 作用于矩阵参数，把各方向的奇异值拉平，本台是对其「步幅恒定」性质的忠实简化。</p>
+
+    <div class="rig" id="raceRig">
+      <div class="tbar">
+        <svg class="pix" aria-hidden="true"><use href="#ic-mount"/></svg>
+        <span class="tt">RACE.EXE - 优化器竞速台</span>
+        <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+      </div>
+      <div class="rig-legend" id="raceLegend"></div>
+      <div class="rig-top">
+        <div class="rig-canvas">
+          <div class="screen">
+            <canvas id="raceCanvas" role="img" aria-label="优化器竞速台：二维损失地形热力图上，SGD、动量、Adam、Muon 四条轨迹逐步前进。数值见右侧读数区。"></canvas>
+          </div>
+        </div>
+        <div class="rig-side" id="raceRead"></div>
+      </div>
+
+      <div class="rig-ctl">
+        <div class="ctl">
+          <div class="ctl-head">
+            <label for="race-lr">学习率 η</label>
+            <span class="ctl-val" id="race-lr-v">0.030</span>
+          </div>
+          <input id="race-lr" type="range" min="5" max="150" step="1" value="30" aria-describedby="race-lr-hint">
+          <p class="ctl-hint" id="race-lr-hint"><span>0.005</span><span>0.150</span></p>
+        </div>
+        <div class="ctl">
+          <div class="ctl-head">
+            <label for="race-mu">动量 μ</label>
+            <span class="ctl-val" id="race-mu-v">0.90</span>
+          </div>
+          <input id="race-mu" type="range" min="0" max="98" step="1" value="90" aria-describedby="race-mu-hint">
+          <p class="ctl-hint" id="race-mu-hint"><span>0</span><span>0.98（只作用于动量与 Muon）</span></p>
+        </div>
+      </div>
+
+      <div class="rig-btns">
+        <button class="tbtn" id="race-step" type="button"><svg class="pix s12" aria-hidden="true"><use href="#ic-step"/></svg>单步</button>
+        <button class="tbtn" id="race-run" type="button" aria-pressed="false"><svg class="pix s12" aria-hidden="true"><use href="#ic-play"/></svg><span id="race-run-t">连续</span></button>
+        <button class="tbtn" id="race-reset" type="button"><svg class="pix s12" aria-hidden="true"><use href="#ic-reset"/></svg>重置</button>
+        <button class="tbtn" id="race-terrain" type="button"><svg class="pix s12" aria-hidden="true"><use href="#ic-mount"/></svg>换地形</button>
+      </div>
+
+      <p class="rig-caption" id="race-caption"></p>
+    </div>
+
+    <p class="sr-only" id="race-live" aria-live="polite" role="status">优化器竞速台就绪。</p>
+  </div>
+</section>
+
+<!-- ================= 三 ================= -->
+<section id="sec-schedule" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-clock"/></svg>
+    <span class="tt">三、步长与纪律：调度和正则</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">优化器定了方向，步长还要随时间变化；验证集表现则靠纪律维持。这两件事共享同一节，因为它们都在回答「训练后期怎么办」。</p>
+
+    <h3>学习率为什么要「先热身后退火」<span class="en">warmup &amp; decay</span></h3>
+
+    <p>前篇的三档实验用的是一个恒定 <span class="var">η</span>。真实训练几乎从不这样用。开局阶段 Adam 的二阶矩估计 <span class="var">v̂</span> 还没积累（手算块里偏差修正正是在补这个），梯度方差又大，大步长容易把权重推到坏区域——所以先线性升温几百到几千步。主体阶段用余弦或线性曲线退火：后期靠近极小值，步长必须缩小，否则损失在谷底两侧来回跳，永远落不下去。</p>
+
+    <div class="formula">η(t) = η<sub>max</sub> · <span class="frac"><span>t</span><span>T<sub>warm</sub></span></span>（升温）&nbsp;&nbsp;→&nbsp;&nbsp; η<sub>max</sub> · ½(1 + cos πt/T)（余弦退火）</div>
+
+    <p><b>批大小变了，学习率跟着变</b>：线性缩放法则说，批大小乘 k、warmup 之后学习率也乘 k（梯度按批平均时方差不增、等效步长不变）<sup class="cite"><a href="#ref-11">[11]</a></sup>。同一条法则的另一面是梯度裁剪：批内出现异常样本导致梯度范数暴涨时，按全局范数截断（例如阈值 1.0），这一习惯同样来自大规模视觉训练<sup class="cite"><a href="#ref-11">[11]</a></sup>。</p>
+
+    <h3>纪律：让验证集也受益<span class="en">regularization</span></h3>
+
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr><th>手段</th><th>作用点</th><th>何时优先用</th><th>代价</th></tr></thead>
+        <tbody>
+          <tr><td>权重衰减（解耦）<sup class="cite"><a href="#ref-3">[3]</a></sup></td><td>权重幅度</td><td>几乎所有训练的默认项</td><td>与 η 联动，需一起调</td></tr>
+          <tr><td>Dropout<sup class="cite"><a href="#ref-12">[12]</a></sup></td><td>共适应</td><td>全连接/注意力的稠密层</td><td>大模型上常被弱化甚至移除</td></tr>
+          <tr><td>标签平滑<sup class="cite"><a href="#ref-13">[13]</a></sup></td><td>输出分布</td><td>分类头过自信</td><td>概率校准变难</td></tr>
+          <tr><td>数据增强</td><td>输入分布</td><td>视觉几乎必用；文本相对有限</td><td>算力换泛化</td></tr>
+          <tr><td>早停</td><td>训练时长</td><td>验证损失回升即停</td><td>依赖验证集切分质量</td></tr>
+          <tr><td>权重 EMA</td><td>最终权重</td><td>扩散模型、检测器常见</td><td>多存一份权重</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-box">
+      <span class="tag">口径</span>
+      <p>「训练得快」从来不是目的，<b>验证集上的性价比</b>才是。第五节的误区清单会回到这一点：把训练损失降到底，往往不是最好的那个检查点。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 四 ================= -->
+<section id="sec-memory" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-chip"/></svg>
+    <span class="tt">四、显存与并行：把训练装进硬件</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">到这一节，问题从数学变成算术：一个 7B 模型配 AdamW，显存账是每参数多少字节？砍价的刀有四把——精度、检查点、分片、低秩。</p>
+
+    <h3>先算账：16 字节/参数从哪来<span class="en">memory math</span></h3>
+
+    <div class="calc">
+      <figcaption><span class="t">手算 · 7B 模型 + AdamW 混合精度的显存</span><span>1 GB = 10⁹ 字节</span></figcaption>
+      <div class="calc-body">
+      <table>
+        <tbody>
+          <tr><td class="k">参数 fp32 主副本</td><td class="n">7×10⁹ × 4 B = 28 GB</td><td class="c">更新用高精度</td></tr>
+          <tr><td class="k">梯度 bf16</td><td class="n">7×10⁹ × 2 B = 14 GB</td><td class="c">计算与通信用低精度</td></tr>
+          <tr><td class="k">Adam 状态 m + v（fp32）</td><td class="n">7×10⁹ × 8 B = 56 GB</td><td class="c">两份滑动平均</td></tr>
+          <tr><td class="k">合计（不含激活）</td><td class="n">28 + 14 + 56 = <b>98 GB</b></td><td class="c">≈ 每参数 14 B；纯 fp32 训练为 16 B → 112 GB</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <figure class="fig">
+      <svg viewBox="0 0 640 240" role="img" aria-label="三种训练配方的显存条形图：常规混合精度 AdamW 共 98 GB，8 比特状态 42 GB，QLoRA 微调约 5 GB。横轴为显存 GB，带箭头。">
+        <defs>
+          <marker id="axArrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g color="var(--ink2)">
+          <line x1="128" y1="24" x2="616" y2="24" stroke="currentColor" marker-end="url(#axArrow2)"/>
+          <g font-family="var(--mono)" font-size="10" fill="var(--ink3)">
+            <text x="120" y="14" text-anchor="end">0</text>
+            <text x="264" y="14" text-anchor="middle">28</text>
+            <text x="400" y="14" text-anchor="middle">56</text>
+            <text x="536" y="14" text-anchor="middle">84</text>
+            <text x="612" y="14" text-anchor="end">GB</text>
+          </g>
+          <g font-family="var(--mono)" font-size="10.5">
+            <text x="120" y="48" text-anchor="end" fill="var(--ink)">常规 AdamW</text>
+            <g>
+              <rect x="128" y="38" width="136" height="16" fill="var(--ink2)"/>
+              <rect x="264" y="38" width="68" height="16" fill="var(--ink3)"/>
+              <rect x="332" y="38" width="136" height="16" fill="var(--warn)"/>
+              <rect x="468" y="38" width="136" height="16" fill="var(--fail)"/>
+              <text x="134" y="50" fill="#ffffff" font-size="9.5">参数 28</text>
+              <text x="270" y="50" fill="#ffffff" font-size="9.5">梯 14</text>
+              <text x="338" y="50" fill="#ffffff" font-size="9.5">m 28</text>
+              <text x="474" y="50" fill="#ffffff" font-size="9.5">v 28</text>
+              <text x="614" y="50" fill="var(--ink)">98</text>
+            </g>
+
+            <text x="120" y="112" text-anchor="end" fill="var(--ink)">8 比特状态</text>
+            <g>
+              <rect x="128" y="102" width="68" height="16" fill="var(--ink2)"/>
+              <rect x="196" y="102" width="68" height="16" fill="var(--ink3)"/>
+              <rect x="264" y="102" width="68" height="16" fill="var(--ok)"/>
+              <text x="134" y="114" fill="#ffffff" font-size="9.5">参 14</text>
+              <text x="202" y="114" fill="#ffffff" font-size="9.5">梯 14</text>
+              <text x="270" y="114" fill="#ffffff" font-size="9.5">状 14</text>
+              <text x="342" y="114" fill="var(--ink)">42</text>
+            </g>
+
+            <text x="120" y="176" text-anchor="end" fill="var(--ink)">QLoRA 微调</text>
+            <g>
+              <rect x="128" y="166" width="17" height="16" fill="var(--insight)"/>
+              <rect x="145" y="166" width="2" height="16" fill="var(--ink3)"/>
+              <text x="128" y="160" fill="var(--ink)" font-size="9.5">3.5</text>
+              <text x="158" y="178" fill="var(--ink)">≈ 5（含 LoRA 与激活）</text>
+            </g>
+          </g>
+          <g stroke="var(--rule2)">
+            <line x1="264" y1="30" x2="264" y2="196"/>
+            <line x1="400" y1="30" x2="400" y2="196"/>
+            <line x1="536" y1="30" x2="536" y2="196"/>
+          </g>
+        </g>
+      </svg>
+      <figcaption><span class="t">图 2</span>同一 7B 模型的三种配方。第一行对应上文手算；第二行把 Adam 状态压到 8 比特（约 2 B/参数）并改用 bf16 参数；第三行 QLoRA：底座以 4 比特 NF4 冻结（7×0.5 B = 3.5 GB），只训练低秩插入件。</figcaption>
+    </figure>
+
+    <h3>四把刀，各砍一块<span class="en">precision · checkpoint · shard · low-rank</span></h3>
+
+    <p><b>精度。</b>混合精度训练用 bf16/fp16 做前向与梯度，fp32 留给主权重与累加；fp16 还需要损失放大防止小梯度下溢<sup class="cite"><a href="#ref-14">[14]</a></sup>。再往下是 fp8：把激活与权重按块缩放存成 8 比特浮点，H100 一代硬件开始有原生支持<sup class="cite"><a href="#ref-15">[15]</a></sup>。DeepSeek-V3（671B 总参数/37B 激活，14.8T token）把按块 fp8 用到了全程预训练，2048 张 H800 上总耗时约 2.788M GPU 时<sup class="cite"><a href="#ref-16">[16]</a></sup>。2026 年的工作已经把 MoE 的专家权重训到 MXFP4（4 比特块缩放）精度<sup class="cite"><a href="#ref-17">[17]</a></sup>。方向明确：<b>数值精度是显存与算力的兑换窗口，且兑换率在变好</b>。</p>
+
+    <p><b>检查点重计算。</b>不存全部中间激活，反向时按需重算：显存从「随层数线性」降为「随层数开方」，代价是约三分之一的额外前向计算<sup class="cite"><a href="#ref-18">[18]</a></sup>。这是「用时间换显存」的旋钮，长序列训练几乎必开。</p>
+
+    <p><b>分片。</b>模型装不进一张卡，就把「参数、梯度、优化器状态」切开摊到 N 张卡上（ZeRO 的三个阶段逐级多切一样），用时聚合<sup class="cite"><a href="#ref-19">[19]</a></sup>；PyTorch 的 FSDP 是同一思想的原生实现。配合流水线并行与张量并行，就是「数据/张量/流水线」三维并行的完整训练栈。通信是分片的价格：卡间带宽不足时，扩展效率先于显存成为瓶颈。</p>
+
+    <p><b>低秩。</b>微调时不动 7B 全量参数，只在注意力和前层旁边插入一对低秩矩阵 <span class="var">A·B</span>（LoRA）<sup class="cite"><a href="#ref-20">[20]</a></sup>，可训练参数常不到 1%；QLoRA 再把冻结底座压成 4 比特 NF4，65B 模型微调进单卡 48 GB——对应图 2 第三行<sup class="cite"><a href="#ref-21">[21]</a></sup>。</p>
+
+    <h3>算子层面的免费午餐<span class="en">fused kernels</span></h3>
+
+    <p>注意力公式的数学不变，实现可以换：标准实现要把 N×N 的注意力矩阵写进显存再读回来，FlashAttention 改成分块计算、在线 softmax，注意力显存从 O(N²) 降到 O(N)；论文报告 16k 序列显存节省至 7.6×、BERT-large 训练端到端提速 15%、GPT-2（1k 序列）注意力提速 3×<sup class="cite"><a href="#ref-22">[22]</a></sup>；Hopper 架构上的 FlashAttention-3 借助异步与低精度 GEMM 再快 1.5-2×<sup class="cite"><a href="#ref-23">[23]</a></sup>。这类「同一数学、更快实现」还包括融合的 AdamW 内核、fused softmax 与 RMSNorm——它们不改变任何公式，只改变显存往返次数。</p>
+  </div>
+</section>
+
+<!-- ================= 五 ================= -->
+<section id="sec-deploy" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-deploy"/></svg>
+    <span class="tt">五、部署优化：从权重到服务</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">训练结束拿到检查点，离「一个延迟达标、吞吐够用、单位成本可接受的服务」还差一条流水线。压缩、编译、服务，三级各管一段。</p>
+
+    <figure class="fig">
+      <svg viewBox="0 0 640 150" role="img" aria-label="部署流水线：权重产物依次经过压缩、编译、执行引擎、服务层，各环节下方标注对应指标。">
+        <g font-family="var(--mono)" font-size="10.5" color="var(--ink2)">
+          <g>
+            <rect x="18" y="24" width="96" height="58" fill="none" stroke="currentColor"/>
+            <text x="66" y="43" text-anchor="middle" fill="var(--ink)">权重产物</text>
+            <text x="66" y="66" text-anchor="middle" fill="var(--ink3)" font-size="9.5">safetensors</text>
+            <line x1="114" y1="53" x2="138" y2="53" stroke="currentColor" marker-end="url(#axArrow)"/>
+          </g>
+          <g>
+            <rect x="140" y="24" width="112" height="58" fill="none" stroke="currentColor"/>
+            <text x="196" y="43" text-anchor="middle" fill="var(--ink)">压缩</text>
+            <text x="196" y="59" text-anchor="middle" fill="var(--ink3)" font-size="9.5">int8/int4</text>
+            <text x="196" y="71" text-anchor="middle" fill="var(--ink3)" font-size="9.5">蒸馏 · 剪枝</text>
+            <line x1="252" y1="53" x2="276" y2="53" stroke="currentColor" marker-end="url(#axArrow)"/>
+          </g>
+          <g>
+            <rect x="278" y="24" width="112" height="58" fill="none" stroke="currentColor"/>
+            <text x="334" y="43" text-anchor="middle" fill="var(--ink)">编译 / 图优化</text>
+            <text x="334" y="59" text-anchor="middle" fill="var(--ink3)" font-size="9.5">torch.compile</text>
+            <text x="334" y="71" text-anchor="middle" fill="var(--ink3)" font-size="9.5">TensorRT</text>
+            <line x1="390" y1="53" x2="414" y2="53" stroke="currentColor" marker-end="url(#axArrow)"/>
+          </g>
+          <g>
+            <rect x="416" y="24" width="96" height="58" fill="none" stroke="currentColor"/>
+            <text x="464" y="43" text-anchor="middle" fill="var(--ink)">执行引擎</text>
+            <text x="464" y="59" text-anchor="middle" fill="var(--ink3)" font-size="9.5">融合算子</text>
+            <text x="464" y="71" text-anchor="middle" fill="var(--ink3)" font-size="9.5">flash 注意力</text>
+            <line x1="512" y1="53" x2="536" y2="53" stroke="currentColor" marker-end="url(#axArrow)"/>
+          </g>
+          <g>
+            <rect x="538" y="24" width="88" height="58" fill="none" stroke="currentColor"/>
+            <text x="582" y="43" text-anchor="middle" fill="var(--ink)">服务层</text>
+            <text x="582" y="59" text-anchor="middle" fill="var(--ink3)" font-size="9.5">批处理</text>
+            <text x="582" y="71" text-anchor="middle" fill="var(--ink3)" font-size="9.5">KV 缓存</text>
+          </g>
+          <g font-size="9.5" fill="var(--ink3)">
+            <text x="66" y="100" text-anchor="middle">GB 级</text>
+            <text x="196" y="100" text-anchor="middle">→ 体积 · 精度损失</text>
+            <text x="334" y="100" text-anchor="middle">→ 单步时延</text>
+            <text x="464" y="100" text-anchor="middle">→ kernel 利用率</text>
+            <text x="582" y="100" text-anchor="middle">→ 吞吐 · 并发</text>
+          </g>
+          <line x1="18" y1="118" x2="626" y2="118" stroke="currentColor" marker-end="url(#axArrow)"/>
+          <text x="18" y="133" fill="var(--ink3)" font-size="9.5">同一权重离线变换一次，线上每次请求都吃到收益</text>
+        </g>
+      </svg>
+      <figcaption><span class="t">图 3</span>部署流水线。左两级离线执行（产出更小、更快的等价模型），右两级在线执行（把硬件与请求填满）。投机解码横跨执行与服务两层。</figcaption>
+    </figure>
+
+    <h3>压缩：量化、蒸馏、剪枝<span class="en">compression</span></h3>
+
+    <p><b>训练后量化（PTQ）</b>不改训练，拿现成权重直接压：<b>GPTQ</b> 逐列把权重投到 int4 网格、用海森矩阵修正已量化列的误差<sup class="cite"><a href="#ref-24">[24]</a></sup>；<b>AWQ</b> 的观察是约 1% 的「显著权重」决定精度，对它们所在通道做等比缩放保护，量化其余<sup class="cite"><a href="#ref-25">[25]</a></sup>；<b>SmoothQuant</b> 把激活里的离群幅度迁移到权重上，让 int8 的权重与激活都能量化（W8A8）<sup class="cite"><a href="#ref-26">[26]</a></sup>。<b>量化感知训练（QAT）</b>则在训练里就模拟量化算子，精度更高但要回训练循环。两条更老的路：<b>蒸馏</b>用大模型的输出当软标签训小模型<sup class="cite"><a href="#ref-27">[27]</a></sup>，<b>剪枝</b>按幅度或规则去掉不重要的连接再微调恢复<sup class="cite"><a href="#ref-28">[28]</a></sup>。</p>
+
+    <h3>量化失真台<span class="en">quantization bench rig</span></h3>
+
+    <p>一组模拟权重（4096 个样本，标准正态），分别量化到 bf16、int8（整张张量一个尺度）、int4（整张）与 int4（每 64 个一组一个尺度）。右图把「量化前 → 量化后」画成阶梯：台阶越稀，小权重被并成零的越多。<b>打开离群值开关</b>，几个 5-7σ 的样本会把整张量量化的格子撑大数倍——这正是 AWQ 与 SmoothQuant 要解的问题；分组量化是同一个思想的便宜版。</p>
+
+    <div class="calc">
+      <figcaption><span class="t">手算 · 为什么离群值毁掉 int4</span><span>4096 个样本的 |x|max 期望 ≈ √(2 ln 4096) ≈ 3.9</span></figcaption>
+      <div class="calc-body">
+      <table>
+        <tbody>
+          <tr><td class="k">无离群，int4 整张</td><td class="n">Δ = 3.9/7 ≈ 0.56</td><td class="c">P(|x| &lt; Δ/2) ≈ 22% 的权重变成 0；RMSE ≈ Δ/√12 ≈ 0.16（16% σ）</td></tr>
+          <tr><td class="k">加了 ±6σ 离群</td><td class="n">Δ = 6/7 ≈ 0.86</td><td class="c">P(|x| &lt; 0.43) ≈ 33% 变 0；RMSE ≈ 0.25（25% σ）</td></tr>
+          <tr><td class="k">int8 整张</td><td class="n">Δ = 3.9/127 ≈ 0.031</td><td class="c">RMSE ≈ 0.009（0.9% σ）——8 比特离群容忍度高一个量级</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="rig" id="quantRig">
+      <div class="tbar">
+        <svg class="pix" aria-hidden="true"><use href="#ic-grid"/></svg>
+        <span class="tt">QUANT.EXE - 量化失真台</span>
+        <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+      </div>
+      <div class="rig-top">
+        <div class="rig-canvas">
+          <div class="screen">
+            <canvas id="quantCanvas" role="img" aria-label="量化失真台：左侧为权重分布直方图与量化后分布叠加，右侧为量化前后取值的阶梯对应关系。数值见下方读数。"></canvas>
+          </div>
+        </div>
+        <div class="rig-side" id="quantRead"></div>
+      </div>
+
+      <div class="seg">
+        <p class="seg-lbl">目标格式</p>
+        <button class="chip" data-fmt="bf16" aria-pressed="false">bf16</button>
+        <button class="chip" data-fmt="int8t" aria-pressed="true">int8 · 整张</button>
+        <button class="chip" data-fmt="int4t" aria-pressed="false">int4 · 整张</button>
+        <button class="chip" data-fmt="int4g" aria-pressed="false">int4 · 64 分组</button>
+        <button class="chip" data-out="1" aria-pressed="false" id="quant-out">＋ 离群值</button>
+        <button class="chip" id="quant-resample" aria-pressed="false">重采样</button>
+      </div>
+
+      <p class="rig-caption">同一份数据只换格式与缩放粒度。观察两点：int4 整张量化时右图台阶稀疏、直方图在 0 处堆起尖峰；打开离群值后台阶间距被撑大约一倍，而 64 分组把每组的尺度交给组内最大值，台阶在主体区间重新变密。</p>
+    </div>
+
+    <h3>编译与引擎：同一数学，更快执行<span class="en">compile &amp; engines</span></h3>
+
+    <p><span class="mono">torch.compile</span> 把 PyTorch 程序即时编译成融合内核的图，官方基准在常见负载上给出两位数百分比的提速，个别模型更高（以官方发布数据为准）<sup class="cite"><a href="#ref-29">[29]</a></sup>。推理侧的专用引擎把这套事做绝：TensorRT-LLM 针对 NVIDIA 卡做图优化与内核选择，ONNX Runtime 提供跨平台运行时，OpenVINO 面向 Intel CPU/核显。选型原则很朴素——<b>固定硬件、固定形状、追求极限，用厂商引擎；跨平台交付，用 ONNX Runtime 一类中间层</b>。代价是动态形状与自定义算子可能触发重编译，长尾场景要先测再选。</p>
+
+    <h3 id="serving">服务层：吞吐是拼出来的<span class="en">serving</span></h3>
+
+    <p>自回归生成的每一步都要读全部历史的 K/V 投影。<b>KV 缓存</b>把它们留下避免重算，代价是显存：batch 越大、上下文越长，缓存越肥。架构层面的对策在训练时就埋下：<b>MQA/GQA</b> 让多组查询头共享少量 KV 头（例如 64 组查询共享 8 组 KV，缓存直接除以 8，质量几乎不掉）<sup class="cite"><a href="#ref-30">[30]</a></sup>；DeepSeek 的 <b>MLA</b> 把 KV 压缩进低秩潜在向量，缓存降到标准注意力的约 6.7%（论文口径 93.3% 削减）<sup class="cite"><a href="#ref-31">[31]</a></sup>。</p>
+
+    <p>批处理与调度是另一条线：<b>连续批处理</b>（Orca，OSDI 2022）让序列各自到位各自退出、新请求即时填空，而不是等整批凑齐<sup class="cite"><a href="#ref-32">[32]</a></sup>；<b>PagedAttention</b>（vLLM）把 KV 缓存按页管理，像操作系统管内存一样消除碎片，论文报告吞吐相对朴素 Transformers 推理最高 24×<sup class="cite"><a href="#ref-33">[33]</a></sup>。<b>投机解码</b>用小模型/草稿头先猜几个 token、大模型一次并行验证，接受的部分等于一步出了多步——数学上不改变输出分布，典型加速 2-3×<sup class="cite"><a href="#ref-34">[34]</a></sup>；2026 年的后续工作把「草稿器训练」也并进这条链路<sup class="cite"><a href="#ref-35">[35]</a></sup>。</p>
+  </div>
+</section>
+
+<!-- ================= 六 ================= -->
+<section id="sec-cheatsheet" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-grid"/></svg>
+    <span class="tt">六、选型速查</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">把前四节的手段按场景收拢成两张表。前提都一样：先有基线，再动一刀，量一次。</p>
+
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr><th>训练场景</th><th>首选组合</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>入门/中小模型（&lt;1B）</td><td>AdamW + 余弦退火 + warmup</td><td>超参鲁棒，社区默认，出了问题好排查</td></tr>
+          <tr><td>大规模预训练（10B+，矩阵参数为主）</td><td>Muon（矩阵）+ AdamW（嵌入/输出层），RMS 对齐 0.2</td><td>Moonlight 证据：同等效果算力约省一半<sup class="cite"><a href="#ref-8">[8]</a></sup></td></tr>
+          <tr><td>不想调退火曲线</td><td>Schedule-Free AdamW</td><td>内嵌调度，中低 QPS 微调友好<sup class="cite"><a href="#ref-6">[6]</a></sup></td></tr>
+          <tr><td>显存不够（激活爆炸）</td><td>激活检查点 + bf16</td><td>约 1.3× 计算换走大头激活显存</td></tr>
+          <tr><td>显存不够（状态爆炸）</td><td>8 比特优化器状态 / ZeRO 分片</td><td>状态占 98 GB 账里的 56 GB，先砍它</td></tr>
+          <tr><td>单卡微调大模型</td><td>QLoRA（4 比特底座 + LoRA）</td><td>7B 进 5 GB 量级，65B 进单卡 48 GB<sup class="cite"><a href="#ref-21">[21]</a></sup></td></tr>
+          <tr><td>长上下文训练</td><td>FlashAttention 系内核</td><td>注意力显存 O(N²)→O(N)，数学不变<sup class="cite"><a href="#ref-22">[22]</a></sup></td></tr>
+          <tr><td>追求极限的数值预算</td><td>fp8 按块缩放；MoE 专家 MXFP4</td><td>DeepSeek-V3 已全程 fp8 验证<sup class="cite"><a href="#ref-16">[16]</a></sup><sup class="cite"><a href="#ref-17">[17]</a></sup></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr><th>部署场景</th><th>首选组合</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>显存装不下大模型</td><td>int4 权重量化（GPTQ/AWQ）</td><td>体积除以 4，常见基准掉点在 1% 量级<sup class="cite"><a href="#ref-24">[24]</a></sup><sup class="cite"><a href="#ref-25">[25]</a></sup></td></tr>
+          <tr><td>激活也有离群值</td><td>SmoothQuant（W8A8）</td><td>幅度迁移让两侧都能 int8<sup class="cite"><a href="#ref-26">[26]</a></sup></td></tr>
+          <tr><td>要小要快要自己训</td><td>蒸馏 + 剪枝 + QAT</td><td>结构化压缩的完整老三样<sup class="cite"><a href="#ref-27">[27]</a></sup><sup class="cite"><a href="#ref-28">[28]</a></sup></td></tr>
+          <tr><td>固定 NVIDIA 硬件、极限时延</td><td>TensorRT-LLM</td><td>图优化 + 内核选择打满硬件</td></tr>
+          <tr><td>跨平台/边缘交付</td><td>ONNX Runtime / OpenVINO</td><td>一次导出，多后端运行</td></tr>
+          <tr><td>高并发在线服务</td><td>vLLM 类引擎（连续批 + PagedAttention）</td><td>吞吐可比朴素实现高一个量级<sup class="cite"><a href="#ref-33">[33]</a></sup></td></tr>
+          <tr><td>低并发、要首字快</td><td>投机解码</td><td>分布不变，典型 2-3×<sup class="cite"><a href="#ref-34">[34]</a></sup></td></tr>
+          <tr><td>长上下文推理贵</td><td>训练时就选 GQA/MLA 架构</td><td>KV 缓存 ÷8（GQA）或 ÷15（MLA 口径）<sup class="cite"><a href="#ref-30">[30]</a></sup><sup class="cite"><a href="#ref-31">[31]</a></sup></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 收尾 ================= -->
+<section id="sec-close" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-warn"/></svg>
+    <span class="tt">收尾：五个误区</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">和前篇一样，以误区清单收尾。每一条都对应本页某个仪器或手算可以直接验证的事实。</p>
+
+    <ol class="misread">
+      <li>
+        <div>
+          <strong>「换了 Muon 就省一半算力。」</strong>
+          <p>48% 的节省来自 Moonlight 的 3B/16B 设定，且矩阵参数与嵌入层各用各的优化器、RMS 与权重衰减都要对齐。独立基准下，多数候选优化器对认真调参的 AdamW 优势会缩小<sup class="cite"><a href="#ref-9">[9]</a></sup><sup class="cite"><a href="#ref-10">[10]</a></sup>。先在自己的任务上跑对照，再迁移结论。</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>「量化必然掉点。」</strong>
+          <p>失真台显示：离群值才是 int4 的杀手，而整张量、分组缩放、激活迁移是逐级解药。int8 通道级量化在常见基准上的掉点常在 1% 量级；真正难的是权重与激活的联合分布，不是比特数本身。</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>「批越大越好。」</strong>
+          <p>批大小翻倍要学习率跟着翻（线性缩放法则<sup class="cite"><a href="#ref-11">[11]</a></sup>），超过某个点后泛化会变差、显存先爆；而小批配合梯度累积可以等效拼出大批，多一条腾挪的路。</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>「编译一次就一劳永逸。」</strong>
+          <p>图编译对静态形状友好，序列长度一变就可能重编译，延迟尖刺出现在线上而不是基准里。真实流量下先量：单步时延、重编译次数、长尾 P99，三个数一起看。</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>「推理优化是服务端的事。」</strong>
+          <p>KV 缓存的大小在训练选架构时就定了：GQA、MLA 是权重结构的一部分，事后没法给一个多头模型「加装」。部署成本的最优解，一半在训练前的架构选型里。</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="note-box">
+      <span class="tag">一页速记</span>
+      <p>优化器是方向的加工厂：动量抗震荡，Adam 按参数配尺子，AdamW 解耦正则，Muon 把矩阵动量正交化并已通过万亿参数级验证。步长先热身后退火，批大小动学习率跟着动。显存是算术题：fp32 主副本 + 梯度 + 两份矩 = 98 GB/7B，精度、检查点、分片、低秩各砍一块。部署是三级火箭：压缩减体积，编译提单步，服务层（连续批、KV 分页、投机解码）拼吞吐。所有倍数都要问一句：论文设定是什么，我的任务对得上吗。</p>
+    </div>
+
+    <div class="note-box">
+      <span class="tag">前篇</span>
+      <p>神经元、损失、反向传播与架构演进的完整推演见 <a href="neural-network-overview.html">《神经网络全景：从单个神经元到 Transformer》</a>；本篇所有记号与「学习率三档」实验均出自该篇第三节。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 参考 ================= -->
+<section id="sec-refs" class="win">
+  <h2 class="tbar">
+    <svg class="pix" aria-hidden="true"><use href="#ic-book"/></svg>
+    <span class="tt">参考 - REFERENCES.TXT</span>
+    <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+  </h2>
+  <div class="wbody">
+    <p class="sec-q">正文中的上标编号对应下列条目；工程工具条目给到官方入口。</p>
+
+    <ol class="refs">
+      <li id="ref-1">Sutskever, et al. <i>On the Importance of Initialization and Momentum in Deep Learning.</i> ICML 2013. <a href="https://proceedings.mlr.press/v28/sutskever13.html">proceedings.mlr.press/v28/sutskever13</a></li>
+      <li id="ref-2">Kingma &amp; Ba. <i>Adam: A Method for Stochastic Optimization.</i> ICLR 2015. <a href="https://arxiv.org/abs/1412.6980">arXiv:1412.6980</a></li>
+      <li id="ref-3">Loshchilov &amp; Hutter. <i>Decoupled Weight Decay Regularization.</i> ICLR 2019. <a href="https://arxiv.org/abs/1711.05101">arXiv:1711.05101</a></li>
+      <li id="ref-4">Chen, et al. <i>Symbolic Discovery of Optimization Algorithms.</i> ICLR 2023. <a href="https://arxiv.org/abs/2302.06675">arXiv:2302.06675</a></li>
+      <li id="ref-5">Liu, et al. <i>Sophia: A Scalable Stochastic Second-order Optimizer for Language Model Pre-training.</i> ICLR 2024. <a href="https://arxiv.org/abs/2305.14342">arXiv:2305.14342</a></li>
+      <li id="ref-6">Defazio, et al. <i>The Road Less Scheduled.</i> ICML 2024. <a href="https://arxiv.org/abs/2402.14395">arXiv:2402.14395</a></li>
+      <li id="ref-7">Pagliardini, et al. <i>AdEMAMix: Better and Faster Training with Older Gradients.</i> NeurIPS 2024. <a href="https://arxiv.org/abs/2409.03137">arXiv:2409.03137</a></li>
+      <li id="ref-8">Liu, et al. <i>Moonlight: A Muon-Based LLM Training Recipe with 2× Compute Efficiency.</i> 2025. <a href="https://arxiv.org/abs/2502.16982">arXiv:2502.16982</a></li>
+      <li id="ref-9"><i>Benchmarking Optimizers for LLM Pretraining.</i> 2025. <a href="https://arxiv.org/abs/2509.01440">arXiv:2509.01440</a></li>
+      <li id="ref-10"><i>Fantastic Pretraining Optimizers and Where to Find Them.</i> OpenReview 2025. <a href="https://openreview.net/pdf?id=2J51qUZ0iG">openreview.net/pdf?id=2J51qUZ0iG</a></li>
+      <li id="ref-11">Goyal, et al. <i>Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour.</i> 2017. <a href="https://arxiv.org/abs/1706.02677">arXiv:1706.02677</a></li>
+      <li id="ref-12">Srivastava, et al. <i>Dropout: A Simple Way to Prevent Neural Networks from Overfitting.</i> JMLR 2014. <a href="https://jmlr.org/papers/v15/srivastava14a.html">jmlr.org/papers/v15/srivastava14a</a></li>
+      <li id="ref-13">Szegedy, et al. <i>Rethinking the Inception Architecture for Computer Vision.</i> CVPR 2016. <a href="https://arxiv.org/abs/1606.04040">arXiv:1606.04040</a></li>
+      <li id="ref-14">Micikevicius, et al. <i>Mixed Precision Training.</i> ICLR 2018. <a href="https://arxiv.org/abs/1710.03740">arXiv:1710.03740</a></li>
+      <li id="ref-15">Micikevicius, et al. <i>FP8 Formats for Deep Learning.</i> 2022. <a href="https://arxiv.org/abs/2209.05433">arXiv:2209.05433</a></li>
+      <li id="ref-16">DeepSeek-AI. <i>DeepSeek-V3 Technical Report.</i> 2024. <a href="https://arxiv.org/abs/2412.19437">arXiv:2412.19437</a></li>
+      <li id="ref-17"><i>An MXFP4 Training Recipe for MoE Models.</i> 2026. <a href="https://arxiv.org/abs/2603.02731">arXiv:2603.02731</a></li>
+      <li id="ref-18">Chen. <i>Training Deep Nets with Sublinear Memory Cost.</i> 2016. <a href="https://arxiv.org/abs/1604.06174">arXiv:1604.06174</a></li>
+      <li id="ref-19">Rajbhandari, et al. <i>ZeRO: Memory Optimizations Toward Training Trillion Parameter Models.</i> SC 2020. <a href="https://arxiv.org/abs/1910.02054">arXiv:1910.02054</a></li>
+      <li id="ref-20">Hu, et al. <i>LoRA: Low-Rank Adaptation of Large Language Models.</i> ICLR 2022. <a href="https://arxiv.org/abs/2106.09685">arXiv:2106.09685</a></li>
+      <li id="ref-21">Dettmers, et al. <i>QLoRA: Efficient Finetuning of Quantized LLMs.</i> NeurIPS 2023. <a href="https://arxiv.org/abs/2305.14314">arXiv:2305.14314</a></li>
+      <li id="ref-22">Dao, et al. <i>FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness.</i> NeurIPS 2022. <a href="https://arxiv.org/abs/2205.14135">arXiv:2205.14135</a></li>
+      <li id="ref-23">Shah &amp; Ma. <i>FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision.</i> NeurIPS 2024. <a href="https://arxiv.org/abs/2407.08608">arXiv:2407.08608</a></li>
+      <li id="ref-24">Frantar, et al. <i>GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers.</i> ICLR 2023. <a href="https://arxiv.org/abs/2210.17323">arXiv:2210.17323</a></li>
+      <li id="ref-25">Lin, et al. <i>AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration.</i> MLSys 2024. <a href="https://arxiv.org/abs/2306.00978">arXiv:2306.00978</a></li>
+      <li id="ref-26">Xiao, et al. <i>SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models.</i> ICML 2023. <a href="https://arxiv.org/abs/2211.10438">arXiv:2211.10438</a></li>
+      <li id="ref-27">Hinton, Vinyals &amp; Dean. <i>Distilling the Knowledge in a Neural Network.</i> 2015. <a href="https://arxiv.org/abs/1503.02531">arXiv:1503.02531</a></li>
+      <li id="ref-28">Han, Mao &amp; Dally. <i>Learning Both Weights and Connections for Efficient Neural Networks.</i> NIPS 2015. <a href="https://arxiv.org/abs/1510.00149">arXiv:1510.00149</a></li>
+      <li id="ref-29">PyTorch. <i>PyTorch 2.x：torch.compile 与官方基准.</i> <a href="https://pytorch.org/get-started/pytorch-2-0/">pytorch.org/get-started/pytorch-2-0</a></li>
+      <li id="ref-30">Ainslie, et al. <i>GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints.</i> EMNLP 2023. <a href="https://arxiv.org/abs/2305.13245">arXiv:2305.13245</a></li>
+      <li id="ref-31">DeepSeek-AI. <i>DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model.</i> 2024. <a href="https://arxiv.org/abs/2405.04434">arXiv:2405.04434</a></li>
+      <li id="ref-32">Yu, et al. <i>Orca: A Distributed Serving System for Transformer-Based Generative Models.</i> OSDI 2022. <a href="https://arxiv.org/abs/2205.05158">arXiv:2205.05158</a></li>
+      <li id="ref-33">Kwon, et al. <i>Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM).</i> SOSP 2023. <a href="https://arxiv.org/abs/2309.06180">arXiv:2309.06180</a></li>
+      <li id="ref-34">Leviathan, Kalman &amp; Matias. <i>Fast Inference from Transformers via Speculative Decoding.</i> ICML 2023. <a href="https://arxiv.org/abs/2211.17192">arXiv:2211.17192</a></li>
+      <li id="ref-35"><i>Vegas: Self-Speculative Decoding with Verification-Guided Acceptance.</i> 2026. <a href="https://arxiv.org/abs/2602.07223">arXiv:2602.07223</a></li>
+    </ol>
+  </div>
+</section>
+
+<footer>
+  <span class="st">就绪</span>
+  <p>创建于 2026-11-11。显存与失真的手算块可用计算器逐行复核；速度倍数均注明论文或官方口径。</p>
+  <p>相关阅读：<a href="neural-network-overview.html">《神经网络全景：从单个神经元到 Transformer》</a>（本篇前置：损失、梯度与反向传播）· <a href="llm-pretraining-alignment.html">《大模型是怎么造出来的》</a>（预训练数据、scaling law 与后训练对齐的全景）· <a href="index.html">返回首页</a></p>
+</footer>
+
+</main>
+
+<!-- ================= 宽屏侧航道：窄栏重排的工具窗口 ================= -->
+<aside class="lane" aria-label="随文工具窗口">
+  <section class="win sat" id="sat-schedule" aria-labelledby="sat-schedule-t">
+    <h2 class="tbar">
+      <svg class="pix" aria-hidden="true"><use href="#ic-clock"/></svg>
+      <span class="tt" id="sat-schedule-t">SCHEDULE.EXE</span>
+      <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+    </h2>
+    <div class="wbody sat-body">
+      <p class="sat-kicker">步长 · 先热身后退火</p>
+      <svg class="sched" viewBox="0 0 240 116" role="img" aria-label="学习率调度曲线：前段线性升温到峰值，后段余弦退火到接近零。">
+        <defs>
+          <marker id="schedArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g color="var(--ink2)">
+          <line class="ax" x1="24" y1="84" x2="226" y2="84" marker-end="url(#schedArrow)"/>
+          <line class="ax" x1="62" y1="16" x2="62" y2="84" stroke-dasharray="2 2"/>
+          <path class="curve" d="M24 84 L62 18 C112 18 180 84 226 84"/>
+          <circle class="peak" cx="62" cy="18" r="2"/>
+          <g font-family="var(--mono)" font-size="8.5" fill="var(--ink3)">
+            <text x="18" y="21" text-anchor="end">η</text>
+            <text x="18" y="84" text-anchor="end">0</text>
+            <text x="24" y="100">0</text>
+            <text x="62" y="100" text-anchor="middle">T_warm</text>
+            <text x="226" y="100" text-anchor="end">T</text>
+            <text x="66" y="35" font-size="8">ηmax</text>
+          </g>
+        </g>
+      </svg>
+      <p class="sat-note">线性升温托住开局，余弦退火压住后期；批大小 ×k 时峰值学习率同步 ×k。</p>
+    </div>
+  </section>
+
+  <section class="win sat" id="sat-vram" aria-labelledby="sat-vram-t">
+    <h2 class="tbar">
+      <svg class="pix" aria-hidden="true"><use href="#ic-chip"/></svg>
+      <span class="tt" id="sat-vram-t">VRAM.EXE</span>
+      <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+    </h2>
+    <div class="wbody sat-body">
+      <p class="sat-kicker">7B · AdamW 混合精度</p>
+      <div class="vram-bar" role="img" aria-label="98 GB 显存构成：参数 28 GB、梯度 14 GB、Adam 一阶矩 28 GB、二阶矩 28 GB。">
+        <i class="s1" style="width:28.57%"></i><i class="s2" style="width:14.29%"></i><i class="s3" style="width:28.57%"></i><i class="s4" style="width:28.57%"></i>
+      </div>
+      <ul class="vram-key">
+        <li><i class="s1"></i>参数 fp32<b>28</b></li>
+        <li><i class="s2"></i>梯度 bf16<b>14</b></li>
+        <li><i class="s3"></i>Adam m<b>28</b></li>
+        <li><i class="s4"></i>Adam v<b>28</b></li>
+      </ul>
+      <p class="vram-total"><span>合计 · 不含激活</span><b>98 GB</b></p>
+      <p class="sat-note">≈ 14 B/参数；纯 fp32 训练为 16 B → 112 GB。</p>
+    </div>
+  </section>
+
+  <section class="win sat sat-pipe" id="sat-pipeline" aria-labelledby="sat-pipeline-t">
+    <h2 class="tbar">
+      <svg class="pix" aria-hidden="true"><use href="#ic-deploy"/></svg>
+      <span class="tt" id="sat-pipeline-t">PIPELINE.EXE</span>
+      <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+    </h2>
+    <div class="wbody sat-body">
+      <p class="sat-kicker">部署流水线 · 五级</p>
+      <ol class="pipe">
+        <li><span class="pipe-n">1</span><div class="pipe-t"><div class="pipe-h"><b>权重产物</b><em>GB 级</em></div><span>safetensors</span></div></li>
+        <li><span class="pipe-n">2</span><div class="pipe-t"><div class="pipe-h"><b>压缩</b><em>体积 · 精度</em></div><span>int8/int4 · 蒸馏 · 剪枝</span></div></li>
+        <li><span class="pipe-n">3</span><div class="pipe-t"><div class="pipe-h"><b>编译 / 图优化</b><em>单步时延</em></div><span>torch.compile · TensorRT</span></div></li>
+        <li><span class="pipe-n">4</span><div class="pipe-t"><div class="pipe-h"><b>执行引擎</b><em>kernel 利用率</em></div><span>融合算子 · flash 注意力</span></div></li>
+        <li><span class="pipe-n">5</span><div class="pipe-t"><div class="pipe-h"><b>服务层</b><em>吞吐 · 并发</em></div><span>连续批 · KV 分页</span></div></li>
+      </ol>
+      <p class="sat-note">压缩与编译离线做一次，执行与服务线上每次受益；投机解码横跨后两级。</p>
+    </div>
+  </section>
+
+  <section class="win sat" id="sat-cache" aria-labelledby="sat-cache-t">
+    <h2 class="tbar">
+      <svg class="pix" aria-hidden="true"><use href="#ic-chip"/></svg>
+      <span class="tt" id="sat-cache-t">CACHE.EXE</span>
+      <span class="wbtns" aria-hidden="true"><i class="wb"><svg><use href="#wb-min"/></svg></i><i class="wb"><svg><use href="#wb-max"/></svg></i><i class="wb"><svg><use href="#wb-x"/></svg></i></span>
+    </h2>
+    <div class="wbody sat-body">
+      <p class="sat-kicker">KV 缓存 · 相对标准注意力</p>
+      <ul class="cache">
+        <li><div class="row"><span>标准多头</span><b>100%</b></div><div class="bar"><i style="width:100%"></i></div></li>
+        <li class="gqa"><div class="row"><span>GQA · 64Q / 8KV</span><b>12.5%</b></div><div class="bar"><i style="width:12.5%"></i></div></li>
+        <li class="mla"><div class="row"><span>MLA · 低秩潜在</span><b>6.7%</b></div><div class="bar"><i style="width:6.7%"></i></div></li>
+      </ul>
+      <p class="sat-note">GQA 让多组查询共享 KV 头，缓存直接除以 8；MLA 把 KV 压进低秩向量，论文口径削减 93.3%。</p>
+    </div>
+  </section>
+</aside>
+<svg class="leads" aria-hidden="true"></svg>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =============== 主题三态（与站内其他页共用键，默认跟随系统） =============== */
+  var root = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  var btnT = document.getElementById('themeBtnT');
+  var MODES = ['auto', 'light', 'dark'];
+  var LABEL = { auto: '跟随系统', light: '浅色', dark: '深色' };
+  var mode;
+
+  try {
+    var saved = localStorage.getItem('technotes-theme');
+    mode = (saved === 'light' || saved === 'dark' || saved === 'auto') ? saved : 'auto';
+  } catch (e) { mode = 'auto'; }
+
+  function applyTheme(m) {
+    if (m === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', m);
+    btnT.textContent = '主题：' + LABEL[m];
+    btn.setAttribute('aria-label', '主题：' + LABEL[m] + '，点击切换');
+    try { window.dispatchEvent(new CustomEvent('nt-theme')); } catch (e) {}
+  }
+  applyTheme(mode);
+
+  btn.addEventListener('click', function () {
+    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+    applyTheme(mode);
+    try { localStorage.setItem('technotes-theme', mode); } catch (e) {}
+  });
+
+  function cssColor(name, fallback) {
+    var v = getComputedStyle(root).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  /* =============== 英雄区监视器：损失地形上的四条下降轨迹（现场计算） =============== */
+  (function () {
+    var canvas = document.getElementById('heroField');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+
+    var X0 = -2.6, X1 = 2.6, Y0 = -2.9, Y1 = 2.9;
+    function L(x, y) { return 0.5 * (50 * x * x + y * y); }
+    function G(x, y) { return [50 * x, y]; }
+
+    var W = 0, H = 0, DPR = 1;
+    var heat = null;
+    var runners = null;
+    var frame = 0;
+    var raf = null;
+    var STEPS = 150;
+
+    var COLS = [
+      { v: '--ink3', d: '#757575' },
+      { v: '--warn', d: '#806000' },
+      { v: '--insight', d: '#008080' },
+      { v: '--fail', d: '#800000' }
+    ];
+
+    function makeRunners() {
+      var sx = -2.4, sy = 2.6;
+      return COLS.map(function (c) {
+        return { i: c, x: sx, y: sy, m: [0, 0], v: [0, 0], t: 0, trail: [[sx, sy]] };
+      });
+    }
+
+    function stepOne(o) {
+      var g = G(o.x, o.y);
+      var eta = 0.03, MU = 0.9;
+      if (o.i.v === '--ink3') {            /* SGD */
+        o.x -= eta * g[0]; o.y -= eta * g[1];
+      } else if (o.i.v === '--warn') {     /* 动量 */
+        o.m[0] = MU * o.m[0] + g[0];
+        o.m[1] = MU * o.m[1] + g[1];
+        o.x -= eta * o.m[0]; o.y -= eta * o.m[1];
+      } else if (o.i.v === '--insight') {  /* Adam */
+        var b1 = 0.9, b2 = 0.999, eps = 1e-8;
+        o.m[0] = b1 * o.m[0] + (1 - b1) * g[0];
+        o.m[1] = b1 * o.m[1] + (1 - b1) * g[1];
+        o.v[0] = b2 * o.v[0] + (1 - b2) * g[0] * g[0];
+        o.v[1] = b2 * o.v[1] + (1 - b2) * g[1] * g[1];
+        o.t += 1;
+        var c1 = 1 - Math.pow(b1, o.t), c2 = 1 - Math.pow(b2, o.t);
+        o.x -= eta * (o.m[0] / c1) / (Math.sqrt(o.v[0] / c2) + eps);
+        o.y -= eta * (o.m[1] / c1) / (Math.sqrt(o.v[1] / c2) + eps);
+      } else {                             /* Muon（二维简化） */
+        o.m[0] = MU * o.m[0] + g[0];
+        o.m[1] = MU * o.m[1] + g[1];
+        var n = Math.hypot(o.m[0], o.m[1]) || 1e-12;
+        o.x -= eta * Math.SQRT2 * (o.m[0] / n);
+        o.y -= eta * Math.SQRT2 * (o.m[1] / n);
+      }
+      o.trail.push([o.x, o.y]);
+    }
+
+    function fit() {
+      var host = canvas.parentElement;
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      W = host.clientWidth || 480;
+      /* 双栏时让监视器高度贴齐左侧文字，避免窗口底部留空；单栏按固定比例 */
+      var grid = canvas.closest('.hero-grid');
+      var left = grid ? grid.children[0] : null;
+      if (left && window.innerWidth > 1060) {
+        var crt = canvas.closest('.crt');
+        var chrome = crt.offsetHeight - canvas.offsetHeight;
+        H = Math.max(200, Math.round(left.offsetHeight - chrome));
+      } else {
+        H = Math.round(W * (window.innerWidth < 560 ? 0.72 : 0.57));
+      }
+      canvas.width = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      heat = null;
+    }
+
+    function hexToRgb(h) {
+      var m = /^#?([0-9a-f]{6})$/i.exec(h);
+      if (!m) return [239, 239, 239];
+      var n = parseInt(m[1], 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    function buildHeat() {
+      var gw = 150, gh = 100;
+      var off = document.createElement('canvas');
+      off.width = gw; off.height = gh;
+      var octx = off.getContext('2d');
+      var img = octx.createImageData(gw, gh);
+      var vals = new Float32Array(gw * gh);
+      var lo = Infinity, hi = -Infinity;
+      for (var j = 0; j < gh; j++) {
+        for (var i = 0; i < gw; i++) {
+          var x = X0 + (X1 - X0) * (i / (gw - 1));
+          var y = Y1 - (Y1 - Y0) * (j / (gh - 1));
+          var lv = Math.log(L(x, y) + 1e-4);
+          vals[j * gw + i] = lv;
+          if (lv < lo) lo = lv;
+          if (lv > hi) hi = lv;
+        }
+      }
+      var cA = hexToRgb(cssColor('--heroA', '#0a5a52'));
+      var cB = hexToRgb(cssColor('--heroB', '#7fd4c8'));
+      for (var k = 0; k < gw * gh; k++) {
+        var t = (vals[k] - lo) / (hi - lo || 1);
+        t = Math.pow(1 - t, 1.7);
+        img.data[k * 4] = Math.round(cA[0] + (cB[0] - cA[0]) * t);
+        img.data[k * 4 + 1] = Math.round(cA[1] + (cB[1] - cA[1]) * t);
+        img.data[k * 4 + 2] = Math.round(cA[2] + (cB[2] - cA[2]) * t);
+        img.data[k * 4 + 3] = 255;
+      }
+      octx.putImageData(img, 0, 0);
+      heat = off;
+    }
+
+    function px(x, y) {
+      return [
+        (x - X0) / (X1 - X0) * W,
+        (Y1 - y) / (Y1 - Y0) * H
+      ];
+    }
+
+    function draw() {
+      if (!heat) buildHeat();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(heat, 0, 0, W, H);
+
+      ctx.font = '10px Consolas, monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.85;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText('x', px(0.15, 0)[0] + 4, px(0, 0)[1] - 4);
+      ctx.textAlign = 'right';
+      ctx.fillText('y', W - 6, px(0, Y1 * 0.92)[1] + 12);
+      ctx.globalAlpha = 1;
+
+      runners.forEach(function (o) {
+        var col = cssColor(o.i.v, o.i.d);
+        var n = Math.min(o.trail.length, 2 + frame);
+        [[4, 0.28], [1.6, 1]].forEach(function (st) {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = st[0];
+          ctx.globalAlpha = st[1];
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          for (var i = 0; i < n; i++) {
+            var p = px(o.trail[i][0], o.trail[i][1]);
+            if (i === 0) ctx.moveTo(p[0], p[1]);
+            else ctx.lineTo(p[0], p[1]);
+          }
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+        var q = px(o.trail[n - 1][0], o.trail[n - 1][1]);
+        ctx.fillStyle = col;
+        ctx.fillRect(q[0] - 2, q[1] - 2, 4, 4);
+      });
+
+      var sp = px(-2.4, 2.6);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sp[0] - 3.5, sp[1] - 3.5, 7, 7);
+    }
+
+    var reduceMotion = !!(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    function start() {
+      runners = makeRunners();
+      frame = 0;
+      if (reduceMotion) {
+        for (var k = 0; k < STEPS; k++) runners.forEach(stepOne);
+        frame = STEPS;
+        draw();
+        return;
+      }
+      if (raf) cancelAnimationFrame(raf);
+      (function tick() {
+        if (frame >= STEPS) { draw(); return; }
+        runners.forEach(stepOne);
+        frame += 1;
+        draw();
+        raf = requestAnimationFrame(tick);
+      })();
+    }
+
+    window.addEventListener('nt-theme', function () { heat = null; draw(); });
+    window.addEventListener('resize', function () {
+      fit();
+      draw();
+    });
+
+    fit();
+    start();
+  })();
+
+  /* =============== 导航高亮（IntersectionObserver） =============== */
+  (function () {
+    var secs = Array.prototype.slice.call(document.querySelectorAll('header.win, section.win'));
+    var links = Array.prototype.slice.call(document.querySelectorAll('#railNav a'));
+    if (!('IntersectionObserver' in window) || !links.length) return;
+    var curEl = document.getElementById('railCur');
+    var posEl = document.getElementById('railPos');
+    var spy = new IntersectionObserver(function (entries) {
+      var pick = null;
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var top = en.target.getBoundingClientRect().top;
+        if (!pick || top < pick.top) pick = { en: en, top: top };
+      });
+      if (!pick) return;
+      var id = pick.en.target.id;
+      var idx = 0;
+      links.forEach(function (a, i) {
+        var li = a.parentElement;
+        var hit = a.getAttribute('href') === '#' + id;
+        if (li) li.classList.toggle('cur', hit);
+        if (hit) idx = i + 1;
+      });
+      if (curEl && idx) {
+        curEl.textContent = links[idx - 1].textContent.trim();
+        if (posEl) posEl.textContent = idx + ' / ' + links.length;
+      }
+    }, { rootMargin: '-25% 0px -65% 0px' });
+    secs.forEach(function (s) { spy.observe(s); });
+  })();
+
+  /* 侧栏时钟 */
+  (function () {
+    var el = document.getElementById('railClock');
+    if (!el) return;
+    function tick() {
+      var d = new Date();
+      el.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+    tick();
+    setInterval(tick, 30000);
+  })();
+
+  /* =============== 侧航道：定位与指向线（仅 ≥1700px） =============== */
+  (function () {
+    var lane = document.querySelector('.lane');
+    var svg = document.querySelector('.leads');
+    var main = document.querySelector('.main');
+    if (!lane || !svg || !main) return;
+    var items = [
+      { sat: document.getElementById('sat-schedule'), sec: document.getElementById('sec-schedule') },
+      { sat: document.getElementById('sat-vram'), sec: document.getElementById('sec-memory') },
+      { sat: document.getElementById('sat-pipeline'), sec: document.getElementById('sec-deploy') },
+      { sat: document.getElementById('sat-cache'), sec: document.getElementById('sec-deploy'), anchor: document.getElementById('serving') }
+    ].filter(function (it) { return it.sat && it.sec; });
+    if (!items.length) return;
+    var wide = window.matchMedia('(min-width: 1700px)');
+
+    function place() {
+      if (!wide.matches) return;
+      var laneTop = lane.getBoundingClientRect().top;
+      items.forEach(function (it) {
+        var anchor = it.anchor || it.sec;
+        var top = anchor.getBoundingClientRect().top - laneTop;
+        it.sat.style.top = Math.round(top + 8) + 'px';
+      });
+    }
+
+    function draw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!wide.matches) return;
+      var base = svg.getBoundingClientRect();
+      var mainRight = main.getBoundingClientRect().right;
+      var ns = 'http://www.w3.org/2000/svg';
+      items.forEach(function (it) {
+        var intro = it.anchor || it.sec.querySelector('.sec-q');
+        var b = it.sat.getBoundingClientRect();
+        if (!intro || !b.width) return;
+        var a = intro.getBoundingClientRect();
+        /* 从正文窗口右边框引出：线段只走窗口之间的缝隙，不横穿纸面 */
+        var x1 = mainRight - base.left - 1;
+        var y1 = a.top + a.height / 2 - base.top;
+        var x2 = b.left - base.left - 2;
+        var y2 = b.top - base.top + 12;
+        var mx = mainRight - base.left + 6;
+        if (mx > x2 - 2) mx = x2 - 2;
+        var p = document.createElementNS(ns, 'path');
+        /* 半像素对齐：1px 虚线才不会糊成两行浅色 */
+        var yA = Math.round(y1) + 0.5, yB = Math.round(y2) + 0.5, xV = Math.round(mx) + 0.5;
+        p.setAttribute('d', 'M' + (Math.round(x1) - 0.5) + ' ' + yA + ' H' + xV + ' V' + yB + ' H' + Math.round(x2));
+        svg.appendChild(p);
+        [[x1, y1], [x2, y2]].forEach(function (pt) {
+          var r = document.createElementNS(ns, 'rect');
+          r.setAttribute('x', Math.round(pt[0]) - 2.5);
+          r.setAttribute('y', Math.round(pt[1]) - 2.5);
+          r.setAttribute('width', '5');
+          r.setAttribute('height', '5');
+          svg.appendChild(r);
+        });
+      });
+    }
+
+    function layout() { place(); draw(); }
+
+    layout();
+    window.addEventListener('resize', layout);
+    if ('ResizeObserver' in window) new ResizeObserver(layout).observe(main);
+    if (wide.addEventListener) wide.addEventListener('change', layout);
+  })();
+
+  /* =============== 仪器一：优化器竞速台 =============== */
+  (function () {
+    var canvas = document.getElementById('raceCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+
+    var SURFACES = [
+      {
+        id: 'valley', name: '病态谷',
+        L: function (x, y) { return 0.5 * (50 * x * x + y * y); },
+        G: function (x, y) { return [50 * x, y]; },
+        start: [-2.4, 2.6], x0: -2.6, x1: 2.6, y0: -2.9, y1: 2.9,
+        caption: '两个方向曲率差 50 倍。η=0.030 时 SGD 在 x 向快速收敛、y 向爬行；把 η 拉到 0.08：SGD 与动量先后发散，Adam 与 Muon 仍在走——自适应与归一化把每坐标步幅封了顶。'
+      },
+      {
+        id: 'twin', name: '双谷',
+        L: function (x, y) { return 0.25 * Math.pow(x, 4) - 0.5 * x * x + 0.5 * y * y; },
+        G: function (x, y) { return [x * x * x - x, y]; },
+        start: [0.06, -0.9], x0: -1.8, x1: 1.8, y0: -1.7, y1: 1.7,
+        caption: '起点贴着 (0,0) 处的鞍点。四种优化器都能走出去，但速度差一个量级：SGD 靠线性放大慢慢离开，动量与 Adam 几步就滚下其中一侧山谷。'
+      },
+      {
+        id: 'banana', name: '弯谷',
+        L: function (x, y) { var t = y - x * x; return (1 - x) * (1 - x) + 1.5 * t * t; },
+        G: function (x, y) { var t = y - x * x; return [-2 * (1 - x) - 6 * x * t, 3 * t]; },
+        start: [-1.6, 2.4], x0: -2.0, x1: 2.0, y0: -1.0, y1: 3.0,
+        caption: '谷底是一条抛物线（Rosenbrock 缩放版）。真实优化路线必须「贴着谷走再拐弯」：看四种更新规则谁先学会拐弯，谁在谷壁两侧来回撞。'
+      }
+    ];
+
+    var OPT_DEFS = [
+      { id: 'sgd', name: 'SGD', cssVar: '--ink3' },
+      { id: 'mom', name: '动量', cssVar: '--warn' },
+      { id: 'adam', name: 'Adam', cssVar: '--insight' },
+      { id: 'muon', name: 'Muon·简化', cssVar: '--fail' }
+    ];
+
+    var si = 0;
+    var opts = [];
+    var running = false;
+    var acc = 0;
+    var MAXSTEPS = 500;
+
+    var elLr = document.getElementById('race-lr');
+    var elLrV = document.getElementById('race-lr-v');
+    var elMu = document.getElementById('race-mu');
+    var elMuV = document.getElementById('race-mu-v');
+    var captionEl = document.getElementById('race-caption');
+    var legendEl = document.getElementById('raceLegend');
+    var readEl = document.getElementById('raceRead');
+    var liveEl = document.getElementById('race-live');
+
+    function lr() { return +elLr.value / 1000; }
+    function mu() { return +elMu.value / 100; }
+
+    function makeOpts() {
+      var s = SURFACES[si];
+      return OPT_DEFS.map(function (d) {
+        return {
+          def: d, x: s.start[0], y: s.start[1],
+          m: [0, 0], v: [0, 0], t: 0,
+          trail: [[s.start[0], s.start[1]]],
+          state: 'run'
+        };
+      });
+    }
+
+    function stepOne(o) {
+      var s = SURFACES[si];
+      var g = s.G(o.x, o.y);
+      var eta = lr(), MU = mu();
+
+      if (o.def.id === 'sgd') {
+        o.x -= eta * g[0]; o.y -= eta * g[1];
+      } else if (o.def.id === 'mom') {
+        o.m[0] = MU * o.m[0] + g[0];
+        o.m[1] = MU * o.m[1] + g[1];
+        o.x -= eta * o.m[0]; o.y -= eta * o.m[1];
+      } else if (o.def.id === 'adam') {
+        var b1 = 0.9, b2 = 0.999, eps = 1e-8;
+        o.m[0] = b1 * o.m[0] + (1 - b1) * g[0];
+        o.m[1] = b1 * o.m[1] + (1 - b1) * g[1];
+        o.v[0] = b2 * o.v[0] + (1 - b2) * g[0] * g[0];
+        o.v[1] = b2 * o.v[1] + (1 - b2) * g[1] * g[1];
+        o.t += 1;
+        var c1 = 1 - Math.pow(b1, o.t), c2 = 1 - Math.pow(b2, o.t);
+        o.x -= eta * (o.m[0] / c1) / (Math.sqrt(o.v[0] / c2) + eps);
+        o.y -= eta * (o.m[1] / c1) / (Math.sqrt(o.v[1] / c2) + eps);
+      } else {
+        o.m[0] = MU * o.m[0] + g[0];
+        o.m[1] = MU * o.m[1] + g[1];
+        var n = Math.hypot(o.m[0], o.m[1]) || 1e-12;
+        o.x -= eta * Math.SQRT2 * (o.m[0] / n);
+        o.y -= eta * Math.SQRT2 * (o.m[1] / n);
+      }
+
+      o.trail.push([o.x, o.y]);
+      if (o.trail.length > MAXSTEPS + 2) o.trail.shift();
+
+      var gn = Math.hypot(g[0], g[1]);
+      if (!isFinite(o.x) || !isFinite(o.y) || Math.abs(o.x) > 8 || Math.abs(o.y) > 8) o.state = 'out';
+      else if (o.trail.length > MAXSTEPS || (o.trail.length > 30 && gn < 1e-4)) o.state = 'done';
+    }
+
+    var CW = 640, CH = 420, DPR = 1;
+    function fit() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      var w = canvas.parentElement.clientWidth || 560;
+      CW = Math.max(320, Math.round(w));
+      CH = Math.round(CW * 0.62);
+      canvas.width = Math.round(CW * DPR);
+      canvas.height = Math.round(CH * DPR);
+      canvas.style.height = CH + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      heat = null;
+    }
+
+    var heat = null;
+    function buildHeat() {
+      var s = SURFACES[si];
+      var gw = 160, gh = 105;
+      var off = document.createElement('canvas');
+      off.width = gw; off.height = gh;
+      var octx = off.getContext('2d');
+      var img = octx.createImageData(gw, gh);
+
+      var vals = new Float32Array(gw * gh);
+      var lo = Infinity, hi = -Infinity;
+      for (var j = 0; j < gh; j++) {
+        for (var i = 0; i < gw; i++) {
+          var x = s.x0 + (s.x1 - s.x0) * (i / (gw - 1));
+          var y = s.y1 - (s.y1 - s.y0) * (j / (gh - 1));
+          var lv = Math.log(s.L(x, y) + 1e-4);
+          vals[j * gw + i] = lv;
+          if (lv < lo) lo = lv;
+          if (lv > hi) hi = lv;
+        }
+      }
+      var cA = hexToRgb(cssColor('--bg1', '#dcdcdc'));
+      var cB = hexToRgb(cssColor('--mark', '#a8d5cd'));
+      for (var k = 0; k < gw * gh; k++) {
+        var t = (vals[k] - lo) / (hi - lo || 1);
+        t = Math.pow(1 - t, 1.6);
+        img.data[k * 4] = Math.round(cA[0] + (cB[0] - cA[0]) * t);
+        img.data[k * 4 + 1] = Math.round(cA[1] + (cB[1] - cA[1]) * t);
+        img.data[k * 4 + 2] = Math.round(cA[2] + (cB[2] - cA[2]) * t);
+        img.data[k * 4 + 3] = 255;
+      }
+      octx.putImageData(img, 0, 0);
+      heat = off;
+    }
+
+    function hexToRgb(h) {
+      var m = /^#?([0-9a-f]{6})$/i.exec(h);
+      if (!m) return [200, 200, 200];
+      var n = parseInt(m[1], 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    function px(x, y, s) {
+      return [
+        (x - s.x0) / (s.x1 - s.x0) * CW,
+        (s.y1 - y) / (s.y1 - s.y0) * CH
+      ];
+    }
+
+    function draw() {
+      if (!heat) buildHeat();
+      var s = SURFACES[si];
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(heat, 0, 0, CW, CH);
+
+      ctx.font = '10px Consolas, monospace';
+      ctx.fillStyle = cssColor('--ink2', '#404040');
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      var pad = 6;
+      ctx.fillText('x=' + s.x0.toFixed(1), pad, pad);
+      ctx.textAlign = 'right';
+      ctx.fillText('x=' + s.x1.toFixed(1), CW - pad, pad);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText('y=' + s.y0.toFixed(1), pad, CH - pad);
+      ctx.textAlign = 'right';
+      ctx.fillText('y=' + s.y1.toFixed(1), CW - pad, CH - pad);
+
+      opts.forEach(function (o) {
+        var col = cssColor(o.def.cssVar, '#808080');
+        [[3.4, 0.25], [1.5, 1]].forEach(function (st) {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = st[0];
+          ctx.globalAlpha = st[1];
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          var start = Math.max(0, o.trail.length - 220);
+          for (var i = start; i < o.trail.length; i++) {
+            var p = px(o.trail[i][0], o.trail[i][1], s);
+            if (i === start) ctx.moveTo(p[0], p[1]);
+            else ctx.lineTo(p[0], p[1]);
+          }
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+        var q = px(o.x, o.y, s);
+        ctx.fillStyle = col;
+        ctx.fillRect(q[0] - 2, q[1] - 2, 4, 4);
+        if (o.state === 'out') {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(q[0] - 4, q[1] - 4); ctx.lineTo(q[0] + 4, q[1] + 4);
+          ctx.moveTo(q[0] + 4, q[1] - 4); ctx.lineTo(q[0] - 4, q[1] + 4);
+          ctx.stroke();
+        }
+      });
+
+      var sp = px(s.start[0], s.start[1], s);
+      ctx.strokeStyle = cssColor('--ink', '#000');
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sp[0] - 3.5, sp[1] - 3.5, 7, 7);
+    }
+
+    function fmtL(v) {
+      if (!isFinite(v)) return '发散';
+      if (v >= 100) return v.toFixed(0);
+      if (v >= 1) return v.toFixed(2);
+      return v.toFixed(4);
+    }
+
+    function renderLegend() {
+      legendEl.innerHTML = '';
+      OPT_DEFS.forEach(function (d) {
+        var sp = document.createElement('span');
+        var i = document.createElement('i');
+        i.style.background = 'var(' + d.cssVar + ')';
+        sp.appendChild(i);
+        sp.appendChild(document.createTextNode(d.name));
+        legendEl.appendChild(sp);
+      });
+      var s = document.createElement('span');
+      s.style.marginLeft = 'auto';
+      s.textContent = '地形：' + SURFACES[si].name;
+      legendEl.appendChild(s);
+    }
+
+    function renderRead() {
+      var s = SURFACES[si];
+      var html = '';
+      opts.forEach(function (o) {
+        var stTxt = o.state === 'out' ? '发散' : (o.state === 'done' ? '停止' : '进行');
+        var stCls = o.state === 'out' ? 'fail' : (o.state === 'done' ? 'ok' : '');
+        html += '<div class="rr"><span class="rr-k">' + o.def.name + '</span>' +
+          '<span class="rr-v ' + stCls + '">L ' + fmtL(s.L(o.x, o.y)) + '</span></div>';
+        html += '<div class="rr"><span class="rr-k"></span><span class="rr-v">' +
+          stTxt + ' · ' + o.trail.length + ' 步</span></div>';
+      });
+      readEl.innerHTML = html;
+    }
+
+    function refreshLive() {
+      var s = SURFACES[si];
+      liveEl.textContent = '当前地形 ' + s.name + '，η=' + lr().toFixed(3) +
+        '，μ=' + mu().toFixed(2) + '。各优化器损失见读数区。';
+    }
+
+    function reset() {
+      opts = makeOpts();
+      draw(); renderLegend(); renderRead(); refreshLive();
+    }
+
+    elLr.addEventListener('input', function () {
+      elLrV.textContent = lr().toFixed(3);
+      reset();
+    });
+    elMu.addEventListener('input', function () {
+      elMuV.textContent = mu().toFixed(2);
+      reset();
+    });
+
+    document.getElementById('race-step').addEventListener('click', function () {
+      opts.forEach(function (o) { if (o.state === 'run') stepOne(o); });
+      draw(); renderRead(); refreshLive();
+    });
+
+    var btnRun = document.getElementById('race-run');
+    var btnRunT = document.getElementById('race-run-t');
+    var raf = null;
+    function tick() {
+      if (!running) return;
+      acc += 1;
+      while (acc >= 1) {
+        acc -= 1;
+        opts.forEach(function (o) { if (o.state === 'run') stepOne(o); });
+      }
+      draw(); renderRead();
+      var anyRun = opts.some(function (o) { return o.state === 'run'; });
+      if (!anyRun) { setRun(false); return; }
+      raf = requestAnimationFrame(tick);
+    }
+    function setRun(on) {
+      running = on;
+      btnRun.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btnRunT.textContent = on ? '暂停' : '连续';
+      if (on) { raf = requestAnimationFrame(tick); }
+      else if (raf) { cancelAnimationFrame(raf); raf = null; }
+    }
+    btnRun.addEventListener('click', function () { setRun(!running); });
+
+    document.getElementById('race-reset').addEventListener('click', reset);
+    document.getElementById('race-terrain').addEventListener('click', function () {
+      si = (si + 1) % SURFACES.length;
+      captionEl.textContent = SURFACES[si].caption;
+      reset();
+    });
+
+    window.addEventListener('nt-theme', function () { heat = null; draw(); });
+    window.addEventListener('resize', function () { fit(); draw(); });
+
+    var reduceMotion = !!(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (reduceMotion) setRun = function (on) { /* 连续模式禁用，仅单步 */ };
+
+    fit();
+    captionEl.textContent = SURFACES[0].caption;
+    reset();
+  })();
+
+  /* =============== 仪器二：量化失真台 =============== */
+  (function () {
+    var canvas = document.getElementById('quantCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+
+    var N = 4096;
+    var seed = 20261111;
+    var weights = [];
+    var outlier = false;
+    var fmt = 'int8t';
+    var GROUP = 64;
+
+    function lcg() {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    }
+    function gen() {
+      weights = new Float64Array(N);
+      for (var i = 0; i < N; i += 2) {
+        var u1 = Math.max(lcg(), 1e-12), u2 = lcg();
+        var r = Math.sqrt(-2 * Math.log(u1));
+        weights[i] = r * Math.cos(2 * Math.PI * u2);
+        weights[i + 1] = r * Math.sin(2 * Math.PI * u2);
+      }
+      if (outlier) {
+        for (var k = 0; k < 32; k++) {
+          var idx = Math.floor(lcg() * N) % N;
+          weights[idx] = (5.5 + lcg() * 1.5) * (lcg() < 0.5 ? -1 : 1);
+        }
+      }
+    }
+
+    function quantInt(x, levels, absmax) {
+      if (absmax === 0) return 0;
+      var s = levels / absmax;
+      var q = Math.round(x * s);
+      if (q > levels) q = levels;
+      if (q < -levels) q = -levels;
+      return q / s;
+    }
+    function quantTensor(arr, levels) {
+      var am = 0;
+      for (var i = 0; i < arr.length; i++) am = Math.max(am, Math.abs(arr[i]));
+      var out = new Float64Array(arr.length);
+      for (var j = 0; j < arr.length; j++) out[j] = quantInt(arr[j], levels, am);
+      return out;
+    }
+    function quantGroup(arr, levels, g) {
+      var out = new Float64Array(arr.length);
+      for (var s = 0; s < arr.length; s += g) {
+        var am = 0, e = Math.min(s + g, arr.length);
+        for (var i = s; i < e; i++) am = Math.max(am, Math.abs(arr[i]));
+        for (var j = s; j < e; j++) out[j] = quantInt(arr[j], levels, am);
+      }
+      return out;
+    }
+    function bf16(x) {
+      var f = new Float32Array(1), u = new Uint32Array(f.buffer);
+      f[0] = x;
+      var bits = u[0];
+      var rounded = (bits + 0x7fff + ((bits >>> 16) & 1)) & 0xffff0000;
+      u[0] = rounded;
+      return f[0];
+    }
+    function quantize(arr) {
+      if (fmt === 'bf16') {
+        var o = new Float64Array(arr.length);
+        for (var i = 0; i < arr.length; i++) o[i] = bf16(arr[i]);
+        return o;
+      }
+      if (fmt === 'int8t') return quantTensor(arr, 127);
+      if (fmt === 'int4t') return quantTensor(arr, 7);
+      return quantGroup(arr, 7, GROUP);
+    }
+
+    var CW = 640, CH = 300, DPR = 1;
+    function fit() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      var w = canvas.parentElement.clientWidth || 560;
+      CW = Math.max(320, Math.round(w));
+      CH = Math.round(CW * 0.45);
+      canvas.width = Math.round(CW * DPR);
+      canvas.height = Math.round(CH * DPR);
+      canvas.style.height = CH + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
+    function draw(qw) {
+      ctx.clearRect(0, 0, CW, CH);
+      ctx.fillStyle = '#efefef';
+      ctx.fillRect(0, 0, CW, CH);
+      var gap = 14;
+      var pw = (CW - gap * 3) / 2, ph = CH - gap * 2 - 16;
+      var x0 = gap, x1 = gap * 2 + pw;
+
+      var am = 0;
+      for (var i = 0; i < N; i++) am = Math.max(am, Math.abs(weights[i]));
+      var bins = 61, hmax = am * 1.05;
+      var hb0 = new Float64Array(bins), hb1 = new Float64Array(bins);
+      for (i = 0; i < N; i++) {
+        var b = Math.floor((weights[i] + hmax) / (2 * hmax) * bins);
+        if (b >= 0 && b < bins) hb0[b]++;
+        b = Math.floor((qw[i] + hmax) / (2 * hmax) * bins);
+        if (b >= 0 && b < bins) hb1[b]++;
+      }
+      var peak = Math.max.apply(null, hb0) || 1;
+      var bw = pw / bins;
+      var ink3 = cssColor('--ink3', '#757575');
+      var insight = cssColor('--insight', '#008080');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x0, gap, pw, ph);
+      ctx.strokeStyle = '#a0a0a0';
+      ctx.strokeRect(x0 + 0.5, gap + 0.5, pw - 1, ph - 1);
+      for (i = 0; i < bins; i++) {
+        var hB = hb1[i] / peak * ph;
+        ctx.fillStyle = insight;
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(x0 + i * bw, gap + ph - hB, Math.max(1, bw - 0.5), hB);
+        ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = ink3; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (i = 0; i < bins; i++) {
+        var hL = hb0[i] / peak * ph;
+        if (i === 0) ctx.moveTo(x0, gap + ph - hL);
+        else ctx.lineTo(x0 + i * bw + bw / 2, gap + ph - hL);
+      }
+      ctx.stroke();
+      ctx.fillStyle = ink3;
+      ctx.font = '10px Consolas, monospace';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText('权重分布（线：原始 / 填充：量化后）', x0 + 4, gap + 12);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x1, gap, pw, ph);
+      ctx.strokeRect(x1 + 0.5, gap + 0.5, pw - 1, ph - 1);
+      var M = 300, step = Math.max(1, Math.floor(N / M));
+      var ylo = -hmax, yhi = hmax;
+      function sx(v) { return x1 + (v - ylo) / (yhi - ylo) * pw; }
+      function sy(v) { return gap + ph - (v - ylo) / (yhi - ylo) * ph; }
+      ctx.strokeStyle = ink3; ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(sx(ylo), sy(ylo)); ctx.lineTo(sx(yhi), sy(yhi));
+      ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillStyle = insight;
+      for (i = 0; i < N; i += step) {
+        var px_ = sx(weights[i]), py_ = sy(qw[i]);
+        ctx.fillRect(px_ - 0.8, py_ - 0.8, 1.8, 1.8);
+      }
+      if (fmt === 'int4t') {
+        ctx.strokeStyle = cssColor('--warn', '#806000');
+        ctx.globalAlpha = 0.5;
+        for (i = -7; i <= 7; i++) {
+          var gy = sy(i / 7 * am);
+          ctx.beginPath(); ctx.moveTo(x1, gy); ctx.lineTo(x1 + pw, gy); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = ink3;
+      ctx.fillText('量化前 → 量化后（理想为对角线）', x1 + 4, gap + 12);
+
+      ctx.fillText('-' + hmax.toFixed(1) + 's', x0 + 2, CH - 4);
+      ctx.textAlign = 'right';
+      ctx.fillText('+' + hmax.toFixed(1) + 's', x0 + pw - 2, CH - 4);
+      ctx.textAlign = 'left';
+      ctx.fillText('-' + hmax.toFixed(1) + 's', x1 + 2, CH - 4);
+      ctx.textAlign = 'right';
+      ctx.fillText('+' + hmax.toFixed(1) + 's', x1 + pw - 2, CH - 4);
+    }
+
+    function stats(qw) {
+      var se = 0, zero = 0, am = 0;
+      for (var i = 0; i < N; i++) {
+        var d = qw[i] - weights[i];
+        se += d * d;
+        if (qw[i] === 0) zero++;
+        am = Math.max(am, Math.abs(weights[i]));
+      }
+      var rmse = Math.sqrt(se / N);
+      return { rmse: rmse, rel: rmse / 1.0 * 100, zero: zero, am: am };
+    }
+
+    var readEl = document.getElementById('quantRead');
+    var FMT_NAME = {
+      bf16: 'bf16', int8t: 'int8 · 整张', int4t: 'int4 · 整张', int4g: 'int4 · 64 分组'
+    };
+    function renderRead(st, qw) {
+      var html = '<div class="rr"><span class="rr-k">格式</span><span class="rr-v">' + FMT_NAME[fmt] + (outlier ? ' · 含离群' : '') + '</span></div>';
+      html += '<div class="rr"><span class="rr-k">RMSE</span><span class="rr-v">' + st.rmse.toFixed(4) + '</span></div>';
+      html += '<div class="rr"><span class="rr-k">RMSE / s</span><span class="rr-v ' + (st.rel > 10 ? 'fail' : (st.rel > 3 ? 'warn' : 'ok')) + '">' + st.rel.toFixed(1) + '%</span></div>';
+      html += '<div class="rr"><span class="rr-k">量化为零</span><span class="rr-v">' + (st.zero / N * 100).toFixed(1) + '%</span></div>';
+      html += '<div class="rr"><span class="rr-k">absmax</span><span class="rr-v">' + st.am.toFixed(2) + '</span></div>';
+      readEl.innerHTML = html;
+    }
+
+    function refresh() {
+      var qw = quantize(weights);
+      draw(qw);
+      renderRead(stats(qw), qw);
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('#quantRig [data-fmt]'), function (b) {
+      b.addEventListener('click', function () {
+        fmt = b.getAttribute('data-fmt');
+        Array.prototype.forEach.call(document.querySelectorAll('#quantRig [data-fmt]'), function (x) {
+          x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+        });
+        refresh();
+      });
+    });
+
+    var outBtn = document.getElementById('quant-out');
+    outBtn.addEventListener('click', function () {
+      outlier = !outlier;
+      outBtn.setAttribute('aria-pressed', outlier ? 'true' : 'false');
+      gen(); refresh();
+    });
+
+    document.getElementById('quant-resample').addEventListener('click', function () {
+      gen(); refresh();
+    });
+
+    window.addEventListener('nt-theme', refresh);
+    window.addEventListener('resize', function () { fit(); refresh(); });
+
+    fit(); gen(); refresh();
+  })();
+
+})();
+</script>
+
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGE2NDIwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNC41IDR2MTUuNWgxNSIvPjxwYXRoIGQ9Ik03IDcuNWMyLjguMyAzLjYgNi40IDYgNy42IDIgLjkgMy42LS4zIDUtMS41Ii8+PC9nPjwvc3ZnPg==";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNC41IDR2MTUuNWgxNSIvPjxwYXRoIGQ9Ik03IDcuNWMyLjguMyAzLjYgNi40IDYgNy42IDIgLjkgMy42LS4zIDUtMS41Ii8+PC9nPjwvc3ZnPg==";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>西方哲学两千六百年：一场没有散场的对话</title>
+<meta name="description" content="西方哲学发展科普长文：从米利都的自然哲学家到分析哲学与存在主义，问题如何接力，答案如何更替。附纪元切换台、观念接力图与四个思想实验测试台，人物年代与引文均给到可回查出处。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="西方哲学两千六百年：一场没有散场的对话">
+<meta property="og:description" content="西方哲学发展科普长文：从米利都的自然哲学家到分析哲学与存在主义，问题如何接力，答案如何更替。附纪元切换台、观念接力图与四个思想实验测试台，人物年代与引文均给到可回查出处。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/western-philosophy.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/western-philosophy.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+
+/* ============================================================
+   0. 令牌：冷调瓷白 × 石板夜蓝 × 蜡封绛红（唯一强调色）
+   ============================================================ */
+
+:root {
+  --bg: #10151d;
+  --bg-2: #0b0f16;
+  --panel: rgba(15, 21, 31, .86);
+  --panel-solid: #131a26;
+  --wash: #0d131c;
+  --ink: #e9edf4;
+  --ink-2: #b8c3d2;
+  --ink-3: #8391a4;
+  --rule: #1d2836;
+  --rule-2: #2b3949;
+  --acc: #e0917c;            /* 蜡封红（暗色提亮） */
+  --acc-deep: #c96f5c;
+  --acc-dim: rgba(224, 145, 124, .10);
+  --acc-line: rgba(224, 145, 124, .34);
+  --ghost: #182230;
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 8px;
+  --max: 1132px;
+}
+
+html[data-theme="light"], html.is-light {
+  --bg: #f6f8fb;
+  --bg-2: #eef2f7;
+  --panel: rgba(255, 255, 255, .9);
+  --panel-solid: #ffffff;
+  --wash: #fbfcfe;
+  --ink: #1b2432;
+  --ink-2: #46566b;
+  --ink-3: #67798e;
+  --rule: #dce4ee;
+  --rule-2: #c6d1e1;
+  --acc: #993527;            /* 蜡封红 */
+  --acc-deep: #7e2b20;
+  --acc-dim: rgba(153, 53, 39, .07);
+  --acc-line: rgba(153, 53, 39, .3);
+  --ghost: #e3e9f1;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]):not(.is-light) {
+    --bg: #f6f8fb;
+    --bg-2: #eef2f7;
+    --panel: rgba(255, 255, 255, .9);
+    --panel-solid: #ffffff;
+    --wash: #fbfcfe;
+    --ink: #1b2432;
+    --ink-2: #46566b;
+    --ink-3: #67798e;
+    --rule: #dce4ee;
+    --rule-2: #c6d1e1;
+    --acc: #993527;
+    --acc-deep: #7e2b20;
+    --acc-dim: rgba(153, 53, 39, .07);
+    --acc-line: rgba(153, 53, 39, .3);
+    --ghost: #e3e9f1;
+  }
+}
+
+/* ============================================================
+   1. 基础
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+html { scroll-padding-top: 64px; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background .35s ease, color .35s ease;
+}
+
+a { color: inherit; }
+
+::selection { background: var(--acc-line); }
+
+.wrap {
+  width: min(var(--max), calc(100% - 48px));
+  margin: 0 auto;
+}
+
+/* 顶部阅读进度条 */
+.progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--acc), var(--acc-deep));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  z-index: 3;
+}
+
+/* ============================================================
+   2. 顶栏
+   ============================================================ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  border-bottom: 1px solid var(--rule);
+  backdrop-filter: blur(10px);
+}
+
+.topbar-in {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: .02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand-mark { width: 22px; height: 22px; }
+.bm-frame { fill: none; stroke: var(--acc); stroke-width: 1.6; }
+.bm-slice { stroke: var(--ink-3); stroke-width: 1.2; }
+.bm-dot { fill: var(--acc); }
+
+.nav {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: color .2s, background .2s;
+}
+.nav a:hover { color: var(--ink); }
+.nav a.on { color: var(--acc); background: var(--acc-dim); }
+
+.spacer { flex: 1; }
+
+.theme-btn {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 5px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+}
+.theme-btn:hover { color: var(--acc); border-color: var(--acc-line); }
+
+/* ============================================================
+   3. Hero：左文右仪器（纪元切换台）
+   ============================================================ */
+
+.hero {
+  padding: 72px 0 64px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(720px 340px at 88% 4%, var(--acc-dim), transparent 66%),
+    radial-gradient(560px 300px at 4% 88%, var(--acc-dim), transparent 70%);
+  pointer-events: none;
+}
+
+.hero-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 430px;
+  gap: 48px;
+  align-items: start;
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--acc);
+  margin-bottom: 18px;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(34px, 4.6vw, 50px);
+  line-height: 1.28;
+  letter-spacing: .015em;
+  width: fit-content;
+  max-width: 100%;
+}
+
+h1 .h1-prefix {
+  display: block;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: .14em;
+  color: var(--ink-3);
+  margin-bottom: 14px;
+}
+
+h1 em {
+  display: block;
+  font-style: normal;
+  font-size: clamp(20px, 2.4vw, 26px);
+  color: var(--acc);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.lede {
+  margin-top: 26px;
+  max-width: 620px;
+  color: var(--ink-2);
+  font-size: 16.5px;
+}
+
+.byline {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13px;
+  color: var(--ink-3);
+  font-family: var(--mono);
+}
+
+.byline span { position: relative; }
+.byline span + span::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--acc);
+  transform: translateY(-50%);
+}
+
+.scope {
+  margin-top: 20px;
+  max-width: 620px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink-3);
+  border-left: 2px solid var(--acc-line);
+  padding-left: 14px;
+}
+.scope b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 仪器 A：纪元切换台 ---- */
+
+.era-lab {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 18px 18px 16px;
+  backdrop-filter: blur(6px);
+}
+
+.lab-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  letter-spacing: .08em;
+  margin-bottom: 14px;
+}
+
+.lab-head .live {
+  color: var(--acc);
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+
+.era-chips {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.era-chips button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 6px;
+  padding: 6px 0 5px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.era-chips button:hover { color: var(--ink); }
+.era-chips button.on {
+  color: #fff;
+  background: var(--acc-deep);
+  border-color: var(--acc-deep);
+}
+html[data-theme="light"] .era-chips button.on,
+html.is-light .era-chips button.on { color: #fff; }
+
+.era-panel { min-height: 258px; position: relative; }
+
+.era-view { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+.era-view.on { opacity: 1; visibility: visible; }
+
+.era-years {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--acc);
+  letter-spacing: .1em;
+  margin-bottom: 6px;
+}
+
+.era-name {
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.era-q {
+  font-family: var(--serif);
+  font-size: 16.5px;
+  line-height: 1.7;
+  border-left: 2px solid var(--acc-line);
+  padding-left: 12px;
+  margin-bottom: 12px;
+}
+.era-q small { display: block; font-family: var(--sans); font-size: 11.5px; color: var(--ink-3); margin-top: 4px; letter-spacing: .06em; }
+
+.era-people { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.era-people i {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.era-shift { font-size: 13.5px; color: var(--ink-3); line-height: 1.75; }
+.era-shift b { color: var(--ink-2); font-weight: 600; }
+
+.era-cap {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .era-view.on { animation: eraIn .28s ease both; }
+  @keyframes eraIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* ============================================================
+   4. 正文节
+   ============================================================ */
+
+section[data-nav] { padding: 58px 0 8px; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  margin-bottom: 6px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acc);
+  letter-spacing: .12em;
+  padding: 3px 10px;
+  border: 1px solid var(--acc-line);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.sec-head h2 {
+  font-family: var(--serif);
+  font-size: clamp(22px, 2.6vw, 27px);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.paper {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: var(--max);
+}
+
+.dek {
+  font-size: 14.5px;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+  max-width: 852px;
+}
+
+.paper p {
+  max-width: 852px;
+  margin: 18px 0;
+  text-indent: 0;
+}
+
+.paper p b { color: var(--ink); font-weight: 650; }
+.paper i { font-style: normal; color: var(--acc); }
+.paper small.date { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+
+h3 {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 700;
+  margin: 34px 0 4px;
+  max-width: 852px;
+}
+
+h3 .h3-en {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: .14em;
+  margin-left: 10px;
+  text-transform: uppercase;
+}
+
+sup.cite { font-size: 11px; line-height: 0; }
+sup.cite a {
+  color: var(--acc);
+  text-decoration: none;
+  padding: 0 1px;
+}
+sup.cite a:hover { text-decoration: underline; }
+
+a.inline { color: var(--acc); text-decoration: none; border-bottom: 1px solid var(--acc-line); }
+a.inline:hover { border-bottom-color: var(--acc); }
+
+/* 引文块：手稿样式 */
+blockquote {
+  position: relative;
+  max-width: 852px;
+  margin: 26px 0;
+  padding: 18px 22px 16px 26px;
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--acc);
+  border-radius: 0 var(--r) var(--r) 0;
+}
+
+.paper blockquote p {
+  margin: 0;
+  max-width: none;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+blockquote .who {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+}
+blockquote .who b { color: var(--acc); font-weight: 600; }
+
+/* 无序列表 */
+.paper ul.plain { max-width: 852px; margin: 14px 0 22px; padding: 0; list-style: none; }
+.paper ul.plain li { position: relative; padding-left: 20px; margin: 9px 0; color: var(--ink-2); }
+.paper ul.plain li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: .78em;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--acc);
+  transform: rotate(45deg);
+}
+.paper ul.plain li b { color: var(--ink); }
+
+/* 表格 */
+.tbl-wrap { max-width: 852px; overflow-x: auto; margin: 22px 0; }
+
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+table.tbl th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .1em;
+  color: var(--acc);
+  border-bottom: 1.5px solid var(--acc-line);
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+table.tbl td {
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 12px;
+  vertical-align: top;
+  color: var(--ink-2);
+}
+table.tbl td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+table.tbl tr:last-child td { border-bottom: 0; }
+
+/* ---- 边注合同 ---- */
+.mrow {
+  position: relative;
+  display: flow-root;
+  min-width: 0;
+  margin: 22px 0;
+}
+.mrow > .mrow-main { max-width: 852px; }
+.mrow > .mrow-main > :first-child { margin-top: 0; }
+.mrow > .mrow-main > :last-child { margin-bottom: 0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom: 0; }
+
+.mrow > .mnote {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 236px;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border: 0;
+  border-left: 1.6px dashed var(--rule-2);
+  border-radius: 0;
+  background: transparent;
+  display: block;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-3);
+}
+
+.mrow > .mnote .tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  color: var(--acc);
+  margin-bottom: 6px;
+}
+
+.mrow--cardtext > .mnote { bottom: var(--card-lift, 14px); }
+
+@media (max-width: 1179px) {
+  .mrow > .mnote {
+    position: static;
+    width: auto;
+    max-width: 852px;
+    margin: 18px 0 0;
+    padding: 11px 0 0;
+    border-left: 0;
+    border-top: 1.6px dashed var(--rule-2);
+  }
+}
+
+/* 宽图/仪器 */
+.wide { max-width: 1132px; margin: 26px 0; }
+
+.wide > figcaption,
+figure.wide > figcaption {
+  max-width: 852px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.75;
+}
+
+.wide-note {
+  max-width: 852px;
+  margin: 0 0 24px;
+  padding: 10px 0 0;
+  border-left: 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.75;
+}
+.wide-note + p { margin-top: 32px; }
+
+/* 卡片组（四学派等） */
+.school-grid {
+  max-width: 1132px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 26px 0;
+}
+
+.school-grid > .card { margin: 0; }
+.school-grid + p { margin-top: 32px; }
+
+.gcard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 16px 16px 15px;
+  transition: border-color .25s, transform .25s;
+}
+.gcard:hover { border-color: var(--acc-line); transform: translateY(-2px); }
+
+.gcard .g-who { font-family: var(--serif); font-weight: 700; font-size: 15.5px; }
+.gcard .g-en { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: .1em; }
+.gcard .g-line { font-size: 13px; color: var(--ink-2); line-height: 1.7; }
+.gcard .g-key { font-size: 12px; color: var(--ink-3); margin-top: auto; border-top: 1px dashed var(--rule); padding-top: 8px; }
+.gcard .g-key b { color: var(--acc); font-weight: 600; }
+
+/* 卡片组随行边注的目标底边提量 */
+:root { --card-lift: 14px; }
+
+/* ============================================================
+   5. 仪器 B：观念接力图
+   ============================================================ */
+
+.relay {
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 18px;
+}
+
+.relay-scroll { overflow-x: auto; scrollbar-width: thin; }
+
+.relay-svg { display: block; min-width: 1080px; width: 100%; height: auto; }
+
+.relay-node { cursor: pointer; }
+.relay-node circle.pl {
+  fill: var(--panel-solid);
+  stroke: var(--rule-2);
+  stroke-width: 1.4;
+  transition: stroke .2s, opacity .2s;
+}
+.relay-node text.nm {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+.relay-node text.yr {
+  fill: var(--ink-3);
+  font-size: 10px;
+  font-family: var(--mono);
+  text-anchor: middle;
+}
+.relay-node:hover circle.pl { stroke: var(--acc); }
+.relay-node.on circle.pl { stroke: var(--acc); stroke-width: 2.2; fill: var(--acc-dim); }
+.relay-node.on text.nm { fill: var(--acc); }
+.relay-node.dim { opacity: .32; }
+
+.relay-edge { fill: none; stroke: var(--rule-2); stroke-width: 1.2; transition: stroke .2s, opacity .2s; }
+.relay-edge.hot { stroke: var(--acc); stroke-width: 1.8; }
+.relay-edge.dim { opacity: .2; }
+
+.relay-lane { fill: var(--ink-3); font-size: 10.5px; font-family: var(--mono); letter-spacing: .18em; opacity: .75; }
+.relay-lane-label-rule { stroke: var(--rule); stroke-width: 1; }
+
+.relay-readout {
+  margin-top: 14px;
+  border-top: 1px solid var(--rule);
+  padding-top: 14px;
+  min-height: 148px;
+}
+
+.relay-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 6px;
+}
+.relay-head .rname { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+.relay-head .ren { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); letter-spacing: .08em; }
+.relay-head .ryears { font-family: var(--mono); font-size: 12px; color: var(--acc); }
+
+.relay-stance { max-width: 852px; font-size: 14px; color: var(--ink-2); margin: 4px 0 8px; }
+
+.relay-facts { display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: 12px; color: var(--ink-3); }
+.relay-facts i { font-style: normal; border: 1px solid var(--rule-2); border-radius: 999px; padding: 3px 10px; }
+.relay-facts i b { color: var(--ink-2); font-weight: 600; }
+
+.relay-lead { margin-top: 8px; font-size: 12.5px; color: var(--ink-3); }
+.relay-lead b { color: var(--ink-2); font-weight: 600; }
+
+/* ============================================================
+   6. 仪器 C：思想实验台
+   ============================================================ */
+
+.bench {
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.bench-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.bench-tabs button {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 13px 10px 11px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+  white-space: nowrap;
+}
+.bench-tabs button:hover { color: var(--ink); }
+.bench-tabs button.on { color: var(--acc); border-bottom-color: var(--acc); background: var(--acc-dim); }
+
+.bench-body { padding: 20px 22px 18px; }
+
+.bench-view { display: none; }
+.bench-view.on { display: block; }
+
+.bench-title { font-family: var(--serif); font-size: 17.5px; font-weight: 700; margin-bottom: 2px; }
+.bench-src { font-size: 12px; font-family: var(--mono); color: var(--ink-3); margin-bottom: 14px; }
+
+.bench-stage { position: relative; min-height: 148px; }
+
+.bench-step { display: none; font-size: 14.5px; line-height: 1.85; color: var(--ink-2); }
+.bench-step.on { display: block; }
+.bench-step .step-k {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .18em;
+  color: var(--acc);
+  margin-bottom: 6px;
+}
+
+.bench-nav { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.bench-nav button {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.bench-nav button:hover:not(:disabled) { color: var(--acc); border-color: var(--acc-line); }
+.bench-nav button:disabled { opacity: .38; cursor: default; }
+.bench-nav .dots { display: flex; gap: 6px; }
+.bench-nav .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--rule-2); transition: background .2s; }
+.bench-nav .dots i.on { background: var(--acc); }
+
+.bench-answers { margin-top: 18px; border-top: 1px dashed var(--rule-2); padding-top: 14px; }
+.bench-answers .ba-k {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  color: var(--acc);
+  margin-bottom: 10px;
+}
+
+.bench-a {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+}
+.bench-a:first-of-type { border-top: 0; }
+.bench-a .ba-who { font-weight: 650; font-size: 13.5px; color: var(--ink); }
+.bench-a .ba-who small { display: block; font-family: var(--mono); font-weight: 500; font-size: 10.5px; color: var(--ink-3); letter-spacing: .06em; margin-top: 2px; }
+.bench-a .ba-what { font-size: 13.5px; color: var(--ink-2); line-height: 1.75; }
+.bench-a .ba-what b { color: var(--ink); }
+
+@media (max-width: 640px) {
+  .bench-a { grid-template-columns: 1fr; gap: 2px; }
+  .bench-a .ba-what { margin-top: 2px; }
+}
+
+/* ============================================================
+   7. 带走 / 参考 / 页脚
+   ============================================================ */
+
+.take-grid {
+  max-width: 1132px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  counter-reset: tk;
+}
+
+.take {
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 16px 18px 14px;
+  counter-increment: tk;
+  position: relative;
+}
+
+.take::before {
+  content: counter(tk, decimal-leading-zero);
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--acc);
+  opacity: .8;
+}
+
+.take .tk-h { font-weight: 650; font-size: 14.5px; margin-bottom: 6px; padding-right: 34px; }
+.take .tk-b { font-size: 13.5px; color: var(--ink-2); line-height: 1.75; }
+
+.refs { max-width: 1132px; columns: 2; column-gap: 44px; margin: 24px 0 8px; }
+.refs li {
+  break-inside: avoid;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+  padding-left: 30px;
+  position: relative;
+}
+.refs li .rn {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--acc);
+}
+.refs li a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+.refs li a:hover { color: var(--acc); border-bottom-color: var(--acc); }
+
+@media (max-width: 860px) {
+  .refs { columns: 1; max-width: 852px; }
+}
+
+footer.foot {
+  border-top: 1px solid var(--rule);
+  margin-top: 72px;
+  padding: 26px 0 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+footer.foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+footer.foot a:hover { color: var(--acc); border-bottom-color: var(--acc); }
+
+/* ============================================================
+   8. 显现动效（滚动渐显，IO + 看门狗）
+   ============================================================ */
+
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+  .gcard:hover { transform: none; }
+}
+
+/* ============================================================
+   9. 布局合同（852 / 1132 / 236 / 44）
+   ============================================================ */
+
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+}
+
+.paper > :not(.wide):not(.mrow):not(.refs):not(.school-grid):not(.take-grid) { max-width: 852px; }
+.paper > .wide { max-width: 1132px; }
+.paper > .refs { max-width: 1132px; columns: 2; column-gap: 44px; }
+
+/* ============================================================
+   10. 响应式
+   ============================================================ */
+
+@media (max-width: 1180px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr) 400px; gap: 36px; }
+}
+
+@media (max-width: 1100px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .era-lab { max-width: 640px; }
+  section[data-nav] { padding-top: 48px; }
+}
+
+@media (max-width: 860px) {
+  .school-grid { grid-template-columns: repeat(2, 1fr); }
+  .take-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 390px) {
+  .wrap { width: calc(100% - 32px); }
+  .topbar-in { width: calc(100% - 32px); }
+  .hero { padding: 44px 0 40px; }
+  body { font-size: 15.5px; }
+  .school-grid { grid-template-columns: 1fr; }
+  .era-chips { grid-template-columns: repeat(4, 1fr); }
+  .bench-body { padding: 16px 14px; }
+  h1 { font-size: 30px; }
+}
+
+</style>
+
+<style id="layout-contract">
+/* ---- 排版合同：目标块 + 边注几何（852 / 1132 / 236 / 44） ---- */
+.paper { grid-template-columns:minmax(0,1fr); max-width:1132px; }
+.paper > :not(.wide):not(.mrow):not(.refs):not(.school-grid):not(.take-grid) { max-width:852px; }
+.paper > .wide { max-width:1132px; }
+.paper > .mnote { grid-column:1; max-width:852px; }
+.mrow { position:relative; display:flow-root; min-width:0; margin:22px 0; }
+.mrow > .mrow-main { max-width:852px; }
+.mrow > .mrow-main > :first-child { margin-top:0; }
+.mrow > .mrow-main > :last-child { margin-bottom:0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom:0; }
+.mrow > .mnote {
+  position:absolute; right:0; bottom:0; width:236px; margin:0;
+  padding:0 0 0 16px; border:0; border-left:1.6px dashed var(--rule-2);
+  border-radius:0; background:transparent; display:block;
+}
+.mrow--cardtext > .mnote { bottom:var(--card-lift, 14px); }
+@media (max-width:1179px) {
+  .mrow > .mnote {
+    position:static; width:auto; max-width:852px; margin:18px 0 0;
+    padding:11px 0 0; border-left:0; border-top:1.6px dashed var(--rule-2);
+  }
+}
+figure.wide > figcaption, .wide > figcaption, .wide figure > figcaption { max-width:852px; }
+.paper > .school-grid + p, .paper > .wide + p, .paper > .take-grid + p { margin-top:32px; }
+.paper > .refs { max-width:1132px; columns:2; column-gap:44px; }
+@media (max-width:860px) { .paper > .refs { columns:1; max-width:852px; } }
+</style>
+
+
+<style id="manuscript-decor">
+/* ============================================================
+   11. 手稿装饰：蜡封、首字与封缄（只叠加视觉，不改排版合同）
+   ============================================================ */
+
+:root {
+  --seal-hi: #f0b3a1;
+  --seal-mid: #d98570;
+  --seal-deep: #a04c3a;
+  --seal-mark: rgba(255, 244, 238, .80);
+  --seal-line: rgba(255, 244, 238, .30);
+  --seal-glint: rgba(255, 255, 255, .45);
+  --seal-shadow: rgba(0, 0, 0, .45);
+}
+html[data-theme="light"], html.is-light {
+  --seal-hi: #b44634;
+  --seal-mid: #993527;
+  --seal-deep: #71251a;
+  --seal-mark: rgba(255, 245, 239, .82);
+  --seal-line: rgba(255, 245, 239, .32);
+  --seal-glint: rgba(255, 255, 255, .38);
+  --seal-shadow: rgba(80, 20, 10, .30);
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]):not(.is-light) {
+    --seal-hi: #b44634;
+    --seal-mid: #993527;
+    --seal-deep: #71251a;
+    --seal-mark: rgba(255, 245, 239, .82);
+    --seal-line: rgba(255, 245, 239, .32);
+    --seal-glint: rgba(255, 255, 255, .38);
+    --seal-shadow: rgba(80, 20, 10, .30);
+  }
+}
+
+/* hero 背景的巨型蜡印水印 */
+.hero { isolation: isolate; }
+.hero-wm {
+  position: absolute;
+  left: -40px;
+  top: -12px;
+  width: 700px;
+  height: 700px;
+  color: var(--acc);
+  opacity: var(--wm-op, .07);
+  pointer-events: none;
+  transform: rotate(-8deg);
+  z-index: 0;
+}
+.hero-grid { position: relative; z-index: 1; }
+html[data-theme="light"], html.is-light { --wm-op: .055; }
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]):not(.is-light) { --wm-op: .055; }
+}
+@media (max-width: 1100px) {
+  .hero-wm { left: -120px; top: -140px; width: 620px; height: 620px; --wm-op: .05; }
+}
+@media (max-width: 640px) {
+  .hero-wm { left: -160px; top: -120px; width: 520px; height: 520px; --wm-op: .045; }
+}
+
+/* 标题落款的小蜡封 */
+.h1-seal {
+  display: inline-block;
+  width: 1.65em;
+  height: 1.65em;
+  margin-left: .5em;
+  vertical-align: -.42em;
+  transform: rotate(-7deg);
+  filter: drop-shadow(0 3px 5px var(--seal-shadow));
+}
+.h1-seal svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* 章节标题尾部的横线与蜡点 */
+.sec-head::after {
+  content: "";
+  flex: 1 1 auto;
+  min-width: 28px;
+  height: 9px;
+  align-self: center;
+  margin-left: 8px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--acc) 0 2.4px, transparent 3px) right center / 9px 9px no-repeat,
+    linear-gradient(to right, transparent, var(--rule-2) 22%) left center / calc(100% - 9px) 1px no-repeat;
+  opacity: .72;
+}
+
+/* 重点章节首字下沉 */
+.paper p.dropcap::first-letter {
+  float: left;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 3.05em;
+  line-height: .98;
+  color: var(--acc);
+  padding: .04em .12em 0 0;
+}
+
+/* 边注虚线顶端的蜡钉 */
+.mrow > .mnote::before {
+  content: "";
+  position: absolute;
+  left: -4.4px;
+  top: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 0 2.5px var(--bg);
+  opacity: .85;
+}
+
+/* 引文粗线上的蜡钉 */
+blockquote::after {
+  content: "";
+  position: absolute;
+  left: -7.5px;
+  top: 27px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--acc);
+  opacity: .9;
+}
+
+/* 参考编号：小圆印 */
+.refs li { padding-left: 32px; }
+.refs li .rn {
+  width: 20px;
+  height: 20px;
+  display: block;
+  text-align: center;
+  line-height: 18px;
+  border: 1px solid var(--acc-line);
+  border-radius: 50%;
+  background: var(--acc-dim);
+  font-size: 9.5px;
+  color: var(--acc);
+  top: 0;
+}
+
+/* 正文收束的封缄 */
+.colophon {
+  max-width: 852px;
+  margin: 78px 0 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.colo-line {
+  width: 148px;
+  height: 1px;
+  margin-bottom: -18px;
+  background: linear-gradient(to right, transparent, var(--acc-line) 30%, var(--acc-line) 70%, transparent);
+}
+.colo-seal {
+  width: 96px;
+  transform: rotate(6deg);
+  filter: drop-shadow(0 7px 12px var(--seal-shadow));
+}
+.colo-seal svg { display: block; width: 100%; height: auto; overflow: visible; }
+.colo-k {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .44em;
+  padding-left: .44em;
+  color: var(--acc);
+}
+.colo-t {
+  margin-top: 4px;
+  font-family: var(--serif);
+  font-size: 14px;
+  letter-spacing: .22em;
+  padding-left: .22em;
+  color: var(--ink-3);
+}
+
+/* 落章动效：只在允许动效时播放，reduced-motion 直接静置 */
+@media (prefers-reduced-motion: no-preference) {
+  .h1-seal svg {
+    animation: sealPress .75s cubic-bezier(.16, 1, .3, 1) .45s both;
+    transform-origin: 50% 56%;
+  }
+  .colophon.in .colo-seal svg {
+    animation: sealPress .8s cubic-bezier(.16, 1, .3, 1) both;
+    transform-origin: 50% 52%;
+  }
+  @keyframes sealPress {
+    0% { opacity: 0; transform: scale(1.28); }
+    55% { opacity: 1; }
+    100% { opacity: 1; transform: scale(1); }
+  }
+}
+
+@media (max-width: 1179px) {
+  .mrow > .mnote::before { left: 0; top: -4px; }
+}
+@media (max-width: 640px) {
+  .sec-head::after { display: none; }
+}
+</style>
+
+<style id="responsive-fixes">
+/* 窄屏回流修正：不改变 852 / 1132 / 236 的桌面合同 */
+
+.sec-head h2 { text-wrap: balance; }
+
+/* 七个时代按钮在 391~640px 不再挤成 39px 细条 */
+@media (max-width: 640px) {
+  .era-chips { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* 391~480px 保持 32px 页边距，避免视口变宽内容反而变窄 */
+@media (max-width: 480px) {
+  .wrap, .topbar-in { width: calc(100% - 32px); }
+}
+
+/* 纪局面板：让所有时代视图堆在同一网格单元里，
+   面板高度取最高一项，最长的文案不会越过底边压到脚注。 */
+.era-panel { display: grid; }
+.era-view {
+  position: static;
+  inset: auto;
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+</style>
+
+<!--FAVICON-->
+
+
+
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNSA0aDE0Ii8+PHBhdGggZD0iTTYuMiA2LjZoMTEuNiIvPjxwYXRoIGQ9Ik04LjQgNi42VjE3TTEyIDYuNlYxN00xNS42IDYuNlYxNyIvPjxwYXRoIGQ9Ik02LjIgMTdoMTEuNiIvPjxwYXRoIGQ9Ik01IDIwaDE0Ii8+PC9nPjwvc3ZnPg==">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="文章目录"></nav>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">主题：跟随系统</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <svg class="hero-wm" viewBox="0 0 600 600" aria-hidden="true" focusable="false">
+    <g fill="none" stroke="currentColor" stroke-linecap="round">
+      <path d="M582.4 300.0L582.5 318.5L579.7 336.8L574.6 354.6L567.7 371.7L560.1 388.3L552.6 404.6L545.4 421.0L538.1 437.5L530.0 453.7L520.2 469.0L508.4 482.8L494.8 494.8L479.7 505.0L464.0 513.7L448.1 521.6L432.2 529.0L416.4 536.0L400.4 542.5L384.2 548.1L367.7 552.8L351.1 556.7L334.3 560.2L317.3 563.7L300.0 567.1L282.3 570.0L264.2 571.7L246.1 571.2L228.2 568.0L211.0 562.2L194.6 554.5L178.9 545.6L163.4 536.6L147.8 527.7L132.1 518.9L116.4 509.4L101.4 498.6L87.7 486.2L76.0 471.9L66.1 456.3L58.1 439.7L51.4 422.6L45.7 405.3L41.2 387.8L38.0 370.2L36.3 352.4L36.1 334.7L37.0 317.2L38.4 300.0L39.6 282.9L40.4 265.8L41.0 248.5L42.2 230.9L45.0 213.4L50.0 196.5L57.5 180.4L67.0 165.5L77.6 151.4L88.6 137.8L99.4 124.1L110.1 110.1L121.1 96.0L132.8 82.1L145.8 69.3L160.2 57.9L175.8 48.1L192.3 39.9L209.4 33.0L226.9 27.3L244.9 23.2L263.3 20.9L281.7 20.8L300.0 23.1L317.9 27.2L335.2 32.4L352.2 37.7L369.0 42.6L385.8 47.1L402.8 51.9L419.5 57.7L435.4 65.5L450.1 75.4L463.2 87.3L475.1 100.4L486.0 114.0L496.7 127.5L507.5 140.8L518.5 154.0L529.2 167.7L539.3 182.0L548.3 197.1L556.4 213.0L563.5 229.4L569.9 246.3L575.5 263.7L579.9 281.7Z" stroke-width="2.4"/>
+      <circle cx="300" cy="300" r="236" stroke-width="1.4"/>
+      <circle cx="300" cy="300" r="206" stroke-width="1.2" stroke-dasharray="2 7" opacity=".8"/>
+      <path d="M544.0 300.0L558.0 300.0M541.9 331.8L555.8 333.7M535.7 363.2L549.2 366.8M525.4 393.4L538.4 398.7M511.3 422.0L523.4 429.0M493.6 448.5L504.7 457.1M472.5 472.5L482.4 482.4M448.5 493.6L457.1 504.7M422.0 511.3L429.0 523.4M393.4 525.4L398.7 538.4M363.2 535.7L366.8 549.2M331.8 541.9L333.7 555.8M300.0 544.0L300.0 558.0M268.2 541.9L266.3 555.8M236.8 535.7L233.2 549.2M206.6 525.4L201.3 538.4M178.0 511.3L171.0 523.4M151.5 493.6L142.9 504.7M127.5 472.5L117.6 482.4M106.4 448.5L95.3 457.1M88.7 422.0L76.6 429.0M74.6 393.4L61.6 398.7M64.3 363.2L50.8 366.8M58.1 331.8L44.2 333.7M56.0 300.0L42.0 300.0M58.1 268.2L44.2 266.3M64.3 236.8L50.8 233.2M74.6 206.6L61.6 201.3M88.7 178.0L76.6 171.0M106.4 151.5L95.3 142.9M127.5 127.5L117.6 117.6M151.5 106.4L142.9 95.3M178.0 88.7L171.0 76.6M206.6 74.6L201.3 61.6M236.8 64.3L233.2 50.8M268.2 58.1L266.3 44.2M300.0 56.0L300.0 42.0M331.8 58.1L333.7 44.2M363.2 64.3L366.8 50.8M393.4 74.6L398.7 61.6M422.0 88.7L429.0 76.6M448.5 106.4L457.1 95.3M472.5 127.5L482.4 117.6M493.6 151.5L504.7 142.9M511.3 178.0L523.4 171.0M525.4 206.6L538.4 201.3M535.7 236.8L549.2 233.2M541.9 268.2L555.8 266.3" stroke-width="1.3"/>
+      <circle cx="300" cy="300" r="92" stroke-width="12"/>
+      <path d="M300 148v304" stroke-width="12"/>
+    </g>
+  </svg>
+  <div class="hero-grid">
+    <div class="reveal">
+      <p class="kicker">科普 · Western Philosophy</p>
+      <h1><span class="h1-prefix">科普 · 哲学史</span>西方哲学两千六百年<em>一场没有散场的对话<span class="h1-seal" aria-hidden="true"><svg viewBox="0 0 120 120" focusable="false">
+        <defs>
+          <radialGradient id="waxSealH" cx="36%" cy="28%" r="80%">
+            <stop offset="0" style="stop-color:var(--seal-hi,#f0b3a1)"/>
+            <stop offset=".55" style="stop-color:var(--seal-mid,#d98570)"/>
+            <stop offset="1" style="stop-color:var(--seal-deep,#a04c3a)"/>
+          </radialGradient>
+        </defs>
+        <path d="M111.9 60.0L111.8 64.5L110.8 69.0L109.2 73.2L107.4 77.2L105.6 81.2L103.8 85.3L101.7 89.2L99.1 92.8L95.8 95.8L92.1 98.2L88.2 100.3L84.3 102.1L80.4 103.8L76.5 105.3L72.5 106.5L68.4 107.4L64.2 108.3L60.0 109.1L55.6 109.8L51.2 109.9L46.8 109.3L42.6 107.8L38.7 105.7L34.9 103.5L31.1 101.3L27.2 99.1L23.5 96.5L20.2 93.4L17.6 89.7L15.5 85.7L13.9 81.5L12.7 77.2L11.8 72.9L11.5 68.6L11.6 64.2L11.9 60.0L12.2 55.8L12.3 51.6L12.6 47.3L13.4 43.0L14.9 39.0L17.2 35.3L19.8 31.8L22.5 28.5L25.1 25.1L27.8 21.6L30.8 18.4L34.3 15.5L38.2 13.2L42.3 11.3L46.6 9.9L51.0 8.9L55.5 8.6L60.0 9.1L64.4 10.2L68.6 11.5L72.7 12.7L76.8 13.8L80.9 15.1L84.9 16.9L88.4 19.4L91.5 22.5L94.2 25.8L96.8 29.1L99.5 32.3L102.1 35.7L104.6 39.2L106.7 43.0L108.4 47.0L110.0 51.2L111.2 55.5Z" fill="url(#waxSealH)"/>
+        <ellipse cx="43" cy="37" rx="15" ry="10" fill="var(--seal-glint,rgba(255,255,255,.45))" opacity=".35" transform="rotate(-28 43 37)"/>
+        <circle cx="60" cy="60" r="38" fill="none" stroke="var(--seal-line,rgba(255,244,238,.3))" stroke-width="1.6"/>
+        <g fill="none" stroke="rgba(60,15,8,.45)" stroke-linecap="round" transform="translate(.9 1.1)">
+          <circle cx="60" cy="60" r="16.5" stroke-width="6.5"/>
+          <path d="M60 32v56" stroke-width="6.5"/>
+        </g>
+        <g fill="none" stroke="var(--seal-mark,rgba(255,244,238,.8))" stroke-linecap="round">
+          <circle cx="60" cy="60" r="16.5" stroke-width="6.5"/>
+          <path d="M60 32v56" stroke-width="6.5"/>
+        </g>
+      </svg></span></em></h1>
+      <p class="lede">
+        哲学史最容易被讲成名人语录合集，但真正串起它的不是金句，是问题本身：世界由什么构成、人应当如何生活、我如何知道自己知道、意义从哪里来。这篇文章按问题接力的顺序走一遍主线，在每个转折点停下看清楚：谁把问题改了问法，答案又是怎么被下一代人推翻、修剪或重新安放的。
+      </p>
+      <div class="byline">
+        <span>约 30 分钟</span>
+        <span>49 条参考</span>
+        <span>3 台仪器</span>
+        <span>年代与引文给到可回查出处</span>
+      </div>
+      <p class="scope">
+        <b>口径说明：</b>人物年代、著作年份与译名以斯坦福哲学百科（SEP）等通行文献为准；「古希腊奇迹」「黑暗中世纪」这类旧叙事，文中会随手标注学界的现状。引文尽量给到原文出处；无法确证归属的流行说法一律注明「后世转述」，宁可少一句漂亮话。
+      </p>
+    </div>
+
+    <aside class="era-lab reveal" aria-label="纪元切换台">
+      <div class="lab-head">
+        <span><span class="live">LIVE</span> · 纪元切换台</span>
+        <span id="eraMeta">七个时代</span>
+      </div>
+      <div class="era-chips" id="eraChips" role="group" aria-label="选择时代"></div>
+      <div class="era-panel" id="eraPanel" aria-live="polite"></div>
+      <p class="era-cap">时代切分是方便之门，不是铁壁：卢克莱修写伊壁鸠鲁时罗马已经繁荣，皮浪的怀疑在笛卡尔手里复活，边界两侧的人一直在互相回信。</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= 速览 ================= -->
+<section id="quick" data-nav="速览">
+  <div class="sec-head"><span class="sec-num">00</span><h2>速览：先拿到地图再上路</h2></div>
+  <div class="paper">
+    <p class="dek">赶时间的话，先看这六条；每一条都能回到对应章节复看细节与出处。</p>
+
+    <ul class="plain">
+      <li><b>哲学史是一条问题接力。</b>答案经常被推翻，但问题保留了下来，换了问法接着跑：从「万物由什么构成」跑到「我如何知道」，再跑到「意义从哪来」。</li>
+      <li><b>第一步是把解释权从神话手里接过来。</b>米利都的泰勒斯问的不是「谁干的」，而是「什么构成的」；赫拉克利特与巴门尼德顺着这个问题分道扬镳（<a class="inline" href="#s1">§01</a>）。</li>
+      <li><b>苏格拉底把哲学拉到人间。</b>西塞罗说，是苏格拉底「第一次把哲学从天上召唤下来」；柏拉图把世界劈成可感与理念两层，亚里士多德给思想配上逻辑工具（<a class="inline" href="#s2">§02</a>）。</li>
+      <li><b>希腊化哲学更像处方。</b>斯多亚、伊壁鸠鲁、犬儒、怀疑派，四家都在回答同一个临床问题：痛苦怎么办（<a class="inline" href="#s3">§03</a>）。</li>
+      <li><b>中世纪不是空白。</b>「信仰与理性」的张力、逻辑术语、大学制度都在那千年里打磨成形；翻译运动把亚里士多德送回了欧洲（<a class="inline" href="#s4">§04</a>）。</li>
+      <li><b>近代哲学的发动机是怀疑。</b>笛卡尔拆到底，休谟拆到底，康德解释了为什么拆不到底；二十世纪分成分析与传统两条路，但面对的还是同一批老问题（<a class="inline" href="#s5">§05</a> 起，两条路见 <a class="inline" href="#s9">§09</a>）。</li>
+    </ul>
+
+    <div class="wide">
+      <div class="relay">
+        <div class="lab-head">
+          <span><span class="live">LIVE</span> · 观念接力图</span>
+          <span id="relayMeta">25 位哲学家 · 24 条影响线</span>
+        </div>
+        <div class="relay-scroll">
+          <svg id="relaySvg" class="relay-svg" viewBox="0 0 1120 800" role="img" aria-label="观念接力图：25 位哲学家按七个时代排布，连线表示思想影响的方向。点击节点查看详情。"></svg>
+        </div>
+        <div class="relay-readout" id="relayReadout" aria-live="polite">
+          <div class="relay-head">
+            <span class="rname">读法</span>
+            <span class="ryears">点击任一位哲学家</span>
+          </div>
+          <p class="relay-stance">接力图按七个时代排布，箭头从「承接」指向「传给」。点击节点会点亮直接的影响线与两侧邻居，下方读数给出他的年代、一句话立场、关键著作，以及那条影响线上的轶事或限定。再点一次还原全图。</p>
+          <p class="relay-lead"><b>提醒：</b>连线指「明确的思想承接」，不指「赞同」。黑格尔到克尔凯郭尔那条线，传过去的更多是不服气。</p>
+        </div>
+      </div>
+      <aside class="mnote wide-note">
+        <span class="tag">怎么读</span>
+        「影响」在哲学史上很少是单行道：奥古斯丁承柏拉图主义而来，笛卡尔又从他手里接过「我思」的雏形。虚线时代的交界处允许交叉阅读，仪器下方每条参考都可直接回查。
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §01 起点 ================= -->
+<section id="s1" data-nav="起点">
+  <div class="sec-head"><span class="sec-num">01</span><h2>起点：把「为什么」问给自然</h2></div>
+  <div class="paper">
+    <p class="dek">小亚细亚沿海的希腊城邦，约公元前 585 年起。最初的一步不是找到答案，而是换了一种提问方式。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p class="dropcap">第一个常被指认为「哲人」的人是米利都的<b>泰勒斯</b><small class="date">（约前 624 ～ 前 546）</small>。他的著名答案只有一句：万物由水构成。以今天的眼光看，这个答案几乎全部错误；但它的提问方式在当时的清单里是新的，问的不是「这事是谁干的」，而是「它由什么构成」。神话用诸神的心意解释闪电与洪水，泰勒斯给自然找的是自然的原因，而且这个原因说出来，别人可以反驳。亚里士多德在《形而上学》卷一把他列为最初的哲人，后世沿用了这个排序<sup class="cite"><a href="#r1">1</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">转述之难</span>泰勒斯没有留下成文著作，全部学说靠后人追记。连「前 585 年 5 月 28 日日食」这个常用的时间锚点，也是希罗多德《历史》1.74 的记载加现代天文学回推的合力。古代哲学史的常态是：人还在，原话已经丢了。</aside>
+    </div>
+
+    <p>真正让这一步显出分量的是两个人。<b>赫拉克利特</b><small class="date">（约前 540 ～ 约前 480）</small>断言万物皆流，世界像火一样不断燃烧又熄灭；但流变不是乱变，背后有一个公共的尺度，他叫它<b>逻各斯</b>（logos）。「人不能两次踏入同一条河流」，这句话流传极广，而它的最早出处是柏拉图《克拉底鲁篇》402a 的转述，不是赫拉克利特的原文<sup class="cite"><a href="#r2">2</a></sup>。</p>
+
+    <p><b>巴门尼德</b><small class="date">（约前 515 ～ 约前 450）</small>站在他正对面。在长诗《论自然》里，他区分了「真理之路」与「意见之路」：真正存在的东西不变、不动、不生不灭；感官报告的那些生灭流变，只是意见<sup class="cite"><a href="#r3">3</a></sup>。他还替这个论证补了推理，因此常被追认为「把逻辑带到哲学里的人」。一个说一切都在变，一个说什么都不变，这对矛盾成了后来两千多年形而上学的发动机：柏拉图的两层世界、亚里士多德的形式与质料，都是给它打的补丁。</p>
+
+    <p>同一时期的其余群像可以一句带过，因为他们回答的仍是同一个问题：<b>毕达哥拉斯</b>答「数」，<b>恩培多克勒</b>答「四种根」，<b>留基伯与德谟克利特</b>答「不可分的微粒」（atomos，原子）。原子论在这代人手里只是众多方案之一，却越过一千年，在伊壁鸠鲁与卢克莱修那里还魂（见 <a class="inline" href="#s3">§03</a>），再越过一千年进入近代科学的世界图景。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>回头看，这一代人真正留下的不是答案清单。水、火、数、原子都当了弃子，留下的是一种作业规范：<b>主张要给理由，理由要经得起反驳</b>。旧科普爱把这一步叫「希腊奇迹」，仿佛理性凭空降临；更稳妥的说法来自科学史家劳埃德的研究，埃及与巴比伦的数学和天文并不是空白，希腊沿海城邦的独特之处在于把解释变成了公开论辩：谁主张，谁举证，摆到广场上让大家驳<sup class="cite"><a href="#r48">48</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">旧叙事修边</span>「米利都学派」是后人起的标签，泰勒斯与阿那克西曼德、阿那克西美尼之间未必有整齐的师承。哲学史里的「学派」多半是史家为了叙事顺手划的框，框里的常常是差异大于共性。</aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §02 转向 ================= -->
+<section id="s2" data-nav="转向">
+  <div class="sec-head"><span class="sec-num">02</span><h2>转向：把问题对准人</h2></div>
+  <div class="paper">
+    <p class="dek">约前 450 ～ 前 322，雅典。问题从星空降到街市，又被学园重新拉高。</p>
+
+    <p>城邦的公共生活先给哲学换了一次舞台。<b>智者学派</b>收学费、教修辞，教人在公民大会上把话说赢；其中的<b>普罗塔戈拉</b><small class="date">（约前 490 ～ 前 420）</small>留下一句被反复争论的口号：「人是万物的尺度」<sup class="cite"><a href="#r4">4</a></sup>。柏拉图专门用整卷《泰阿泰德》对付它：如果人人都是尺度，说错和说对就没有区别，反驳连立足点都找不到。这场争吵的背后是同一个焦虑：在旧习俗与旧神谱松动之后，「好」的标准由谁定？</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>苏格拉底</b><small class="date">（前 469 ～ 前 399）</small>没有用文本回答这个问题，他一行书都没有留下，我们只能从柏拉图、色诺芬和阿里斯托芬三种完全不同的画像里辨认他，学界至今把这桩辨认工作叫「苏格拉底问题」。能比较稳地归于他的，是一种近乎故意找麻烦的对话方法：从「什么是勇敢」「什么是正义」出发，请对方给出定义，再一层层追问下去，直到那个原本胸有成竹的人发现自己其实说不清。方法的目的不是赢，而是逼人承认无知，因为在他看来，承认无知是省察的第一步<sup class="cite"><a href="#r5">5</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">399 BC</span>苏格拉底受审的罪名是不敬城邦之神并腐蚀青年。柏拉图《申辩》36a 提到，按程序只需认罚一笔款即可免死，他拒绝了。定罪时的票差不大，量刑投票时差距反而拉开：他的态度把温和派推远了。</aside>
+    </div>
+
+    <p>前 399 年，七十岁的苏格拉底以不敬神与腐蚀青年的罪名受审，饮毒堇汁而死。柏拉图的《申辩》记下了法庭上那句被引用最多的话：</p>
+
+    <blockquote>
+      <p>「未经省察的人生是不值得过的人生。」</p>
+      <span class="who"><b>柏拉图《申辩》38a</b> · 转述苏格拉底 · 前 399 年法庭陈词</span>
+    </blockquote>
+
+    <p>西塞罗在《图斯库鲁姆论辩》5.4.10 里给这次转向下了注脚：是苏格拉底「第一次把哲学从天上召唤下来，安置在城邦与人的日常里」<sup class="cite"><a href="#r5">5</a></sup>。天上的问题没有丢，但清单上多了一组更急迫的：什么是正义，什么是好的生活，谁来定标准。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>柏拉图</b><small class="date">（前 427 ～ 前 347）</small>把这场审判当成哲学的起点，也当成一桩必须回应的冤案：如果好生活不能靠习俗担保，就得找一个比习俗更稳的根据。他给出的方案是把世界分成两层：我们可感的万物都在生成与毁坏，像流变的影子；另一层是恒定的<b>理念</b>（eidos），万物因「分有」它而成其所是。《理想国》卷七的洞穴比喻把两层关系演了一遍：洞壁上的影子、身后的火、洞外的太阳，是三个亮度等级，知识的任务是把灵魂从最低一层领上去。约前 387 年，他在雅典城外的阿卡德米（Akademia）创办学园，授徒近四十年，这个学园断续存续了约三百年<sup class="cite"><a href="#r6">6</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">洞穴的原委</span>洞穴不是「无知者愚蠢」的嘲讽，而是教育观：灵魂不是被灌入的空容器，它原本就能看见，教育是把它转向（periagoge）。柏拉图还补了一句容易忽略的话：见过太阳的人有义务回到洞穴里去（519c～d）。</aside>
+    </div>
+
+    <p><b>亚里士多德</b><small class="date">（前 384 ～ 前 322）</small>在学园里待了二十年，然后另立门户。前 335 年他在雅典的吕克昂（Lykeion）讲学，因常沿回廊边走边谈，学派得名「逍遥派」。他对老师的修订写在《尼各马可伦理学》1096a：理念论把善说得玄远，可善学最终要回答的是「人该怎么过」，而人是活在城邦里的动物。那句流传甚广的「吾爱吾师，吾更爱真理」就是这一段的通行转译，原文说的是：师友都可贵，但虔敬要求把真理放在朋友之上<sup class="cite"><a href="#r7">7</a></sup>。他留下了两样更耐用的东西。其一是<b>逻辑</b>：《工具论》第一次把推理本身当作研究对象，三段论的规则从此有章可查。其二是<b>四因说</b>：解释一个事物，要说清它的质料因、形式因、动力因、目的因；这套框架统治了西方对「为什么」的理解上千年，直到近代科学的动力因接管一切（参见 <a class="inline" href="#s11">§11</a>）。</p>
+
+    <p>这三代人立起的三样东西，诘问的方法、两层的世界观、论证的工具，构成了此后所有讨论的地基。后面的历史，大半是对它们的修订。</p>
+  </div>
+</section>
+
+<!-- ================= §03 处方 ================= -->
+<section id="s3" data-nav="处方">
+  <div class="sec-head"><span class="sec-num">03</span><h2>处方：哲学作为生活方式</h2></div>
+  <div class="paper">
+    <p class="dek">约前 300 ～ 公元 200，希腊化与罗马。城邦没了，哲学退回到一个人在自己生活里能守住的东西。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p class="dropcap">亚历山大把希腊世界扩成帝国，城邦公共生活的尺度变了：一个希腊人面对的不再是自家大会场，而是一个庞大、随机、不讲道理的世界。哲学随之转向：从「城邦该怎么管」退到「我一个人该怎么活」。各家开出的都是处方，而且共享同一份病历诊断：痛苦来自把命运押在你控制不了的东西上。</p>
+      </div>
+      <aside class="mnote"><span class="tag">语境</span>「希腊化哲学」的断代通常取亚历山大去世（前 323）到罗马吞并希腊（前 146）前后，处方期则一直延续到罗马帝国的斯多亚复兴。分界是叙事用的，不是戒律。</aside>
+    </div>
+
+    <p><b>斯多亚</b>的创始人是塞浦路斯商人<b>芝诺</b><small class="date">（约前 334 ～ 前 262）</small>：海难破产后到雅典，在集市北面的彩画柱廊（stoa poikile）讲学，学派由此得名<sup class="cite"><a href="#r8">8</a></sup>。斯多亚把世界读成一个由理性（logos）统摄的整体，人能守住的只有自己的判断与意愿；德性是唯一的真善，财富健康名声都只是「可取的无关物」。后来出了三位有名的传人：罗马权臣<b>塞涅卡</b>、获释奴隶<b>爱比克泰德</b>、皇帝<b>马可·奥勒留</b>。《沉思录》约在公元 170 年代写于多瑙河军营，是一位统治者在战事间隙写给自己的便条，通篇没有一个句子的第一读者是公众。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>伊壁鸠鲁</b><small class="date">（前 341 ～ 前 270）</small>的花园学派约前 306 年立于雅典城外，收徒不问出身，妇女与奴隶都接。他背的名声与他的主张正好相反：他要的快乐不是纵欲，而是<b>身体无痛加上灵魂无扰</b>（ataraxia）。办法是把欲望分账：自然且必要的（面包、水、住处）尽量满足，自然但不必要的（珍馐）可有可无，空洞的（权势、不朽）是痛苦之源。他借用德谟克利特的原子论拆掉两桩最重的恐惧：神不掌祸福，死亡只是原子的散开，散开之后既没有你也没有痛苦，「死亡与我们无关」<sup class="cite"><a href="#r9">9</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">减法哲学</span>花园的门楣上没有「享乐」二字。据第欧根尼·拉尔修卷十记载，伊壁鸠鲁的日常饮食是面包和水，还说过一句玩笑：给我面包与水，我就跟宙斯比谁吃得好。快乐学派的食谱以简朴闻名。</aside>
+    </div>
+
+    <p>另外两家的处方更极端。<b>犬儒</b>的第欧根尼<small class="date">（约前 412 ～ 前 323）</small>干脆把习俗本身当作病灶，住木桶、点灯笼「找人」的轶事都出自第欧根尼·拉尔修的转记，主旨是一件事：你守着的那些体面，正是让你不自由的绳子<sup class="cite"><a href="#r10">10</a></sup>。<b>怀疑派</b>的皮浪<small class="date">（约前 360 ～ 前 270）</small>则发现任何主张都能被同样有力的反驳对消，于是把「悬搁判断」（epoché）当作疗法，后经塞克斯都·恩披里柯《皮浪学说概要》整理成册，这套文本在十六世纪被重新捡起来，直接喂进了近代哲学的怀疑训练<sup class="cite"><a href="#r11">11</a></sup>。</p>
+
+    <div class="school-grid">
+      <div class="gcard">
+        <div><span class="g-who">斯多亚</span><br><span class="g-en">STOA · 约前 300 起</span></div>
+        <div class="g-line">守住判断与意愿；命运交出去的部分随它去。</div>
+        <div class="g-key"><b>文本</b> · 《沉思录》《道德书简》《爱比克泰德手册》</div>
+      </div>
+      <div class="gcard">
+        <div><span class="g-who">伊壁鸠鲁</span><br><span class="g-en">GARDEN · 约前 306 起</span></div>
+        <div class="g-line">无痛即快乐；把欲望分账，拆掉对神与死的恐惧。</div>
+        <div class="g-key"><b>文本</b> · 《致美诺库斯信》《物性论》（卢克莱修转写）</div>
+      </div>
+      <div class="gcard">
+        <div><span class="g-who">犬儒</span><br><span class="g-en">CYNIC · 约前 400 起</span></div>
+        <div class="g-line">习俗是绳子；按自然活，把体面当行李扔掉。</div>
+        <div class="g-key"><b>文本</b> · 第欧根尼·拉尔修《名哲言行录》卷六</div>
+      </div>
+      <div class="gcard">
+        <div><span class="g-who">怀疑派</span><br><span class="g-en">PYRRHONISM · 约前 270 起</span></div>
+        <div class="g-line">主张与反主张对消；悬搁判断，换内心平静。</div>
+        <div class="g-key"><b>文本</b> · 塞克斯都《皮浪学说概要》</div>
+      </div>
+    </div>
+
+    <div class="mrow mrow--cardtext">
+      <div class="mrow-main">
+        <p>四张处方各有侧重，底层却是同一件事：政治变大了，个人变小了，哲学把「幸福」从城邦议程改写成了私人工程。这个改写在十九世纪还会再发生一次。</p>
+      </div>
+      <aside class="mnote"><span class="tag">对照</span>四家都自称继承了苏格拉底：斯多亚与犬儒取他的「德性即足」，怀疑派取他的「我知我无知」，伊壁鸠鲁取他对死亡的泰然。同一个老师，四张不同的病历。</aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §04 桥梁 ================= -->
+<section id="s4" data-nav="桥梁">
+  <div class="sec-head"><span class="sec-num">04</span><h2>桥梁：信仰与理性的一千年</h2></div>
+  <div class="paper">
+    <p class="dek">约 400 ～ 1350。这段常被叫「黑暗中世纪」；把它当作论证技术的孵化期看，更接近实情。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>罗马帝国接纳基督教后，哲学要回答的新问题变成：理性论证与启示经典如何相处。<b>奥古斯丁</b><small class="date">（354 ～ 430）</small>给出的方案影响此后一千年：信仰在先，理解在后，「我信，为了我能理解」；他用新柏拉图主义的框架来读经典，把内心的自省写成《忏悔录》（约 397 ～ 400），西方后来关于「我」的许多讨论都从这里起步<sup class="cite"><a href="#r12">12</a></sup>。时代更替之际还站着<b>波爱修斯</b><small class="date">（约 480 ～ 约 524）</small>：狱中写成《哲学的慰藉》，并把亚里士多德的逻辑著作译介进中世纪课堂，此后几百年里，欧洲关于推理的技术讨论大半以他的译本为教材。</p>
+      </div>
+      <aside class="mnote"><span class="tag">伏笔</span>记住奥古斯丁这一笔。一千二百年后笛卡尔举起「我思」时，批评者立刻指出《论三位一体》卷十五早有原型：「si fallor, sum」，我若受骗，我存在（见 <a class="inline" href="#s5">§05</a> 的边注）。</aside>
+    </div>
+
+    <p>十一世纪起，论证的野心回来了。<b>安瑟伦</b><small class="date">（1033 ～ 1109）</small>把《宣讲》（1077 ～ 1078）写成一篇「仅靠思考、不用圣经」的证明：上帝是无法设想比之更大者；既然连「设想中存在」都胜过「设想中不存在」，上帝必定存在，这就是后来叫作「本体论证明」的推理<sup class="cite"><a href="#r13">13</a></sup>。他给自己定的副标题是「信仰寻求理解」。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>十二世纪，另一条输入线接通。伊比利亚与南法的翻译热潮把大批希腊文本经阿拉伯文转译回拉丁文，其中最重磅的就是亚里士多德。线的上游是两位让人无法绕开的注释者：<b>阿维森纳</b>（伊本·西那，980 ～ 1037，医学与哲学双线的《治疗论》）与<b>阿威罗伊</b>（伊本·鲁世德，1126 ～ 1198，系统评注亚里士多德，主张理性没有义务先迁就神学结论）<sup class="cite"><a href="#r15">15</a></sup><sup class="cite"><a href="#r16">16</a></sup>。亚里士多德的逻辑学与自然学一旦进入新兴的大学，就要求与神学平起平坐的席位，这个张力定义了其后两百年。</p>
+      </div>
+      <aside class="mnote"><span class="tag">转手的哲学史</span>亚里士多德回欧洲走的是「希腊文 → 叙利亚文 → 阿拉伯文 → 拉丁文」的接力，不少术语义已经变形。今天分析哲学常用的「essence / existence」之分，在中世纪语境里就带着这条转手线的印记。</aside>
+    </div>
+
+    <p>把张力安顿出成果的是<b>托马斯·阿奎那</b><small class="date">（1225 ～ 1274）</small>。他的《神学大全》按论题组织，先摆反方最强论证，再立己方立场，然后逐条答辩：被驳倒的是论证，不是对手。《大全》第一集第 2 题第 3 款给出著名的「五路」，从运动、因果、偶然性、等级秩序到目的性，各推出一个「第一因／必然者」作为终点<sup class="cite"><a href="#r14">14</a></sup>。他的分工方案是：凡理性能论证的（上帝存在、灵魂不朽这一类），不必借经文；经文补上的，是理性单独够不到的部分。</p>
+
+    <p>十三世纪末，另一条路线开始质疑这套安顿是否太自信。<b>奥卡姆的威廉</b><small class="date">（约 1287 ～ 1347）</small>持唯名论，主张共相只是名字，不许把思维里的方便当成本体论里的事实，裁剪的刀口至今以「奥卡姆剃刀」为人熟知<sup class="cite"><a href="#r17">17</a></sup>。这条线削掉了经院形而上学的许多层楼，也顺手把逻辑与经验观察推到前台，两样都在三个世纪后成了近代科学的立身工具。</p>
+
+    <p>所以中世纪留给后人的不是一套必须接受或嘲笑的结论，而是一件基础设施：<b>论证可以走多远、在哪里必须停</b>，这个问题被反复演练过。近代哲学的怀疑与证明，用的都是这套基本功。</p>
+  </div>
+</section>
+
+<!-- ================= §05 方法 ================= -->
+<section id="s5" data-nav="怀疑">
+  <div class="sec-head"><span class="sec-num">05</span><h2>方法：怀疑到底，剩下什么</h2></div>
+  <div class="paper">
+    <p class="dek">1637 ～ 1641，荷兰。近代哲学的起点是一场手术：把可以怀疑的全部切掉，看还剩什么。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p class="dropcap">先看处境。印刷术让文本激增、观点互相打架；宗教改革把「谁来解释真理」的权威清单撕开；伽利略用望远镜看到的东西，让亚里士多德的天学当场难堪。当权威各自为战，「我到底能确知什么」就从书斋问题变成公共问题。<b>笛卡尔</b><small class="date">（1596 ～ 1650）</small>的回答从一次彻底的清算开始：感官会骗人（远处的塔像圆的，走近是方的），梦与醒难以区分，那么把感官先搁置；更进一步，设想一个全能的<b>恶魔</b>系统地欺骗我，连数学真理都可能被注入脑中<sup class="cite"><a href="#r18">18</a></sup>。切到这里，还剩一条无法怀疑：正在怀疑的「我」必须存在，因为被骗也需要一个被骗者。「我思故我在」第一次出现在法文的《谈谈方法》（1637），拉丁文的《第一哲学沉思集》（1641）里表述为 ego sum, ego existo。支点找到了，笛卡尔随后沿着它重建上帝与世界的存在；这次重建在后世受到的批评远多于支点本身，但支点留了下来。</p>
+      </div>
+      <aside class="mnote"><span class="tag">先例</span>《论三位一体》卷十五早有「si fallor, sum」（我若受骗，我存在）。奥古斯丁用它反驳怀疑派，笛卡尔把它升级为全部知识的地基。批评笛卡尔的人常用这处先例说明：「我思」的发现权有争议，用法权属于笛卡尔。</aside>
+    </div>
+
+    <p>沿着「清楚分明的观念是知识的模范」这条路，笛卡尔身后站出两位同路者，合称<b>理性主义</b>。<b>斯宾诺莎</b><small class="date">（1632 ～ 1677）</small>把《伦理学》写成几何书：界说、公理、命题、证明，一条条排下去，实体唯一，神与自然是同一实体（1677 年身后出版）<sup class="cite"><a href="#r19">19</a></sup>。<b>莱布尼茨</b><small class="date">（1646 ～ 1716）</small>用「单子」构成世界，单子之间没有窗户，靠「前定和谐」对表；他还主张我们的世界是所有可能世界中最好的一个，这个说法后来被伏尔泰在《老实人》（1759）里用一位乐观主义教师的荒唐遭遇好好地修理了一遍<sup class="cite"><a href="#r20">20</a></sup>。</p>
+
+    <p>理性主义把知识押在观念自身的清楚分明上。同一时期，英吉利海峡对岸的回答恰好相反：先看感官交上来什么。两条路各怀疑对方一步，最终在第 7 节的哥尼斯堡碰头。</p>
+  </div>
+</section>
+
+<!-- ================= §06 经验 ================= -->
+<section id="s6" data-nav="经验">
+  <div class="sec-head"><span class="sec-num">06</span><h2>经验：把知识押在感官上</h2></div>
+  <div class="paper">
+    <p class="dek">1689 ～ 1748，伦敦与爱丁堡。经验主义自查到底，撞出一堵至今没有搬走的墙。</p>
+
+    <p><b>洛克</b><small class="date">（1632 ～ 1704）</small>的《人类理解论》（1690）从心理学式的提问开始：观念从哪里来？他的答案是「白板」，心灵起初是一张白纸，经验往上写。他还把性质分了两层：第一性质（广延、形状、运动）属于物体自身，第二性质（颜色、声音、气味）只是物体在我们心里引起的效应<sup class="cite"><a href="#r21">21</a></sup>。这个区分把认识论的账目理清了一半，也留下一个悬空项：如果颜色声音都只是效应，那个「承载效应的基质」既感知不到又推不出来，凭什么算知识对象？</p>
+
+    <p><b>贝克莱</b><small class="date">（1685 ～ 1753）</small>的《人类知识原理》（1710）直接把悬空项裁掉：存在就是被感知（esse est percipi）。他并不否认桌子，他否认的是「脱离一切知觉的桌子」这个说法有意义，最常见的反驳（你闭上眼桌子还在）被他预先回应：没有个体知觉时，是上帝的知觉在续场<sup class="cite"><a href="#r22">22</a></sup>。这个方案今天读起来仍然锋利，锋利之处在于它逼所有人回答：你说的「物质」，除了知觉性质的汇总，还剩什么内容？</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>把经验主义推到墙边的是<b>休谟</b><small class="date">（1711 ～ 1776）</small>。《人性论》（1739 ～ 1740）初版几乎无人问津，休谟在自述里说它「一出版就死了」，后来被广泛阅读的是改写后的《人类理解研究》（1748）。他做了一件当时没有人做到的事：给「因果」验明正身。你观察到火在前、热在后，一次又一次；但你从未观察到「必然的联系」本身。所谓因果，是恒常联结在想象里留下的习惯。顺着这条线，归纳也没有理性辩护：凭什么认定明天像昨天？没有任何论证能不循环地回答它<sup class="cite"><a href="#r23">23</a></sup>。他还给伦理学划了一刀：从「是」推不出「应当」，事实陈述后面总要另加一道规范前提（这个区分后来被反复讨论，但那道墙至今立着）。</p>
+      </div>
+      <aside class="mnote"><span class="tag">销量与命运</span>《人性论》的惨败常被引为「哲学书也要运气」的例证。休谟晚年靠改写版翻身，还当过爱丁堡律师协会图书馆馆长，把《英格兰史》写成畅销书。他自称在哲学上只收获了「薄名」，厚利全在史学。</aside>
+    </div>
+
+    <p>于是问题被顶到了死点：科学依赖因果与归纳，经验主义却证明它们在经验里没有出场手续。理性主义那边同样有死账：清楚分明的观念推不出外部世界的存在。两条路各自把对方拖进僵局，需要有人重新定规则。</p>
+  </div>
+</section>
+
+<!-- ================= §07 综合 ================= -->
+<section id="s7" data-nav="综合">
+  <div class="sec-head"><span class="sec-num">07</span><h2>综合：康德的哥白尼式转向</h2></div>
+  <div class="paper">
+    <p class="dek">1781 / 1785，哥尼斯堡。康德把两条路的争端换成了第三种问法。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p class="dropcap">康德自述，休谟把他「从独断的迷梦中唤醒」<sup class="cite"><a href="#r24">24</a></sup>。他的回应写在《纯粹理性批判》（1781；1787 年第二版大改）里，被后人称作哲学的「哥白尼式转向」：与其假设认识必须符合对象，不如考察<b>对象就其被我们认识而言</b>如何符合认识的形式。具体分账是：感性提供材料，而时间与空间是感性的先天形式；知性加工材料，因果这类范畴不是从经验里捡来的，而是<b>经验之所以可能</b>的条件；理性若越过经验的边界去追问「世界整体」「灵魂」「物自体」，必然自相矛盾。知识有了边界文件：我们能认识的永远是现象，物自体不受认识管辖。</p>
+      </div>
+      <aside class="mnote"><span class="tag">柯尼斯堡的对表</span>康德下午三点半的散步准到街坊拿他对表。这个流传极广的故事出自海涅《论德国宗教和哲学的历史》（1834）的文学描写，海涅顺便给了一刀：描写康德的一生很难，因为他既没有生活也没有历史。</aside>
+    </div>
+
+    <p>序言里那句常被引用的话值得原样摆出：</p>
+
+    <blockquote>
+      <p>「我不得不悬置知识，以便给信仰腾出位置。」</p>
+      <span class="who"><b>《纯粹理性批判》第一版序言</b> · B 版 xxx · 1781 / 1787</span>
+    </blockquote>
+
+    <p>注意这句话的方向：它不是护教的口号，而是边界文件的直接推论。凡知识管得到的地方（现象界），因果律不松手；凡因果律管不到的地方（物自体、自由、上帝），知识请止步，其余交给道德与信仰去接手。</p>
+
+    <p>接手方案写在《道德形而上学奠基》（1785）里。康德主张道德律不能从后果算出来，后果因情况而变；命令必须无条件。他把绝对命令写成两条可操作的公式：其一，只按你能愿意其成为普遍法则的准则行动（普遍化检验）；其二，把人性始终当作目的，永远不只当作手段<sup class="cite"><a href="#r24">24</a></sup>。这两条公式在 <a class="inline" href="#s10">§10</a> 的思想实验台里会再次出场：电车难题的义务论一侧，用的就是第二条。</p>
+
+    <p>康德之后的地图上，「世界本身能否被认识」有了正式的边界。边界之内是科学，边界之外是自由与道德的领地。反对派并没有解散，他们从体系内部出发，把边界当成新的起跑线。</p>
+  </div>
+</section>
+
+<!-- ================= §08 裂缝 ================= -->
+<section id="s8" data-nav="裂缝">
+  <div class="sec-head"><span class="sec-num">08</span><h2>裂缝：体系之后</h2></div>
+  <div class="paper">
+    <p class="dek">1807 ～ 1900，柏林到都灵。康德之后最雄心勃勃的体系建成，又在三十年里从内部炸开。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>黑格尔</b><small class="date">（1770 ～ 1831）</small>不喜欢康德留下的那道墙：物自体不可知，等于宣布理性永远够不到实在。他的《精神现象学》（1807）把墙拆掉，方案宏大：实在不是现成摆在那里的东西，而是一个历史过程；概念、制度、艺术、宗教都在矛盾中演化，逐步意识到自身。他在序言里留下一句常被引用的话：「密涅瓦的猫头鹰在黄昏起飞」，意思是理解总是事后到来，像暮色里的猫头鹰<sup class="cite"><a href="#r25">25</a></sup>。这是哲学史上离「把一切装进一个体系」最近的时刻。</p>
+      </div>
+      <aside class="mnote"><span class="tag">查无原话</span>教科书版的「正题、反题、合题」三段式，在黑格尔本人著作里几乎找不到原样表述。这组词主要来自费希特的术语，再经后世哲学史家（查利巴乌斯等人）概括定型。引黑格尔先查原文，这条纪律在他身上格外必要。</aside>
+    </div>
+
+    <p>裂缝从三处同时裂开。<b>叔本华</b><small class="date">（1788 ～ 1860）</small>接过康德的现象/物自体之分，却把物自体读成<b>盲目意志</b>：世界的底色不是理性，是无休止的欲求；理性只是意志雇来的秘书。《作为意志与表象的世界》1818 年出版，他从印度《奥义书》与柏拉图两端取材，给出的止痛方是审美观照与同情，整套气质悲观而清醒<sup class="cite"><a href="#r26">26</a></sup>。</p>
+
+    <p><b>马克思</b><small class="date">（1818 ～ 1883）</small>把黑格尔的辩证法倒转过来：精神不是历史的主体，物质的劳动与生产方式才是；观念的上层建筑建立在经济地基之上，哲学要跟上被改变的世界。《关于费尔巴哈的提纲》第十一条（1845 年写下，1888 年发表）把这句话推到极端：</p>
+
+    <blockquote>
+      <p>「哲学家们只是用不同的方式解释世界，而问题在于改变世界。」</p>
+      <span class="who"><b>马克思《关于费尔巴哈的提纲》第十一条</b> · 1845 年手稿，1888 年发表</span>
+    </blockquote>
+
+    <p><b>克尔凯郭尔</b><small class="date">（1813 ～ 1855）</small>则从另一头反体系：黑格尔的「普遍」吞掉了做决定的个人，而信仰恰恰是个人在不确定中的纵身一跃。他用假名出版《非此即彼》（1843）等书，主张真理对个人而言是主观的：怎样去信，比信了什么更先<sup class="cite"><a href="#r27">27</a></sup>。</p>
+
+    <p><b>尼采</b><small class="date">（1844 ～ 1900）</small>早年读叔本华入迷，后来把批判推到最深处。1882 年的《快乐的科学》里，一个疯子提着灯笼到集市上找上帝，宣布「我们杀了他」：上帝死了，意思是欧洲文明的最高价值已经失去信用，而人们还没有意识到这有多严重。他接着要求「重估一切价值」，在《查拉图斯特拉如是说》（1883）与《论道德的谱系》（1887）里追问：我们引以为傲的道德，最初是谁的、为谁的<sup class="cite"><a href="#r29">29</a></sup>？</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>到 1900 年，体系让位给立场：历史的（马克思）、意志的（叔本华到尼采）、个人的（克尔凯郭尔）。这些立场互不调和，但共享一个诊断：黑格尔式的宏大叙事撑不住了。几乎同一时间，耶拿有一位编外人士在草稿里用符号重写逻辑，那条更安静的路线要等三十年才被看见（见 <a class="inline" href="#s9">§09</a>）。</p>
+      </div>
+      <aside class="mnote"><span class="tag">身后劫</span>尼采 1889 年在都灵精神崩溃，1900 年去世。他妹妹接管手稿后按自己的政治口味编辑删改，纳粹再从中挪用。通行学术界的《考订全集》（科利与蒙蒂纳里主编，1967 年起）才把文本的真相一点点恢复回来。</aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §09 分流 ================= -->
+<section id="s9" data-nav="分流">
+  <div class="sec-head"><span class="sec-num">09</span><h2>分流：二十世纪的两条路</h2></div>
+  <div class="paper">
+    <p class="dek">1879 起，耶拿、剑桥、维也纳、弗莱堡。同一批老问题，两种方法气质：往逻辑与语言收，或往意识与生存现场放。</p>
+
+    <h3>分析之路：把问题翻译清楚<span class="h3-en">Analytic</span></h3>
+
+    <p class="dropcap"><b>弗雷格</b><small class="date">（1848 ～ 1925）</small>在《概念文字》（1879）里造出一套符号逻辑，把亚里士多德三段论装不下的推理（多重量词、关系命题）全部装下；现代数理逻辑的句法由此定型。他还区分了表达式的「含义」与「指称」（1892），为语言哲学立了分析框架<sup class="cite"><a href="#r30">30</a></sup>。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>罗素</b><small class="date">（1872 ～ 1970）</small>1901 年在处理类的理论时发现：把「所有不包含自身的集合组成的集合」当成一个集合，推一步就自相矛盾。这颗炸弹叫罗素悖论，他 1902 年写信告知弗雷格，弗雷格回信承认大厦的地基松了一角。两人随后沿着类型论修补，与怀特海合著的《数学原理》（1910 ～ 1913）是这场重建留下的三大卷地标<sup class="cite"><a href="#r31">31</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">通信的分量</span>1902 年 6 月 16 日罗素致弗雷格的信，与弗雷格的回信，是数理逻辑史上被引用最多的私人通信之一。逻辑主义纲领「数学可还原为逻辑」在希尔伯特纲领与哥德尔那里还有后续（见下文）。</aside>
+    </div>
+
+    <p><b>维特根斯坦</b><small class="date">（1889 ～ 1951）</small>一个人贡献了两次转向。《逻辑哲学论》（1921）主张语言是世界的逻辑图像，凡能说的都能说清楚；全书以一句警句收束：「对于不可说的东西，我们必须保持沉默。」他自己认为已经解决了全部哲学问题，随后去乡下当小学教师。十多年后重返哲学，得出的却是另一套：《哲学研究》（1953 年身后出版）主张意义不在逻辑图像里，而在<b>用法</b>里，「语言游戏」「家族相似」这些概念把早期的自己推翻了<sup class="cite"><a href="#r32">32</a></sup>。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>两次大战之间的维也纳，一群科学家与哲学家组成<b>维也纳学派</b>，主张「可证实原则」：命题要么逻辑为真，要么经验可证，否则是形而上学的空话。纲领在 1931 年撞上一堵墙：哥德尔不完备定理证明，任何包含算术的一致形式系统里都存在真但不可证的命题。随后纳粹上台，学派成员四散，事业以蜕变形式活进了英美大学的哲学系<sup class="cite"><a href="#r33">33</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">纲领的下场</span>逻辑实证主义通常被当作「失败的纲领」陈列，但它顺带完成了两件事：把逻辑工具铺满英语世界哲学系，并把「什么算有意义」本身变成一个可研究的问题。它的证伪者是自己的同盟军。</aside>
+    </div>
+
+    <p>战后，<b>蒯因</b><small class="date">（1908 ～ 2000）</small>的《经验主义的两个教条》（1951）从内部再拆一次：分析真理与综合真理的边界并不像画的那样整齐，经验陈述面对反驳时是一个整体在作证。分析哲学的「分析」二字从此也不敢自称免检<sup class="cite"><a href="#r34">34</a></sup>。这条路线的总体气质是：先把问题翻译成可检查的形式，能解决的解决，翻译不了的注明翻译不了。</p>
+
+    <h3>现象学与存在主义：回到现场<span class="h3-en">Phenomenology &amp; Existentialism</span></h3>
+
+    <p><b>胡塞尔</b><small class="date">（1859 ～ 1938）</small>走的另一条路。《逻辑研究》（1900 ～ 1901）起，他主张哲学的第一步是「悬搁」自然态度：不急于断言外部世界怎样，先如实描述意识如何显现世界。意识的根本结构是<b>意向性</b>：意识总是对某物的意识<sup class="cite"><a href="#r35">35</a></sup>。这条方法路线要给一切科学提供地基，包括心理学与逻辑本身。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>他的学生<b>海德格尔</b><small class="date">（1889 ～ 1976）</small>把问题倒了个个儿：《存在与时间》（1927）说，两千年来大家只顾问「存在者是什么」，忘了问更基本的「存在」本身；要问它，得先分析那个唯一会追问存在的存在者，就是人，他叫<b>此在</b>（Dasein）。此在被抛入世界，先行领会，向死而在，在烦忙中沉沦或在决断中本真。书只写成计划的一半，但足以重启整个欧陆传统<sup class="cite"><a href="#r36">36</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">政治污点</span>1933 年海德格尔出任弗莱堡大学校长并加入纳粹党，战后被禁止授课。哲学成就与政治污点的纠缠至今没有公认的清算方案，这本身也是二十世纪留给哲学史的一个难题。</aside>
+    </div>
+
+    <p><b>萨特</b><small class="date">（1905 ～ 1980）</small>把这条路线拉到公共视野。《存在与虚无》（1943）之后，1945 年的讲座《存在主义是一种人道主义》（1946 年出版）给出那句纲领：对人是<b>存在先于本质</b>，即先有人的存在，然后人通过选择把自己造就成什么样的人；没有预定的图纸，因此自由不是奖赏而是重负，每次选择都在为全人类画像<sup class="cite"><a href="#r37">37</a></sup>。独幕剧《禁闭》（1944）把这句压缩成台词：「他人即地狱。」同代的<b>加缪</b><small class="date">（1913 ～ 1960）</small>在《西西弗神话》（1942）里写荒诞：世界不给理由，人偏要追问，西西弗推石上山时是幸福的，因为他把荒诞接了过来而非屈从<sup class="cite"><a href="#r38">38</a></sup>。<b>波伏瓦</b><small class="date">（1908 ～ 1986）</small>则把「存在先于本质」搬到性别现场，《第二性》（1949）开篇断言：「女人不是天生的，而是被造就的」，一部存在主义著作成了现代女性主义的起点之一<sup class="cite"><a href="#r39">39</a></sup>。</p>
+
+    <p>同一时期的美国还有第三种声音。<b>实用主义</b>：皮尔士主张观念的意义全在其可设想的效果里（1878），詹姆斯把真理押在「管用且可修正」上（1907），杜威把知识当作解决问题的工具，问题升级则知识换代。它没成为欧洲意义的「体系」，却在两条路之间当了多年摆渡人<sup class="cite"><a href="#r40">40</a></sup>。</p>
+
+    <p>两条路的敌人其实是同一个：黑格尔式的宏大叙事。但替代品方向相反：一边把哲学收窄到逻辑、语言与论证，一边放大到意识、历史与生存体验。二十世纪后半的学院地图（分析/欧陆的分系、各自的期刊与会议）就是这两股气质的行政区划。</p>
+  </div>
+</section>
+
+<!-- ================= §10 考场 ================= -->
+<section id="s10" data-nav="考场">
+  <div class="sec-head"><span class="sec-num">10</span><h2>考场：四个思想实验</h2></div>
+  <div class="paper">
+    <p class="dek">概念之争没法进实验室，哲学的代用仪器是思想实验：把变量剥到只剩一个，看直觉与论证在哪里打架。下面四台轮流上场，每台先分步展开，最后摆出三家的回应。</p>
+
+    <div class="wide">
+      <div class="bench">
+        <div class="bench-tabs" id="benchTabs" role="tablist" aria-label="选择思想实验">
+          <button type="button" class="on" data-bench="0" role="tab" aria-selected="true">① 柏拉图的洞穴</button>
+          <button type="button" data-bench="1" role="tab" aria-selected="false">② 笛卡尔的恶魔</button>
+          <button type="button" data-bench="2" role="tab" aria-selected="false">③ 忒修斯之船</button>
+          <button type="button" data-bench="3" role="tab" aria-selected="false">④ 电车难题</button>
+        </div>
+
+        <div class="bench-body">
+          <!-- 实验 1 -->
+          <div class="bench-view on" data-bench-view="0" role="tabpanel">
+            <p class="bench-title">一个人一生只见过影子，他拿什么怀疑影子不是世界？</p>
+            <p class="bench-src">柏拉图《理想国》卷七 · 514a 起 · 约前 375 年</p>
+            <div class="bench-stage">
+              <div class="bench-step on"><span class="step-k">第一步 · 囚徒</span><br>一群人从小被锁在洞穴里，面朝石壁。身后高处有火，他们与火之间竖着矮墙，扛着木偶的人从墙后走过。囚徒看不见火与木偶，只见投在石壁上的影子。对他们来说，影子就是世界，壁上的回声就是万物的声音。</div>
+              <div class="bench-step"><span class="step-k">第二步 · 回头</span><br>假设一人挣脱锁链，转头看见火与木偶：原来一生所见的影子有来源。眼睛刺痛，他甚至想逃回自己的位置，继续看熟悉的影子。</div>
+              <div class="bench-step"><span class="step-k">第三步 · 出洞</span><br>再假设他被人拉出洞口。先看不清任何东西，夜晚先看星与月，最后才能直视白天的太阳，并推出：洞里的一切影子，都由洞外这些东西带来。</div>
+              <div class="bench-step"><span class="step-k">第四步 · 比喻落到教育上</span><br>柏拉图说，可见世界之于理念世界，正如影子之于实物；而教育不是把视力灌进瞎眼睛，是把本来就看得见的灵魂转向该看的地方。他还补了一句常被忽略的话：见过太阳的人有义务回到洞穴，哪怕会被还困在洞里的人嘲笑（519c～d）。</div>
+            </div>
+            <div class="bench-nav">
+              <button type="button" class="bs-prev" disabled>上一步</button>
+              <button type="button" class="bs-next">下一步</button>
+              <span class="dots"><i class="on"></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="bench-answers">
+              <p class="ba-k">三家怎么答</p>
+              <div class="bench-a"><div class="ba-who">柏拉图<small>前 427 ～ 前 347</small></div><div class="ba-what">影子与实物是两个层级，最上面是善的理念；知识是灵魂的转向，不是信息的堆积。转头会痛，所以多数人宁愿要熟悉的影子。<b>出处：</b>《理想国》514a～521b。</div></div>
+              <div class="bench-a"><div class="ba-who">普罗塔戈拉<small>约前 490 ～ 前 420</small></div><div class="ba-what">「人是万物的尺度」：对囚徒而言，影子的样子就是尺度。柏拉图在《泰阿泰德》里整卷回敬这个立场，结论是：如果人人都对，「人人都是尺度」这句主张自己也保不住。</div></div>
+              <div class="bench-a"><div class="ba-who">现代人<small>二十世纪起</small></div><div class="ba-what">只要你刷过推荐流，就住过洞穴：影子由算法投在壁上。差别在于柏拉图坚持回头的人有义务回洞，而现代洞穴的用户协议里没有这一条。</div></div>
+            </div>
+          </div>
+
+          <!-- 实验 2 -->
+          <div class="bench-view" data-bench-view="1" role="tabpanel">
+            <p class="bench-title">感官会骗人，梦像真事，那还有什么骗不掉？</p>
+            <p class="bench-src">笛卡尔《谈谈方法》1637 · 《第一哲学沉思集》1641 · 普特南《理性、真理与历史》1981</p>
+            <div class="bench-stage">
+              <div class="bench-step on"><span class="step-k">第一步 · 清算感官</span><br>笛卡尔决定把可以怀疑的全清空。塔远看圆的，近看方的：感官出过错，出错的东西不能再当地基。</div>
+              <div class="bench-step"><span class="step-k">第二步 · 清算梦</span><br>梦可以逼真到分不清是梦。那么此刻在读这篇文章的这件事，也无法排除「正在做梦」的可能。</div>
+              <div class="bench-step"><span class="step-k">第三步 · 清算到底</span><br>再加一层最狠的假设：一个全能的恶魔把一切观念（包括数学）系统性地灌进你的心灵。到此，几乎全部知识都被切掉了。</div>
+              <div class="bench-step"><span class="step-k">第四步 · 剩下的支点</span><br>「我正在被欺骗」若成立，「我」必须存在：被骗需要一个被骗者。笛卡尔在《沉思集》第二篇找到这个支点，随后尝试从它推回上帝与外部世界。这次的重建后世公认不成立，但支点留了下来。</div>
+            </div>
+            <div class="bench-nav">
+              <button type="button" class="bs-prev" disabled>上一步</button>
+              <button type="button" class="bs-next">下一步</button>
+              <span class="dots"><i class="on"></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="bench-answers">
+              <p class="ba-k">三家怎么答</p>
+              <div class="bench-a"><div class="ba-who">笛卡尔<small>1596 ～ 1650</small></div><div class="ba-what">把「我思」当阿基米德支点，用清楚分明的观念重建知识。重建失败是后世共识，但怀疑的方法本身改写了哲学的起点：从此每套认识论都得先回答「你怎么排除恶魔」。</div></div>
+              <div class="bench-a"><div class="ba-who">摩尔<small>1873 ～ 1958</small></div><div class="ba-what">1939 年的讲演《外部世界的证明》：举起两只手说「这里是一只手，这里是另一只手」。<b>这是对外部世界的一个证明</b>，而且摩尔认为比任何前提都更有把握。学院派笑了八十年，也没能真正驳倒它。</div></div>
+              <div class="bench-a"><div class="ba-who">普特南<small>1926 ～ 2016</small></div><div class="ba-what">1981 年把恶魔换成「缸中之脑」，再用语义外在论反手拆台：如果你一直是缸中之脑，你说「缸」时所想的就只是缸里电子信号的原样图案，这句话指不出真实的缸。「我是缸中之脑」在这套设定下自我拆台。</div></div>
+            </div>
+          </div>
+
+          <!-- 实验 3 -->
+          <div class="bench-view" data-bench-view="2" role="tabpanel">
+            <p class="bench-title">木板全换完之后，还是原来那艘船吗？</p>
+            <p class="bench-src">普鲁塔克《忒修斯传》第 23 章 · 霍布斯《论物体》1655 追加变体</p>
+            <div class="bench-stage">
+              <div class="bench-step on"><span class="step-k">第一步 · 原版</span><br>雅典人保存着忒修斯之船，木板朽一块换一块，以备后人瞻仰。普鲁塔克记下这个问题：替换逐块进行，全部换完后，它还是「同一艘」忒修斯之船吗？</div>
+              <div class="bench-step"><span class="step-k">第二步 · 霍布斯加码</span><br>霍布斯把难度翻倍：把换下来的旧板全部收好，照原样再拼一艘。现在有两艘船，一艘由新板组成、位置未断，一艘由原板组成、曾经中断。哪一艘「更有资格」叫忒修斯之船？</div>
+              <div class="bench-step"><span class="step-k">第三步 · 问题落到哪里</span><br>要害不在船：同一性（identity）到底算在什么东西头上？物质还是形式，连续还是结构，由谁定？这个问题在代号换成「手机换了全部零件」「公司换了全部成员」「大脑逐区替换」之后，一个字都不用改。</div>
+            </div>
+            <div class="bench-nav">
+              <button type="button" class="bs-prev" disabled>上一步</button>
+              <button type="button" class="bs-next">下一步</button>
+              <span class="dots"><i class="on"></i><i></i><i></i></span>
+            </div>
+            <div class="bench-answers">
+              <p class="ba-k">三家怎么答</p>
+              <div class="bench-a"><div class="ba-who">亚里士多德<small>前 384 ～ 前 322</small></div><div class="ba-what">实体的同一性算在<b>形式</b>头上：结构与组织延续，船就还是那艘。新板船是原船；旧板复刻是仿制品。<b>出处：</b>沿用《物理学》对自然实体的处理，是后世通行回答之一。</div></div>
+              <div class="bench-a"><div class="ba-who">休谟<small>1711 ～ 1776</small></div><div class="ba-what">严格审视下，「同一性」是想象力把一连串相似知觉缝合出来的<b>虚构</b>：没有一条论证能担保严格意义的同一。《人性论》1.4.2 是这个诊断的原文出处。</div></div>
+              <div class="bench-a"><div class="ba-who">当代形而上学<small>二十世纪后期起</small></div><div class="ba-what">「时空蠕虫」方案：物体是四维实体的一段历史。两艘船在换板之前共享同一段时空，之后是两个不同的对象，只是都继承了那段历史。同一性问题被重新表述，而不是被取消。</div></div>
+            </div>
+          </div>
+
+          <!-- 实验 4 -->
+          <div class="bench-view" data-bench-view="3" role="tabpanel">
+            <p class="bench-title">扳杆可以，推人不行：这条直觉线画在哪？</p>
+            <p class="bench-src">富特 1967 · 汤姆森 1971 / 1985 · 德国自动驾驶伦理委员会 2017</p>
+            <div class="bench-stage">
+              <div class="bench-step on"><span class="step-k">第一步 · 司机版</span><br>富特 1967 年提出：电车刹车失灵，主轨道上五个人，岔道上一人；司机能否扳杆让电车转向？多数人的直觉是：可以。</div>
+              <div class="bench-step"><span class="step-k">第二步 · 旁观者版</span><br>汤姆森把位置换掉：你站在天桥上，唯一能挡住电车的重物是身边一个胖子，把他推下去能救五个人。多数人的直觉掉头：不可以。「扳杆可以，推人不行」，为什么？</div>
+              <div class="bench-step"><span class="step-k">第三步 · 移植版</span><br>汤姆森 1971 年再压一档：五个病人急需器官，你的一位健康访客恰好全都配型，杀了这一个能救五个。直觉强烈反对，而它在算术上与司机版同构。只数人头的方案在它面前必须做出解释。</div>
+            </div>
+            <div class="bench-nav">
+              <button type="button" class="bs-prev" disabled>上一步</button>
+              <button type="button" class="bs-next">下一步</button>
+              <span class="dots"><i class="on"></i><i></i><i></i></span>
+            </div>
+            <div class="bench-answers">
+              <p class="ba-k">三家怎么答</p>
+              <div class="bench-a"><div class="ba-who">功利主义<small>边沁 1789 / 密尔 1863 传统</small></div><div class="ba-what">按后果算总量：救五损一，扳杆；天桥与移植版同理也应执行。移植版暴露了只算总量的代价：它似乎把你也可以拆了，而这与我们的直觉正面相撞。</div></div>
+              <div class="bench-a"><div class="ba-who">义务论<small>康德 1785 传统</small></div><div class="ba-what">人是目的，不能被当作<b>纯粹手段</b>：推人、摘器官是把人当手段，不行。可扳杆算不算把岔道上的人当手段？义务论内部至今在吵这条线的画法。</div></div>
+              <div class="bench-a"><div class="ba-who">双重效果<small>源头可追至阿奎那</small></div><div class="ba-what">《神学大全》II-II q.64 起的方案：伤害若只是被<b>预见</b>而非被<b>意图</b>，某些伤害可以被允许。这是富特划线的原工具，也是 2017 年德国自动驾驶伦理委员会 20 条规则的框架来源之一：系统不得以年龄、性别等特征筛选受害者。</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="mnote wide-note">
+        <span class="tag">怎么用</span>
+        四台仪器各管一个方向：洞穴管实在的层级，恶魔管知识的起点，船管同一性，电车管伦理的边界。它们不出标准答案；它们的功能是暴露你的直觉与哪套论证在打架。
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §11 现在 ================= -->
+<section id="s11" data-nav="现在">
+  <div class="sec-head"><span class="sec-num">11</span><h2>现在：哲学还在做什么</h2></div>
+  <div class="paper">
+    <p class="dek">问题没有退休，只是搬了家：语言模型、自动驾驶、算法权力与正义，用的还是那套问题结构。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>距离读者最近的一间现场是<b>机器与心智</b>。1950 年，图灵在《计算机器与智能》里把「机器能思考吗」整个换成了可操作的「模仿游戏」：如果对话分不出机器与人，争论的根据在哪里？<sup class="cite"><a href="#r41">41</a></sup>1980 年，塞尔的「中文屋」反过来顶：屋里的人按规则手册搬运符号，输出流利中文，却并不「懂」中文；语法操作推不出语义理解<sup class="cite"><a href="#r42">42</a></sup>。今天关于大模型是否「理解」「有意识」的争论，论证双方搬用的基本还是这两张牌：功能对等算不算，意识缺席要不要紧。查默斯 1995 年把它压成一句诊断：解释功能（注意、报告、行为）是「易问题」，解释<b>体验为什么存在</b>是「难问题」，两条线别混着算<sup class="cite"><a href="#r49">49</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag">老问题的现役</span>「模型是否理解」的争论结构，与当年「自动机是否灵魂」一脉相承：笛卡尔承认机械兽可能乱真，仍把心灵排除在外；图灵则主张先把问题变成可判定的形式。结构没变，变的是参照系。</aside>
+    </div>
+
+    <p>另一间现场是<b>正义与制度</b>。罗尔斯《正义论》（1971）给契约论续了命：设想你不知道自己将出生在哪个阶层、哪种天赋、哪个时代（「无知之幕」），在位置背后大家会同意哪些基本制度？由此推出两条：基本自由人人平等，机会向所有人开放，且不平等只有在让最弱势者受益时才被允许（差别原则）。诺齐克 1974 年的《无政府、国家与乌托邦》逐条还击，主张权利是边界而不是目标。分配正义在此后五十年里的所有争论，几乎都在这两极之间选座位<sup class="cite"><a href="#r43">43</a></sup>。</p>
+
+    <p>科学自身也欠哲学一笔账。<b>波普尔</b>在《科学发现的逻辑》（1934 年德文初版，1959 年英译）里主张可证伪性划开科学与非科学；<b>库恩</b>《科学革命的结构》（1962）则说科学不是匀速累积，而是「范式」之间的跳变，跳变期里没有中立的裁判。这两本书的争论（科学的标准由谁定、进步一词还有没有内容）一直延烧到今天关于统计实践与模型验证的讨论里。</p>
+
+    <p>把这些现场连回主线，会发现一件朴素的事：两千六百年里被磨出来的那套结构仍在运转。<b>谁主张，谁举证</b>，是米利都留下的；<b>先检查提问方式本身</b>，是苏格拉底留下的；<b>把含混概念翻译成可检验的形式</b>，是弗雷格与维也纳学派留下的；<b>给每个立场摆出最强反方再作答</b>，是阿奎那的《大全》留下的。哲学没有退休岗位，它做的是基础运维。</p>
+  </div>
+</section>
+
+<!-- ================= 带走 ================= -->
+<section id="takeaway" data-nav="带走">
+  <div class="sec-head"><span class="sec-num">12</span><h2>带走：五条用得上的</h2></div>
+  <div class="paper">
+    <p class="dek">不带体系离开，带走几条以后能复用的检查线。</p>
+
+    <div class="take-grid">
+      <div class="take">
+        <div class="tk-h">先看问题走向，再看人物排队</div>
+        <div class="tk-b">读任何一段哲学史，先问这一代人接住了什么问题、改了什么问法。人物是问题的搬运工，问题才是主角。</div>
+      </div>
+      <div class="take">
+        <div class="tk-h">伟大体系几乎都死于自己的边界</div>
+        <div class="tk-b">笛卡尔的支点推不回外部世界，康德的物自体召唤出黑格尔，黑格尔的体系被自己的历史观撞开。看体系先找它给自己划的禁区。</div>
+      </div>
+      <div class="take">
+        <div class="tk-h">名言先查出处</div>
+        <div class="tk-b">「两次踏入河流」是柏拉图的转述，「吾爱吾师」是伦理学的转译，「正反合」查无原话，康德的对表出自海涅的文学描写。转述不是罪，冒充原文才是。</div>
+      </div>
+      <div class="take">
+        <div class="tk-h">思想实验是哲学的实验室</div>
+        <div class="tk-b">洞穴管实在的层级，恶魔管知识的起点，船管同一性，电车管伦理边界。遇到争执，不妨自己造一个把变量剥干净的小场景。</div>
+      </div>
+      <div class="take">
+        <div class="tk-h">老问题正在新现场上班</div>
+        <div class="tk-b">模型是否理解、电车该让谁、无知之幕后给谁留位置：这套问题结构今天仍在接活。「没有散场」是字面意思，你也坐在这场对话的桌边。</div>
+      </div>
+      <div class="take">
+        <div class="tk-h">给反对者最强的版本</div>
+        <div class="tk-b">阿奎那先立反方再作答，柏拉图让《泰阿泰德》为对手说话。检验自己是否真的懂一个立场，看能否把它最强地讲出来。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 封缄 ================= -->
+<div class="colophon reveal" role="note" aria-label="手稿封缄">
+  <span class="colo-line" aria-hidden="true"></span>
+  <div class="colo-seal" aria-hidden="true"><svg viewBox="0 0 120 150" focusable="false">
+        <defs>
+          <radialGradient id="waxSealC" cx="36%" cy="28%" r="80%">
+            <stop offset="0" style="stop-color:var(--seal-hi,#f0b3a1)"/>
+            <stop offset=".55" style="stop-color:var(--seal-mid,#d98570)"/>
+            <stop offset="1" style="stop-color:var(--seal-deep,#a04c3a)"/>
+          </radialGradient>
+        </defs>
+        <path d="M43 92C38 108 34 122 27 140L38 133L44 147C50 125 56 110 62 100Z" fill="var(--seal-deep,#a04c3a)" opacity=".95"/>
+        <path d="M77 92C82 108 86 122 93 140L82 133L76 147C70 125 64 110 58 100Z" fill="var(--seal-mid,#d98570)" opacity=".9"/>
+        <path d="M111.9 62.0L111.8 66.5L110.8 71.0L109.2 75.2L107.4 79.2L105.6 83.2L103.8 87.3L101.7 91.2L99.1 94.8L95.8 97.8L92.1 100.2L88.2 102.3L84.3 104.1L80.4 105.8L76.5 107.3L72.5 108.5L68.4 109.4L64.2 110.3L60.0 111.1L55.6 111.8L51.2 111.9L46.8 111.3L42.6 109.8L38.7 107.7L34.9 105.5L31.1 103.3L27.2 101.1L23.5 98.5L20.2 95.4L17.6 91.7L15.5 87.7L13.9 83.5L12.7 79.2L11.8 74.9L11.5 70.6L11.6 66.2L11.9 62.0L12.2 57.8L12.3 53.6L12.6 49.3L13.4 45.0L14.9 41.0L17.2 37.3L19.8 33.8L22.5 30.5L25.1 27.1L27.8 23.6L30.8 20.4L34.3 17.5L38.2 15.2L42.3 13.3L46.6 11.9L51.0 10.9L55.5 10.6L60.0 11.1L64.4 12.2L68.6 13.5L72.7 14.7L76.8 15.8L80.9 17.1L84.9 18.9L88.4 21.4L91.5 24.5L94.2 27.8L96.8 31.1L99.5 34.3L102.1 37.7L104.6 41.2L106.7 45.0L108.4 49.0L110.0 53.2L111.2 57.5Z" fill="url(#waxSealC)"/>
+        <ellipse cx="43" cy="39" rx="15" ry="10" fill="var(--seal-glint,rgba(255,255,255,.45))" opacity=".35" transform="rotate(-28 43 39)"/>
+        <circle cx="60" cy="62" r="38" fill="none" stroke="var(--seal-line,rgba(255,244,238,.3))" stroke-width="1.6"/>
+        <g fill="none" stroke="rgba(60,15,8,.45)" stroke-linecap="round" transform="translate(.9 1.1)">
+          <circle cx="60" cy="62" r="16.5" stroke-width="6.5"/>
+          <path d="M60 34v56" stroke-width="6.5"/>
+        </g>
+        <g fill="none" stroke="var(--seal-mark,rgba(255,244,238,.8))" stroke-linecap="round">
+          <circle cx="60" cy="62" r="16.5" stroke-width="6.5"/>
+          <path d="M60 34v56" stroke-width="6.5"/>
+        </g>
+      </svg></div>
+  <p class="colo-k">EXPLICIT</p>
+  <p class="colo-t">手稿至此</p>
+</div>
+
+<!-- ================= 参考 ================= -->
+<section id="refs-sec" data-nav="参考">
+  <div class="sec-head"><span class="sec-num">13</span><h2>参考与出处</h2></div>
+  <div class="paper">
+    <p class="dek">条目以斯坦福哲学百科（SEP）为主，便于逐条回查；第 48 条为专著。</p>
+
+    <ol class="refs">
+      <li><span class="rn">1</span>泰勒斯 Thales：<a href="https://plato.stanford.edu/entries/thales/">Stanford Encyclopedia of Philosophy</a></li>
+      <li><span class="rn">2</span>赫拉克利特 Heraclitus：<a href="https://plato.stanford.edu/entries/heraclitus/">SEP</a>（河流句见《克拉底鲁篇》402a 转述）</li>
+      <li><span class="rn">3</span>巴门尼德 Parmenides：<a href="https://plato.stanford.edu/entries/parmenides/">SEP</a></li>
+      <li><span class="rn">4</span>普罗塔戈拉 Protagoras：<a href="https://plato.stanford.edu/entries/protagoras/">SEP</a>（「人是万物的尺度」见《泰阿泰德》152a 转述）</li>
+      <li><span class="rn">5</span>苏格拉底与《申辩》Socrates：<a href="https://plato.stanford.edu/entries/socrates/">SEP</a>（西塞罗《图斯库鲁姆论辩》5.4.10）</li>
+      <li><span class="rn">6</span>柏拉图 Plato：<a href="https://plato.stanford.edu/entries/plato/">SEP</a>（洞穴：《理想国》514a～521b）</li>
+      <li><span class="rn">7</span>亚里士多德 Aristotle：<a href="https://plato.stanford.edu/entries/aristotle/">SEP</a>（师友之辨：《尼各马可伦理学》1096a）</li>
+      <li><span class="rn">8</span>斯多亚 Stoicism：<a href="https://plato.stanford.edu/entries/stoicism/">SEP</a></li>
+      <li><span class="rn">9</span>伊壁鸠鲁 Epicurus：<a href="https://plato.stanford.edu/entries/epicurus/">SEP</a></li>
+      <li><span class="rn">10</span>犬儒 Cynics：<a href="https://iep.utm.edu/cynics/">Internet Encyclopedia of Philosophy</a>（轶事见第欧根尼·拉尔修《名哲言行录》）</li>
+      <li><span class="rn">11</span>古代怀疑派 Ancient Skepticism：<a href="https://plato.stanford.edu/entries/skepticism-ancient/">SEP</a></li>
+      <li><span class="rn">12</span>奥古斯丁 Augustine：<a href="https://plato.stanford.edu/entries/augustine/">SEP</a></li>
+      <li><span class="rn">13</span>安瑟伦与本体论证明 Anselm：<a href="https://plato.stanford.edu/entries/anselm/">SEP</a>（《宣讲》1077～1078）</li>
+      <li><span class="rn">14</span>阿奎那 Aquinas：<a href="https://plato.stanford.edu/entries/aquinas/">SEP</a>（五路：《神学大全》I q.2 a.3）</li>
+      <li><span class="rn">15</span>阿维森纳 Ibn Sina：<a href="https://plato.stanford.edu/entries/ibn-sina/">SEP</a></li>
+      <li><span class="rn">16</span>阿威罗伊 Ibn Rushd：<a href="https://plato.stanford.edu/entries/ibn-rushd/">SEP</a></li>
+      <li><span class="rn">17</span>奥卡姆的威廉 Ockham：<a href="https://plato.stanford.edu/entries/ockham/">SEP</a>（剃刀通行表述为后人概括）</li>
+      <li><span class="rn">18</span>笛卡尔 Descartes：<a href="https://plato.stanford.edu/entries/descartes/">SEP</a>（《谈谈方法》1637；《沉思集》1641）</li>
+      <li><span class="rn">19</span>斯宾诺莎 Spinoza：<a href="https://plato.stanford.edu/entries/spinoza/">SEP</a>（《伦理学》1677 身后出版）</li>
+      <li><span class="rn">20</span>莱布尼茨 Leibniz：<a href="https://plato.stanford.edu/entries/leibniz/">SEP</a>（伏尔泰的反讽见《老实人》1759）</li>
+      <li><span class="rn">21</span>洛克 Locke：<a href="https://plato.stanford.edu/entries/locke/">SEP</a>（《人类理解论》1690）</li>
+      <li><span class="rn">22</span>贝克莱 Berkeley：<a href="https://plato.stanford.edu/entries/berkeley/">SEP</a>（《人类知识原理》1710）</li>
+      <li><span class="rn">23</span>休谟 Hume：<a href="https://plato.stanford.edu/entries/hume/">SEP</a>（「一出版就死了」见《我的一生》1776）</li>
+      <li><span class="rn">24</span>康德 Kant：<a href="https://plato.stanford.edu/entries/kant/">SEP</a>（《纯粹理性批判》1781/1787；《奠基》1785）</li>
+      <li><span class="rn">25</span>黑格尔 Hegel：<a href="https://plato.stanford.edu/entries/hegel/">SEP</a>（猫头鹰：《精神现象学》1807 序言）</li>
+      <li><span class="rn">26</span>叔本华 Schopenhauer：<a href="https://plato.stanford.edu/entries/schopenhauer/">SEP</a></li>
+      <li><span class="rn">27</span>克尔凯郭尔 Kierkegaard：<a href="https://plato.stanford.edu/entries/kierkegaard/">SEP</a></li>
+      <li><span class="rn">28</span>马克思 Marx：<a href="https://plato.stanford.edu/entries/marx/">SEP</a>（第十一条：1845 手稿，1888 发表）</li>
+      <li><span class="rn">29</span>尼采 Nietzsche：<a href="https://plato.stanford.edu/entries/nietzsche/">SEP</a>（疯子：《快乐的科学》§125，1882）</li>
+      <li><span class="rn">30</span>弗雷格 Frege：<a href="https://plato.stanford.edu/entries/frege/">SEP</a>（《概念文字》1879）</li>
+      <li><span class="rn">31</span>罗素悖论 Russell's Paradox：<a href="https://plato.stanford.edu/entries/russell-paradox/">SEP</a>（1902 年罗素致弗雷格信）</li>
+      <li><span class="rn">32</span>维特根斯坦 Wittgenstein：<a href="https://plato.stanford.edu/entries/wittgenstein/">SEP</a>（《逻辑哲学论》1921；《哲学研究》1953）</li>
+      <li><span class="rn">33</span>维也纳学派 Vienna Circle：<a href="https://plato.stanford.edu/entries/vienna-circle/">SEP</a>（哥德尔不完备定理 1931）</li>
+      <li><span class="rn">34</span>蒯因 Quine：<a href="https://plato.stanford.edu/entries/quine/">SEP</a>（《经验主义的两个教条》1951）</li>
+      <li><span class="rn">35</span>胡塞尔 Husserl：<a href="https://plato.stanford.edu/entries/husserl/">SEP</a>（《逻辑研究》1900～1901）</li>
+      <li><span class="rn">36</span>海德格尔 Heidegger：<a href="https://plato.stanford.edu/entries/heidegger/">SEP</a>（《存在与时间》1927）</li>
+      <li><span class="rn">37</span>萨特 Sartre：<a href="https://plato.stanford.edu/entries/sartre/">SEP</a>（讲座 1945，《人道主义》1946 出版）</li>
+      <li><span class="rn">38</span>加缪 Camus：<a href="https://plato.stanford.edu/entries/camus/">SEP</a>（《西西弗神话》1942）</li>
+      <li><span class="rn">39</span>波伏瓦 Beauvoir：<a href="https://plato.stanford.edu/entries/beauvoir/">SEP</a>（《第二性》1949）</li>
+      <li><span class="rn">40</span>实用主义 Pragmatism：<a href="https://plato.stanford.edu/entries/pragmatism/">SEP</a></li>
+      <li><span class="rn">41</span>图灵测试 Turing Test：<a href="https://plato.stanford.edu/entries/turing-test/">SEP</a>（原文《计算机器与智能》1950）</li>
+      <li><span class="rn">42</span>中文屋 Chinese Room：<a href="https://plato.stanford.edu/entries/chinese-room/">SEP</a>（塞尔 1980）</li>
+      <li><span class="rn">43</span>罗尔斯 Rawls：<a href="https://plato.stanford.edu/entries/rawls/">SEP</a>（《正义论》1971）</li>
+      <li><span class="rn">44</span>双重效果与电车难题 Doctrine of Double Effect：<a href="https://plato.stanford.edu/entries/double-effect/">SEP</a>（富特 1967；汤姆森 1971/1985）</li>
+      <li><span class="rn">45</span>时间中的同一性 Identity over Time：<a href="https://plato.stanford.edu/entries/identity-time/">SEP</a>（忒修斯之船：普鲁塔克《忒修斯传》23）</li>
+      <li><span class="rn">46</span>摩尔 G. E. Moore：<a href="https://plato.stanford.edu/entries/moore/">SEP</a>（《外部世界的证明》1939）</li>
+      <li><span class="rn">47</span>语义外在论与缸中之脑 Externalism About the Mind：<a href="https://plato.stanford.edu/entries/content-externalism/">SEP</a>（普特南《理性、真理与历史》1981）</li>
+      <li><span class="rn">48</span>G. E. R. Lloyd，<i class="cite-book">Magic, Reason and Experience: Studies in the Origins and Development of Greek Science</i>，Cambridge University Press，1979（「希腊奇迹」叙事的批评与公开论辩传统）</li>
+      <li><span class="rn">49</span>意识与难问题 Consciousness：<a href="https://plato.stanford.edu/entries/consciousness/">SEP</a>（查默斯「难问题」1995）</li>
+    </ol>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>© 2026 灯箱 · LIGHTBOX</span>
+  <span><a href="appliance-safety.html">← 上一篇：家电安全</a> · <a href="scientific-cat-care.html">科学养猫</a> · <a href="index.html">全部文章 →</a> · 单文件 · 零外部请求</span>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     0. 主题（跟随系统 → 深色 → 浅色 循环，与全站共用键）
+     ============================================================ */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var KEY = 'technotes-theme';
+  var order = ['auto', 'dark', 'light'];
+  var mode = 'auto';
+
+  try { mode = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
+  if (order.indexOf(mode) < 0) mode = 'auto';
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function syncLightClass() {
+    var light = mode === 'light' || (mode === 'auto' && systemLight());
+    root.classList.toggle('is-light', !!light);
+  }
+
+  function applyTheme(next) {
+    mode = next;
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    syncLightClass();
+    themeBtn.textContent = '主题：' + (mode === 'auto' ? '跟随系统' : (mode === 'dark' ? '深色' : '浅色'));
+    document.dispatchEvent(new CustomEvent('technotes:theme'));
+  }
+
+  applyTheme(mode);
+
+  themeBtn.addEventListener('click', function () {
+    var i = order.indexOf(mode);
+    var next = order[(i + 1) % order.length];
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    applyTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (mode !== 'auto') return;
+      syncLightClass();
+      document.dispatchEvent(new CustomEvent('technotes:theme'));
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  /* ============================================================
+     1. 目录、进度、显现（IO + 看门狗）
+     ============================================================ */
+
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[data-nav]'));
+  var links = [];
+
+  sections.forEach(function (section) {
+    var a = document.createElement('a');
+    a.href = '#' + section.id;
+    a.textContent = section.getAttribute('data-nav');
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function updateScroll() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.min(100, Math.max(0, y / max * 100)) : 0;
+    progress.style.width = pct + '%';
+
+    var current = -1;
+    for (var i = 0; i < sections.length; i++) {
+      var top = sections[i].getBoundingClientRect().top;
+      if (top <= window.innerHeight * 0.34) current = i;
+    }
+    links.forEach(function (a, i) {
+      a.classList.toggle('on', i === current);
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  updateScroll();
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    var ioFiredOnce = false;
+    var io = new IntersectionObserver(function (entries) {
+      ioFiredOnce = true;
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+    // 看门狗：个别内嵌 WebView 从不派发 IO 回调，届时直接显现
+    setTimeout(function () {
+      if (ioFiredOnce) return;
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+    }, 1500);
+  } else {
+    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+  }
+
+  /* ============================================================
+     2. 仪器 A：纪元切换台
+     ============================================================ */
+
+  (function () {
+    var ERAS = [
+      { name: '起点时代', years: '约前 585 ～ 前 450', place: '伊奥尼亚沿海城邦',
+        q: '万物由什么构成？',
+        people: ['泰勒斯', '阿那克西曼德', '赫拉克利特', '巴门尼德'],
+        shift: '解释权从神话交给自然原因，且主张要摆到公共论辩里经受反驳。' },
+      { name: '城邦时代', years: '约前 450 ～ 前 322', place: '雅典',
+        q: '人应当如何生活？什么是正义？',
+        people: ['苏格拉底', '柏拉图', '亚里士多德'],
+        shift: '哲学从天空落到街市，又从街市进入学园与吕克昂，开始系统化。' },
+      { name: '处方时代', years: '约前 300 ～ 公元 200', place: '希腊化王国与罗马',
+        q: '痛苦怎么办？',
+        people: ['芝诺', '伊壁鸠鲁', '皮浪', '马可·奥勒留'],
+        shift: '哲学变成生活方式，四大学派开出四张针对灵魂的处方。' },
+      { name: '桥梁时代', years: '约 400 ～ 1350', place: '修道院、翻译局与大学',
+        q: '理性与启示如何相处？',
+        people: ['奥古斯丁', '安瑟伦', '阿奎那', '阿威罗伊'],
+        shift: '论证技术为信仰服务，逻辑、术语与大学制度在这一千年成形。' },
+      { name: '怀疑时代', years: '1637 ～ 1781', place: '荷兰、伦敦与爱丁堡的书斋',
+        q: '我如何知道我知道？',
+        people: ['笛卡尔', '斯宾诺莎', '莱布尼茨', '洛克', '休谟'],
+        shift: '把知识押在方法上，再把方法怀疑到只剩怀疑者本人。' },
+      { name: '裂缝时代', years: '1781 ～ 1900', place: '哥尼斯堡、柏林与都灵',
+        q: '体系之后还剩什么？',
+        people: ['康德', '黑格尔', '叔本华', '克尔凯郭尔', '尼采'],
+        shift: '康德划定认识的边界，随后体系炸开，意志、历史与个人各占一角。' },
+      { name: '现在', years: '1879 ～ 今', place: '讲堂、实验室与互联网',
+        q: '意义、意识与正义从哪来？',
+        people: ['弗雷格', '胡塞尔', '维特根斯坦', '萨特', '罗尔斯'],
+        shift: '分成分析与传统两条路，问题进入语言、意识、制度与机器的现场。' }
+    ];
+
+    var chips = document.getElementById('eraChips');
+    var panel = document.getElementById('eraPanel');
+    if (!chips || !panel) return;
+
+    var html = '';
+    ERAS.forEach(function (e, i) {
+      var people = e.people.map(function (p) { return '<i>' + p + '</i>'; }).join('');
+      html += '<button type="button" data-era="' + i + '"' + (i === 0 ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + e.name.slice(0, 2) + '</button>';
+    });
+    chips.innerHTML = html;
+
+    var views = '';
+    ERAS.forEach(function (e, i) {
+      views += '<div class="era-view' + (i === 0 ? ' on' : '') + '" data-era-view="' + i + '">' +
+        '<p class="era-years">' + e.years + ' · ' + e.place + '</p>' +
+        '<p class="era-name">' + e.name + '</p>' +
+        '<div class="era-q">「' + e.q + '」<small>中心问题</small></div>' +
+        '<div class="era-people">' + e.people.map(function (p) { return '<i>' + p + '</i>'; }).join('') + '</div>' +
+        '<p class="era-shift"><b>转向：</b>' + e.shift + '</p>' +
+        '</div>';
+    });
+    panel.innerHTML = views;
+
+    function pick(i) {
+      var chipsArr = chips.querySelectorAll('button');
+      var viewsArr = panel.querySelectorAll('.era-view');
+      for (var k = 0; k < chipsArr.length; k++) {
+        chipsArr[k].classList.toggle('on', k === i);
+        chipsArr[k].setAttribute('aria-pressed', k === i ? 'true' : 'false');
+      }
+      for (var j = 0; j < viewsArr.length; j++) {
+        viewsArr[j].classList.toggle('on', j === i);
+      }
+    }
+
+    chips.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-era]');
+      if (btn) pick(parseInt(btn.getAttribute('data-era'), 10));
+    });
+  })();
+
+  /* ============================================================
+     3. 仪器 B：观念接力图（SVG 由数据构建）
+     ============================================================ */
+
+  (function () {
+    var svg = document.getElementById('relaySvg');
+    if (!svg || !document.createElementNS) return;
+
+    var NS = 'http://www.w3.org/2000/svg';
+    var LANES = [
+      { y: 95,  label: '起源 前585～前450' },
+      { y: 208, label: '城邦 前450～前322' },
+      { y: 312, label: '处方 前300～200' },
+      { y: 408, label: '桥梁 400～1350' },
+      { y: 505, label: '怀疑 1637～1781' },
+      { y: 605, label: '裂缝 1781～1900' },
+      { y: 715, label: '二十世纪 1879～' }
+    ];
+
+    // id: [lane, x, 中文名, 英文名, 年代, 一句话立场, 关键著作, 承接与传续]
+    var NODES = {
+      heraclitus: [0, 250, '赫拉克利特', 'Heraclitus', '约前540 ～ 约前480',
+        '万物皆流，但流变有尺度（逻各斯）。',
+        '《论自然》残篇',
+        '「河流」经柏拉图《克拉底鲁篇》传下去；斯多亚的「逻各斯」直接沿用他的词。'],
+      parmenides: [0, 520, '巴门尼德', 'Parmenides', '约前515 ～ 约前450',
+        '真正的存在不变不动；感官报告的是意见。',
+        '《论自然》残篇',
+        '柏拉图在《智者篇》里承认他是最难缠的对手；「存在」从此成为正式课题。'],
+      socrates: [1, 180, '苏格拉底', 'Socrates', '前469 ～ 前399',
+        '诘问到底，逼人承认无知；省察高于习俗。',
+        '无著作（弟子转述）',
+        '教出柏拉图；斯多亚与伊壁鸠鲁都把他认作德性生活的原型。'],
+      plato: [1, 400, '柏拉图', 'Plato', '前427 ～ 前347',
+        '世界分两层：可感流变 / 恒定理念。',
+        '《理想国》《会饮篇》',
+        '创办阿卡德米；两分世界经奥古斯丁进入基督教，再经新柏拉图主义影响整个中世纪。'],
+      aristotle: [1, 620, '亚里士多德', 'Aristotle', '前384 ～ 前322',
+        '逻辑工具与四因说；形式在事物之中。',
+        '《工具论》《形而上学》《尼各马可伦理学》',
+        '著述经阿拉伯注释者回流欧洲，成为阿奎那体系与中世纪大学的骨架。'],
+      zeno: [2, 260, '芝诺', 'Zeno of Citium', '约前334 ～ 约前262',
+        '德性是唯一真正的善；守住可控的部分。',
+        '教义存于弟子转记',
+        '斯多亚经塞涅卡、爱比克泰德传到马可·奥勒留，成为罗马的官派伦理。'],
+      epicurus: [2, 540, '伊壁鸠鲁', 'Epicurus', '前341 ～ 前270',
+        '无痛即快乐；欲望分账，拆掉对神与死的恐惧。',
+        '《致美诺库斯信》',
+        '卢克莱修《物性论》把花园哲学写成诗，文艺复兴时被重新发现。'],
+      augustine: [3, 260, '奥古斯丁', 'Augustine', '354 ～ 430',
+        '信仰在先、理解在后；内心是求真的现场。',
+        '《忏悔录》《上帝之城》',
+        '把柏拉图主义接入基督教；「我若受骗，我存在」给笛卡尔留了先例。'],
+      aquinas: [3, 560, '阿奎那', 'Thomas Aquinas', '1225 ～ 1274',
+        '信仰与理性分工；先立最强反方再作答。',
+        '《神学大全》',
+        '他的论证模板成为经院方法；现代学术「最强反方」的纪律可追溯到此处。'],
+      descartes: [4, 140, '笛卡尔', 'Descartes', '1596 ～ 1650',
+        '普遍怀疑后剩「我思」；观念清楚分明是模范。',
+        '《谈谈方法》《第一哲学沉思集》',
+        '理性主义的起点；斯宾诺莎与莱布尼茨沿他的观念论继续修建。'],
+      leibniz: [4, 300, '莱布尼茨', 'Leibniz', '1646 ～ 1716',
+        '世界由单子构成，彼此以「前定和谐」对表。',
+        '《单子论》《神义论》',
+        '他的逻辑与「可能世界」在康德的先验转向里被重新处理。'],
+      locke: [4, 460, '洛克', 'Locke', '1632 ～ 1704',
+        '心灵是白板；知识限在观念来源之内。',
+        '《人类理解论》',
+        '经验主义的起点；贝克莱裁掉他悬空的物质实体，休谟把账查到底。'],
+      hume: [4, 620, '休谟', 'Hume', '1711 ～ 1776',
+        '因果是习惯；归纳没有不循环的辩护。',
+        '《人性论》《人类理解研究》',
+        '康德自述被他「从独断迷梦中唤醒」；是先验转向的直接扳机。'],
+      kant: [4, 800, '康德', 'Kant', '1724 ～ 1804',
+        '对象（就被认识而言）符合认识形式；为理性划界。',
+        '《纯粹理性批判》《道德形而上学奠基》',
+        '德国唯心论从他出发；叔本华拿走他的「物自体」改写成意志。'],
+      hegel: [5, 160, '黑格尔', 'Hegel', '1770 ～ 1831',
+        '实在是历史过程；概念在矛盾中自我展开。',
+        '《精神现象学》',
+        '马克思倒转他的辩证法；克尔凯郭尔与存在主义拿他的体系当靶子。'],
+      schopenhauer: [5, 340, '叔本华', 'Schopenhauer', '1788 ～ 1860',
+        '现象之外是盲目意志；理性是意志的秘书。',
+        '《作为意志与表象的世界》',
+        '尼采少年时读他入迷，再与他决裂；「意志」一词从此进入德语思想的核心。'],
+      nietzsche: [5, 480, '尼采', 'Nietzsche', '1844 ～ 1900',
+        '上帝死了：最高价值失去信用，需要重估一切价值。',
+        '《查拉图斯特拉如是说》《论道德的谱系》',
+        '身后文本被妹妹篡改、被纳粹挪用，1967 年起的考订版才逐步恢复原貌。'],
+      kierkegaard: [5, 660, '克尔凯郭尔', 'Kierkegaard', '1813 ～ 1855',
+        '真理对个人是主观的；信仰是不确定中的纵身一跃。',
+        '《非此即彼》《恐惧与战栗》',
+        '经海德格尔与雅斯贝尔斯转手，二十世纪的存在主义领走了这份遗产。'],
+      marx: [5, 860, '马克思', 'Marx', '1818 ～ 1883',
+        '观念的上层建筑立于经济地基；解释之外要改变。',
+        '《关于费尔巴哈的提纲》《资本论》',
+        '哲学史里读者最多的一条线：历史唯物主义进入社会学、经济学与政治现场。'],
+      frege: [6, 130, '弗雷格', 'Frege', '1848 ～ 1925',
+        '用符号逻辑收编推理；区分含义与指称。',
+        '《概念文字》',
+        '罗素与维特根斯坦各自从他的问题上出发；现代谓词逻辑的句法由此定型。'],
+      russell: [6, 300, '罗素', 'Russell', '1872 ～ 1970',
+        '发现悖论后用类型论重建逻辑地基。',
+        '《数学原理》（与怀特海）',
+        '把维特根斯坦领进哲学；分析传统的大纲以他奠基。'],
+      wittgenstein: [6, 470, '维特根斯坦', 'Wittgenstein', '1889 ～ 1951',
+        '两次转向：语言是逻辑图像 / 意义在于用法。',
+        '《逻辑哲学论》《哲学研究》',
+        '早期给了逻辑实证主义弹药，晚期成了日常语言哲学的底稿，两个他都进了教科书。'],
+      husserl: [6, 640, '胡塞尔', 'Husserl', '1859 ～ 1938',
+        '悬搁自然态度，如实描述意识如何显现世界。',
+        '《逻辑研究》',
+        '现象学方法经海德格尔（他的助手）走向欧陆传统的每个现场。'],
+      heidegger: [6, 810, '海德格尔', 'Heidegger', '1889 ～ 1976',
+        '两千年来「存在」被遗忘；先分析会追问存在的此在。',
+        '《存在与时间》',
+        '萨特从他的「存在」问法出发构建存在主义，虽然两人后来互相否认。'],
+      sartre: [6, 980, '萨特', 'Sartre', '1905 ～ 1980',
+        '存在先于本质：人通过选择把自己造就成什么。',
+        '《存在与虚无》《存在主义是一种人道主义》',
+        '把哲学带出讲堂：小说、戏剧与咖啡馆。这条线的公众影响至今最大。']
+    };
+
+    var EDGES = [
+      ['heraclitus', 'plato'], ['parmenides', 'plato'], ['socrates', 'plato'],
+      ['plato', 'aristotle'], ['socrates', 'zeno'], ['plato', 'augustine'],
+      ['aristotle', 'aquinas'], ['augustine', 'aquinas'], ['augustine', 'descartes'],
+      ['descartes', 'leibniz'], ['locke', 'hume'], ['leibniz', 'kant'],
+      ['hume', 'kant'], ['kant', 'hegel'], ['kant', 'schopenhauer'],
+      ['hegel', 'kierkegaard'], ['hegel', 'marx'], ['schopenhauer', 'nietzsche'],
+      ['kierkegaard', 'sartre'], ['husserl', 'heidegger'], ['heidegger', 'sartre'],
+      ['frege', 'russell'], ['russell', 'wittgenstein'], ['frege', 'wittgenstein']
+    ];
+
+    var R = 16;
+
+    function laneY(id) { return LANES[NODES[id][0]].y; }
+
+    function el(name, attrs) {
+      var e = document.createElementNS(NS, name);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    // 时代栏带
+    LANES.forEach(function (lane) {
+      svg.appendChild(el('line', {
+        x1: 92, y1: lane.y + 24, x2: 1096, y2: lane.y + 24,
+        stroke: 'currentColor', 'stroke-opacity': '0.12',
+        'stroke-dasharray': '3 6', 'stroke-width': '1'
+      }));
+      var t = el('text', { x: 16, y: lane.y + 4, 'class': 'relay-lane' });
+      t.textContent = lane.label;
+      svg.appendChild(t);
+    });
+
+    // 箭头
+    var defs = el('defs', {});
+    var marker = el('marker', { id: 'relArrow', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' });
+    var mp = el('path', { d: 'M0 0L10 5L0 10z', fill: 'var(--acc)' });
+    marker.appendChild(mp);
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    // 边
+    var edgeEls = [];
+    EDGES.forEach(function (e, idx) {
+      var a = NODES[e[0]], b = NODES[e[1]];
+      var x1 = a[1], y1 = laneY(e[0]), x2 = b[1], y2 = laneY(e[1]);
+      var dx = x2 - x1, dy = y2 - y1;
+      var len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var sx = x1 + dx / len * (R + 2), sy = y1 + dy / len * (R + 2);
+      var ex = x2 - dx / len * (R + 9), ey = y2 - dy / len * (R + 9);
+      var mx = (sx + ex) / 2, my = (sy + ey) / 2;
+      var off = Math.min(28, Math.max(-28, (x1 - x2) * 0.12)) || 18;
+      if (y1 === y2) { off = 0; sy = y1 - 18; ey = y2 - 18; my = (sy + ey) / 2 - 14; }
+      var p = el('path', {
+        d: 'M' + sx.toFixed(1) + ' ' + sy.toFixed(1) +
+           'Q' + (mx + off).toFixed(1) + ' ' + my.toFixed(1) + ' ' +
+           ex.toFixed(1) + ' ' + ey.toFixed(1),
+        'class': 'relay-edge', 'data-e': idx,
+        'marker-end': 'url(#relArrow)'
+      });
+      svg.appendChild(p);
+      edgeEls.push({ el: p, a: e[0], b: e[1] });
+    });
+
+    // 节点
+    var nodeEls = {};
+    Object.keys(NODES).forEach(function (id) {
+      var d = NODES[id];
+      var g = el('g', { 'class': 'relay-node', 'data-n': id, tabindex: '0', role: 'button', 'aria-label': d[2] + ' ' + d[4] });
+      var x = d[1], y = laneY(id);
+      g.appendChild(el('circle', { cx: x, cy: y, r: R, 'class': 'pl' }));
+      var nm = el('text', { x: x, y: y + 34, 'class': 'nm' });
+      nm.textContent = d[2];
+      g.appendChild(nm);
+      var yr = el('text', { x: x, y: y + 48, 'class': 'yr' });
+      yr.textContent = d[4].replace(/\s/g, '');
+      g.appendChild(yr);
+      svg.appendChild(g);
+      nodeEls[id] = g;
+    });
+
+    var readout = document.getElementById('relayReadout');
+    var selected = null;
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function clearSel() {
+      selected = null;
+      Object.keys(nodeEls).forEach(function (id) { nodeEls[id].classList.remove('dim', 'on'); });
+      edgeEls.forEach(function (e) { e.el.classList.remove('hot', 'dim'); });
+      readout.innerHTML =
+        '<div class="relay-head"><span class="rname">读法</span><span class="ryears">点击任一位哲学家</span></div>' +
+        '<p class="relay-stance">接力图按七个时代排布，箭头从「承接」指向「传给」。点击节点会点亮直接的影响线与两侧邻居，下方读数给出他的年代、一句话立场、关键著作与影响线上的限定。再点一次还原全图。</p>' +
+        '<p class="relay-lead"><b>提醒：</b>连线指「明确的思想承接」，不指「赞同」。黑格尔到克尔凯郭尔那条线，传过去的更多是不服气。</p>';
+    }
+
+    function pick(id) {
+      if (selected === id) { clearSel(); return; }
+      selected = id;
+      var d = NODES[id];
+      var kin = [], kout = [];
+      edgeEls.forEach(function (e) {
+        var hot = e.a === id || e.b === id;
+        e.el.classList.toggle('hot', hot);
+        e.el.classList.toggle('dim', !hot);
+        if (e.b === id) kin.push(e.a);
+        if (e.a === id) kout.push(e.b);
+      });
+      Object.keys(nodeEls).forEach(function (nid) {
+        var near = nid === id || kin.indexOf(nid) !== -1 || kout.indexOf(nid) !== -1;
+        nodeEls[nid].classList.toggle('dim', !near);
+        nodeEls[nid].classList.toggle('on', nid === id);
+      });
+      function names(ids) {
+        return ids.map(function (i) { return NODES[i][2]; }).join('、') || '无';
+      }
+      readout.innerHTML =
+        '<div class="relay-head"><span class="rname">' + esc(d[2]) + '</span>' +
+        '<span class="ren">' + esc(d[3]) + '</span>' +
+        '<span class="ryears">' + esc(d[4]) + '</span></div>' +
+        '<p class="relay-stance">' + esc(d[5]) + '</p>' +
+        '<div class="relay-facts"><i><b>关键著作</b> ' + esc(d[6]) + '</i></div>' +
+        '<p class="relay-lead"><b>承接</b> ' + names(kin) + ' · <b>传给</b> ' + names(kout) +
+        '<br><b>影响线：</b>' + esc(d[7]) + '</p>';
+    }
+
+    svg.addEventListener('click', function (ev) {
+      var n = ev.target.closest('.relay-node');
+      if (n) pick(n.getAttribute('data-n'));
+      else clearSel();
+    });
+    svg.addEventListener('keydown', function (ev) {
+      var n = ev.target.closest('.relay-node');
+      if (!n) return;
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(n.getAttribute('data-n')); }
+    });
+  })();
+
+  /* ============================================================
+     4. 仪器 C：思想实验台
+     ============================================================ */
+
+  (function () {
+    var tabs = document.getElementById('benchTabs');
+    if (!tabs) return;
+    var views = document.querySelectorAll('.bench-view');
+    var cursors = [];
+
+    tabs.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-bench]');
+      if (!btn) return;
+      tabs.querySelectorAll('button').forEach(function (b) {
+        var on = b === btn;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      views.forEach(function (v, i) {
+        v.classList.toggle('on', i === parseInt(btn.getAttribute('data-bench'), 10));
+      });
+    });
+
+    views.forEach(function (v, i) {
+      var cur = 0;
+      var steps = Array.prototype.slice.call(v.querySelectorAll('.bench-step'));
+      var dots = Array.prototype.slice.call(v.querySelectorAll('.bench-nav .dots i'));
+      var prev = v.querySelector('.bs-prev');
+      var next = v.querySelector('.bs-next');
+      cursors[i] = cur;
+
+      function show() {
+        steps.forEach(function (s, k) { s.classList.toggle('on', k <= cur); });
+        dots.forEach(function (d, k) { d.classList.toggle('on', k <= cur); });
+        prev.disabled = cur === 0;
+        next.disabled = cur === steps.length - 1;
+        cursors[i] = cur;
+      }
+
+      show();
+      prev.addEventListener('click', function () { if (cur > 0) { cur--; show(); } });
+      next.addEventListener('click', function () { if (cur < steps.length - 1) { cur++; show(); } });
+    });
+  })();
+
+})();
+</script>
+</div>
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYyIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGE2NDIwIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNSA0aDE0Ii8+PHBhdGggZD0iTTYuMiA2LjZoMTEuNiIvPjxwYXRoIGQ9Ik04LjQgNi42VjE3TTEyIDYuNlYxN00xNS42IDYuNlYxNyIvPjxwYXRoIGQ9Ik02LjIgMTdoMTEuNiIvPjxwYXRoIGQ9Ik01IDIwaDE0Ii8+PC9nPjwvc3ZnPg==";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBlMTQyMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQuMDAwIDQuMDAwKSBzY2FsZSgxLjAwMDAwKSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDFhNTVlIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNSA0aDE0Ii8+PHBhdGggZD0iTTYuMiA2LjZoMTEuNiIvPjxwYXRoIGQ9Ik04LjQgNi42VjE3TTEyIDYuNlYxN00xNS42IDYuNlYxNyIvPjxwYXRoIGQ9Ik02LjIgMTdoMTEuNiIvPjxwYXRoIGQ9Ik01IDIwaDE0Ii8+PC9nPjwvc3ZnPg==";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>
