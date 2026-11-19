@@ -2,7 +2,7 @@
 
 把结构照亮，再下判断。
 
-灯箱是一个静态技术博客：医学影像、体渲染、AI 工程，以及生活里值得拆开看的问题。
+灯箱是一个静态技术博客：AI 工程、模型训练，以及生活里值得拆开看的问题。
 每篇文章是一个自包含的单文件 HTML——没有框架、构建步骤、统计脚本，也不加载任何
 外部脚本、字体、图片或样式。页面里的推导、图表与交互演示都在本地计算；引用链接
 只在点击时离开本站。断网也能阅读与运行演示（外部引用链接除外）。
@@ -15,16 +15,9 @@
 ├── llm-pretraining-alignment.html              # 大模型是怎么造出来的
 ├── agent-production-engineering.html           # Agent 从 Demo 到生产
 ├── rag-production-engineering.html             # RAG 从 Demo 到生产
-├── medical-imaging-3d-visualization.html       # 医学影像三维可视化
 ├── ai-product-fundamentals.html                # AI 产品基础认知
 ├── neural-network-overview.html                # 神经网络全景
 ├── neural-network-training-optimization.html   # 神经网络训练优化
-├── paper-review-frozen-history.html            # 论文精读：Frozen History
-├── paper-review-gsmr3d.html                    # 论文精读：GSMR3D
-├── paper-review-ctbakegs.html                  # 论文精读：CTBakeGS
-├── paper-review-spectralinr.html               # 论文精读：SpectralINR
-├── paper-review-factorsplat.html               # 论文精读：FactorSplat
-├── paper-review-xiao-tr-gs-sparse-ct.html      # 论文精读：TR-GS
 ├── scientific-cat-care.html                    # 科学养猫
 ├── appliance-safety.html                       # 家用电器安全
 ├── western-philosophy.html                     # 西方哲学两千六百年
@@ -36,6 +29,9 @@
 
 文件之间全部使用相对链接。放在仓库根目录即可被 GitHub Pages 直接托管；项目页
 `https://miyoungliu.github.io/lightbox/` 下路径依然正确。
+
+`.gitignore` 采用白名单：只放行首页、上面 9 篇文章和仓库元文件，其他本地稿件、
+工具链与资料默认不进仓库。新增文章时需要把文件名加入白名单。
 
 ## 阅读路径
 
@@ -50,23 +46,6 @@
 1. [大模型是怎么造出来的](llm-pretraining-alignment.html)：数据、预训练、SFT、偏好对齐与推理 RL 的工程约束。
 2. [神经网络全景](neural-network-overview.html)：从神经元到 Transformer 的前向、反向与结构。
 3. [神经网络训练优化](neural-network-training-optimization.html)：从学习率、优化器到混合精度与部署。
-
-### 医学影像与图形学
-
-1. [医学影像三维可视化](medical-imaging-3d-visualization.html)：管线、算法与产业边界。
-
-### 论文精读
-
-标题统一以「论文精读——」开头，结构固定为：速览 → 问题背景 → 方法/公式 →
-核心机制 → 工程细节 → 实验数字 → 批判性边界 → 带走。每篇至少配一张网络/架构图
-与一台可交互的理论仪器。
-
-1. [Frozen History](paper-review-frozen-history.html)：实时超采样。
-2. [GSMR3D](paper-review-gsmr3d.html)：各向异性 3D MRI 超分。
-3. [CTBakeGS](paper-review-ctbakegs.html)：CT 体渲染烘焙到 3DGS。
-4. [SpectralINR](paper-review-spectralinr.html)：4D Flow MRI 神经场。
-5. [FactorSplat](paper-review-factorsplat.html)：传递函数作为推理时输入的医学体渲染高斯代理。
-6. [TR-GS](paper-review-xiao-tr-gs-sparse-ct.html)：t 分布高斯与射线置信度做稀疏视角 CT。
 
 ### 科普生活
 
@@ -109,7 +88,7 @@ git remote add origin https://github.com/MiyoungLiu/lightbox.git
 git push -u origin main
 ```
 
-`git status --short` 应只出现 21 个发布文件：`index.html`、16 篇文章、
+`git status --short` 应只出现 14 个发布文件：`index.html`、9 篇文章、
 `README.md`、`LICENSE`、`.gitignore` 与 `.nojekyll`。不要使用 `git add -f`
 把本地工作目录强行加入仓库，也不要把整个目录打 zip 上传。提交身份用仓库级配置与
 GitHub noreply 地址，不改全局 git 配置；remote 使用 SSH 或凭据管理器，不要把
@@ -130,13 +109,14 @@ GitHub noreply 地址，不改全局 git 配置；remote 使用 SSH 或凭据管
 ## 新增文章约定
 
 1. 新建一个自包含 HTML 文件，文件名用英文短横线命名，例如 `my-new-post.html`。
-2. 在 `index.html` 的 `<div class="cards">` 里复制一张 `<a class="card">…</a>`，
+2. 把文件名加入 `.gitignore` 的白名单，否则它不会进入仓库。
+3. 在 `index.html` 的 `<div class="cards">` 里复制一张 `<a class="card">…</a>`，
    修改链接、标题、摘要、日期、时长与图标；色调三选一（`card cool` / `card warm` /
-   `card paper`），并加上 `data-cat`（`survey` / `tutorial` / `paper` / `life`）。
+   `card paper`），并加上 `data-cat`（`survey` / `tutorial` / `life`）。
    分类筛选与搜索索引从 DOM 自动读取，但首页的硬编码总数与分类计数需要同步加一。
-3. 文章页顶部放回 `index.html` 的链接；页脚附「相关阅读」互链。
-4. 不引入外部脚本、字体、图片、样式或统计；样式与脚本内联，图片用小尺寸 data URI。
-5. 写作沿用站点约定：数字可验算、引用可回查、演示现场计算。
+4. 文章页顶部放回 `index.html` 的链接；页脚附「相关阅读」互链。
+5. 不引入外部脚本、字体、图片、样式或统计；样式与脚本内联，图片用小尺寸 data URI。
+6. 写作沿用站点约定：数字可验算、引用可回查、演示现场计算。
 
 ## 版权
 

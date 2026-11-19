@@ -17,11 +17,11 @@
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>灯箱 · 把结构照亮再下判断</title>
-<meta name="description" content="灯箱：把医学影像、体渲染、AI 工程与生活里的问题照亮，拆到能验算。推导可复核，引用可回查，演示现场计算。">
+<title>LIGHTBOX</title>
+<meta name="description" content="灯箱：把 AI 工程、模型训练与生活里的问题照亮，拆到能验算。推导可复核，引用可回查，演示现场计算。">
 <meta property="og:site_name" content="LIGHTBOX">
-<meta property="og:title" content="灯箱 · 把结构照亮再下判断">
-<meta property="og:description" content="灯箱：把医学影像、体渲染、AI 工程与生活里的问题照亮，拆到能验算。推导可复核，引用可回查，演示现场计算。">
+<meta property="og:title" content="LIGHTBOX">
+<meta property="og:description" content="灯箱：把 AI 工程、模型训练与生活里的问题照亮，拆到能验算。推导可复核，引用可回查，演示现场计算。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://miyoungliu.github.io/lightbox/">
 <link rel="canonical" href="https://miyoungliu.github.io/lightbox/">
@@ -237,7 +237,7 @@ body {
 /* ---- Hero：左文右「仪器」的不对称分栏 ---- */
 
 /* ---- 首屏主视觉：左列编辑部式排版，右侧轨道索引。
-   首页的身份是一张星图：能量球是恒星，16 篇文章沿三条轨道运行，
+   首页的身份是一张星图：能量球是恒星，9 篇文章沿三条轨道运行，
    悬停读数、点击进入；下方卡片列表是同一份索引的文字版 ---- */
 
 .hero {
@@ -1277,8 +1277,8 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
         引用能回查出处，演示当场算出来。
       </p>
       <div class="hero-index" aria-label="站点概览">
-        <div><span>Articles</span><b>16</b></div>
-        <div title="教程 5 / 论文精读 6 / 调研 2 / 科普生活 3"><span>Fields</span><b>04</b></div>
+        <div><span>Articles</span><b>9</b></div>
+        <div title="教程 5 / 调研 1 / 科普生活 3"><span>Fields</span><b>03</b></div>
         <div><span>Updated</span><b>2026.11</b></div>
       </div>
     </div>
@@ -1298,7 +1298,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
 
   <section class="posts" id="posts">
     <div class="posts-head">
-      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 16 篇</span></h2>
+      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 9 篇</span></h2>
       <button class="shelf-toggle" id="shelfToggle" type="button" aria-expanded="true" aria-controls="side">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5v15" stroke="currentColor" stroke-width="1.7"/></svg>
         <span>收起筛选</span>
@@ -1319,10 +1319,9 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
         <div class="side-block">
           <span class="side-lab">分类</span>
           <div class="cats" role="group" aria-label="按文章类型筛选">
-            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">16</span></button>
-            <button class="cat" type="button" data-cat="survey" aria-pressed="false"><span>调研</span><span class="n">2</span></button>
+            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">9</span></button>
+            <button class="cat" type="button" data-cat="survey" aria-pressed="false"><span>调研</span><span class="n">1</span></button>
             <button class="cat" type="button" data-cat="tutorial" aria-pressed="false"><span>教程</span><span class="n">5</span></button>
-            <button class="cat" type="button" data-cat="paper" aria-pressed="false"><span>论文精读</span><span class="n">6</span></button>
             <button class="cat" type="button" data-cat="life" aria-pressed="false"><span>科普生活</span><span class="n">3</span></button>
           </div>
         </div>
@@ -1388,24 +1387,10 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
             </span>
           </a>
 
-          <a class="card cool reveal" data-cat="survey" data-keywords="医学影像 三维可视化 体绘制 等值面 分割 产业 专利 CT MRI 渲染 管线" href="medical-imaging-3d-visualization.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 7.4v9.2L12 20.8 5 16.6V7.4Z"/><path d="M5 7.4 12 11.6 19 7.4M12 11.6v9.2"/></svg></span>
-              <span class="no">05</span>
-            </span>
-            <span class="kicker">调研 · Survey</span>
-            <h3>从断层到三维：医学影像三维可视化</h3>
-            <span class="desc">七级管线、四种三维输出与体绘制要点，兼看论文地图、产业价值链与产品竞争。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 38 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
           <a class="card cool reveal" data-cat="survey" data-keywords="AI 产品 大模型 RAG 微调 提示词 幻觉 向量检索 语义检索 多模态 Agent 伪需求 召回率 准确率 推理延迟 token 成本 上下文长度 指标 观测" href="ai-product-fundamentals.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="2"/><path d="M12 4.5v3.5M12 16v3.5M4.5 12H8M16 12h3.5"/></svg></span>
-              <span class="no">06</span>
+              <span class="no">05</span>
             </span>
             <span class="kicker">调研 · Survey</span>
             <h3>AI 产品基础认知：能力边界、需求真伪与指标体系</h3>
@@ -1419,7 +1404,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="神经网络 深度学习 神经元 损失 梯度 反向传播 卷积 ResNet Transformer 学习率" href="neural-network-overview.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6.5" r="1.7"/><circle cx="5" cy="17.5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="7" r="1.7"/><circle cx="19" cy="17" r="1.7"/><path d="M6.5 7.3 10.6 11.2M6.5 16.7 10.6 12.8M13.4 11.6l4-3.1M13.4 12.4l4 3.1"/></svg></span>
-              <span class="no">07</span>
+              <span class="no">06</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>神经网络全景：从单个神经元到 Transformer</h3>
@@ -1433,7 +1418,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="训练 优化 优化器 Adam AdamW Muon 学习率调度 正则化 混合精度 bf16 fp8 ZeRO LoRA 量化 投机解码 vLLM 部署 推理" href="neural-network-training-optimization.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4v15.5h15"/><path d="M7 7.5c2.8.3 3.6 6.4 6 7.6 2 .9 3.6-.3 5-1.5"/></svg></span>
-              <span class="no">08</span>
+              <span class="no">07</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>神经网络训练优化：从学习率到部署</h3>
@@ -1444,94 +1429,10 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
             </span>
           </a>
 
-          <a class="card paper reveal" data-cat="paper" data-keywords="时序 超采样 时序损失 配准 PSNR 方差 QRISP 渲染 实时" href="paper-review-frozen-history.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="8.5" width="11" height="11" rx="1.8"/><path d="M8.5 4.5h9.2a1.8 1.8 0 0 1 1.8 1.8v9.2"/></svg></span>
-              <span class="no">09</span>
-            </span>
-            <span class="kicker">论文精读 · Paper Review</span>
-            <h3>论文精读——冻结的历史：时序损失如何让实时超采样停止累积</h3>
-            <span class="desc">时序损失为何奖励「抄历史」：拆 copy cost 推导、四类配准错误与 QRISP 实测。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 26 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
-          <a class="card paper reveal" data-cat="paper" data-keywords="超分 MRI 高斯原型 各向异性 GSMR3D 医学影像 层厚 马氏" href="paper-review-gsmr3d.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="7.5" rx="7" ry="2.4"/><ellipse cx="12" cy="12" rx="7" ry="2.4"/><ellipse cx="12" cy="16.5" rx="7" ry="2.4"/></svg></span>
-              <span class="no">10</span>
-            </span>
-            <span class="kicker">论文精读 · Paper Review</span>
-            <h3>论文精读——任意各向异性尺度：高斯原型做 3D MRI 超分</h3>
-            <span class="desc">各向异性高斯原型做 3D MRI 超分：一个模型覆盖 1-6 mm 层厚差。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 32 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
-          <a class="card paper reveal" data-cat="paper" data-keywords="3DGS 高斯 splat 体渲染 CT 烘焙 八叉树 光学参数 122 fps" href="paper-review-ctbakegs.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="9" r="2.1"/><circle cx="15" cy="13.5" r="3"/><circle cx="8.5" cy="17" r="1.5"/></svg></span>
-              <span class="no">11</span>
-            </span>
-            <span class="kicker">论文精读 · Paper Review</span>
-            <h3>论文精读——单遍 14 秒烘焙：把 CT 体渲染压成 3D Gaussian Splats</h3>
-            <span class="desc">把 CT 体渲染直接译成 3DGS：单遍 14 秒烘焙，边界与代价也写清楚。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
-          <a class="card paper reveal" data-cat="paper" data-keywords="INR 4D Flow 坐标网络 Gabor 速度 MRI 无监督 谱偏差" href="paper-review-spectralinr.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9c2-3.2 4-3.2 6 0s4 3.2 6 0 3.2-2.8 5-2.4"/><path d="M3.5 15.5c2-3.2 4-3.2 6 0s4 3.2 6 0 3.2-2.8 5-2.4"/></svg></span>
-              <span class="no">12</span>
-            </span>
-            <span class="kicker">论文精读 · Paper Review</span>
-            <h3>论文精读——谱优化的 INR：无监督重建颅内 4D Flow</h3>
-            <span class="desc">Gabor 激活的坐标网络重建颅内 4D Flow：逐例 2 分钟，MAE 低于监督 CNN。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 24 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
-          <a class="card paper reveal" data-cat="paper" data-keywords="高斯 传递函数 3DGS 显影 体渲染 低秩 编码器 条件" href="paper-review-factorsplat.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7.5" cy="17" r="2"/></svg></span>
-              <span class="no">13</span>
-            </span>
-            <span class="kicker">论文精读 · Paper Review</span>
-            <h3>论文精读——一套高斯，四十一套显影：传递函数变成推理时输入</h3>
-            <span class="desc">一套高斯对应四十一套显影：传递函数变成推理时输入，缓存构建 1.17 ms。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
-          <a class="card paper reveal" data-cat="paper" data-keywords="稀疏视角 CT 3DGS Student-t 置信度 小波 厚尾 基元" href="paper-review-xiao-tr-gs-sparse-ct.html">
-            <span class="card-top">
-              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2.2v2.6M12 19.2v2.6M2.2 12h2.6M19.2 12h2.6"/></svg></span>
-              <span class="no">14</span>
-            </span>
-            <span class="kicker">论文精读 · Paper Review</span>
-            <h3>论文精读——厚尾基元与射线置信度：稀疏视角 CT 的 0.38 dB 与 0.09 dB</h3>
-            <span class="desc">厚尾基元与射线置信度：0.38 dB 的提升，对齐后只剩 0.09 dB。</span>
-            <span class="foot">
-              <span class="meta"><span>2026-11</span><span>约 26 分钟</span></span>
-              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </span>
-          </a>
-
           <a class="card warm reveal" data-cat="life" data-keywords="疫苗 老年 筛查 牛磺酸 精氨酸 体况 BCS 湿粮 干粮 饮水 猫砂 绝育 行为 慢眨眼 踩奶 呼噜 症状 就医红线 呼吸计数" href="scientific-cat-care.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5.2v4M6 5.2l3.8 3.2M18 5.2v4M18 5.2l-3.8 3.2"/><circle cx="12" cy="13.5" r="6.2"/><path d="M9.6 12.6h.01M14.4 12.6h.01M10.6 16.4c.9.8 1.9.8 2.8 0"/></svg></span>
-              <span class="no">15</span>
+              <span class="no">08</span>
             </span>
             <span class="kicker">科普 · Evidence-Based Care</span>
             <h3>科学养猫：把猫碗、水碗和体重秤都算明白</h3>
@@ -1545,7 +1446,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="家电 电器 插座 插线板 漏保 空开 回路 功率 220V 电线 取暖器 微波炉 浴室 锂电池 安全" href="appliance-safety.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3.2v4.6M15 3.2v4.6"/><path d="M7 7.8h10v2.6a5 5 0 0 1-10 0z"/><path d="M12 15.4v5.4"/></svg></span>
-              <span class="no">16</span>
+              <span class="no">09</span>
             </span>
             <span class="kicker">指南 · Home Safety</span>
             <h3>家电安全：把回路、插座和延长线算清楚</h3>
@@ -1646,7 +1547,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
     }, 1500);
   }
 
-  /* ============ 首屏轨道索引：恒星 + 三条轨道环 + 16 颗文章星体 ============
+  /* ============ 首屏轨道索引：恒星 + 三条轨道环 + 9 颗文章星体 ============
      星体是真实链接，由下方卡片列表的数据生成（单一事实源）；
      位置由本绘制循环驱动（rAF + 看门狗双通道），reduced-motion 时静态铺开 */
 
@@ -1688,14 +1589,14 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
       };
     }
 
-    /* 三条轨道：内=教程（金，最快），中=论文精读，外=调研与生活（最慢）。
+    /* 三条轨道：内=教程（金，最快），中=调研，外=科普生活（最慢）。
        rx 按舞台宽度取比例，ry 是纵轴压扁比，tilt 是长轴倾角（弧度） */
     var RINGS = [
-      { cats: ['tutorial'],        f: .330, ratio: .42, tilt: -.30, speed: .150, phase: 2.4 },
-      { cats: ['paper'],           f: .420, ratio: .37, tilt: .22,  speed: .092, phase: 5.1 },
-      { cats: ['survey', 'life'],  f: .465, ratio: .34, tilt: -.14, speed: .063, phase: .8 }
+      { cats: ['tutorial'],  f: .330, ratio: .42, tilt: -.30, speed: .150, phase: 2.4 },
+      { cats: ['survey'],    f: .420, ratio: .37, tilt: .22,  speed: .092, phase: 5.1 },
+      { cats: ['life'],      f: .465, ratio: .34, tilt: -.14, speed: .063, phase: .8 }
     ];
-    var CAT_LABEL = { tutorial: '教程', survey: '调研', paper: '论文精读', life: '科普生活' };
+    var CAT_LABEL = { tutorial: '教程', survey: '调研', life: '科普生活' };
     var bodies = [];            // { el, o, u0, info }
     var ringGeo = [null, null, null];
     var defaultInfo = null;
@@ -1947,7 +1848,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
       var meta = card.querySelectorAll('.meta span');
       return {
         href: card.getAttribute('href'),
-        cat: card.getAttribute('data-cat') || 'paper',
+        cat: card.getAttribute('data-cat') || 'tutorial',
         title: h ? h.textContent.replace(/\s+/g, ' ').trim() : '未命名文章',
         desc: d ? d.textContent.replace(/\s+/g, ' ').trim() : '',
         meta: meta.length >= 2
@@ -2463,7 +2364,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
   (function () {
     var track = document.getElementById('tkTrack');
     if (!track) return;
-    var CAT = { tutorial: '教程', survey: '调研', paper: '论文精读', life: '科普生活' };
+    var CAT = { tutorial: '教程', survey: '调研', life: '科普生活' };
     var seq = '';
     document.querySelectorAll('.cards .card').forEach(function (card) {
       var no = card.querySelector('.no');

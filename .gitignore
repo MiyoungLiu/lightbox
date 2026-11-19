@@ -4,5 +4,13 @@
 !/.nojekyll
 !/README.md
 !/LICENSE
-!/*.html
-/volume-rendering-ray-casting.html
+!/index.html
+!/llm-pretraining-alignment.html
+!/agent-production-engineering.html
+!/rag-production-engineering.html
+!/ai-product-fundamentals.html
+!/neural-network-overview.html
+!/neural-network-training-optimization.html
+!/scientific-cat-care.html
+!/appliance-safety.html
+!/western-philosophy.html
