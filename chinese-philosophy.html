@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+/* 首屏前读取全站主题，避免从首页进入分页时闪回默认色 */
+(function () {
+  try {
+    var m = localStorage.getItem('technotes-theme');
+    if (m !== 'dark' && m !== 'light' && m !== 'auto') m = 'auto';
+    var r = document.documentElement;
+    if (m === 'auto') r.removeAttribute('data-theme');
+    else r.setAttribute('data-theme', m);
+    var light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    r.classList.toggle('is-light', !!light);
+  } catch (e) {}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中国哲学两千五百年：一场没有终审的注疏</title>
+<meta name="description" content="中国哲学发展科普长文：从先秦诸子到现代新儒家，以经典与注疏为线索，看每一代如何重读旧书、改写问题。附注疏层累仪、三教时间河与人性辩论台，人物年代与引文均给到可回查出处。">
+<meta property="og:site_name" content="LIGHTBOX">
+<meta property="og:title" content="中国哲学两千五百年：一场没有终审的注疏">
+<meta property="og:description" content="中国哲学发展科普长文：从先秦诸子到现代新儒家，以经典与注疏为线索，看每一代如何重读旧书、改写问题。附注疏层累仪、三教时间河与人性辩论台，人物年代与引文均给到可回查出处。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miyoungliu.github.io/lightbox/chinese-philosophy.html">
+<link rel="canonical" href="https://miyoungliu.github.io/lightbox/chinese-philosophy.html">
+<meta name="twitter:card" content="summary">
+
+<style>
+
+/* ============================================================
+   0. 令牌：浅色 冷瓷白 × 石青；深色 墨黑 × 竹青 × 宣纸（哑光）
+   ============================================================ */
+
+:root {
+  --bg: #141714;             /* 深墨黑，不纯黑 */
+  --bg-2: #101310;
+  --panel: rgba(25, 29, 25, .88);
+  --panel-solid: #191D19;    /* 卡片 / 竹简容器，比底色亮一层 */
+  --wash: #191D19;
+  --ink: #F5F5F0;            /* 标题，亮米白 */
+  --ink-2: #C9D3CB;          /* 正文，提亮后的灰青 */
+  --ink-3: #8EA092;          /* 辅助文字，明显可辨 */
+  --rule: rgba(121, 144, 125, .30);
+  --rule-2: rgba(121, 144, 125, .46);
+  --acc: #8FA693;            /* 竹青，主强调 */
+  --acc-deep: #7E947F;
+  --acc-dim: rgba(143, 166, 147, .10);
+  --acc-line: rgba(143, 166, 147, .36);
+  --deco: #79907D;           /* 编绳 / 圆点 / 装饰线 */
+  --deco-soft: rgba(121, 144, 125, .70);
+  --deco-line: rgba(121, 144, 125, .90);
+  --slip-grid: rgba(121, 144, 125, .40);
+  --nav: #79907D;            /* 默认导航文字；1.0 才过 AA */
+  --nav-on: #A1B8A5;         /* 激活导航项 */
+  --cinnabar: #B87367;       /* 朱批：#8F554C 提亮，暗底 AA */
+  --wm: #222822;
+  --wm-op: .12;
+  --ghost: #1D221D;
+  --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  --sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --r: 8px;
+  --max: 1132px;
+}
+
+html[data-theme="light"], html.is-light {
+  --bg: #f7f9fa;
+  --bg-2: #eef3f5;
+  --panel: rgba(255, 255, 255, .9);
+  --panel-solid: #ffffff;
+  --wash: #fbfcfd;
+  --ink: #17242a;
+  --ink-2: #40545d;
+  --ink-3: #5c7079;
+  --rule: #dbe5e9;
+  --rule-2: #c3d2d8;
+  --acc: #2f6479;            /* 石青 */
+  --acc-deep: #24505f;
+  --acc-dim: rgba(47, 100, 121, .07);
+  --acc-line: rgba(47, 100, 121, .3);
+  --ghost: #e6eef1;
+  --deco: #5E7C88;
+  --deco-soft: rgba(47, 100, 121, .26);
+  --deco-line: rgba(47, 100, 121, .55);
+  --slip-grid: rgba(47, 100, 121, .40);
+  --nav: #5c7079;
+  --nav-on: #2f6479;
+  --cinnabar: #8F554C;
+  --wm: #2f6479;
+  --wm-op: .05;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]):not(.is-light) {
+    --bg: #f7f9fa;
+    --bg-2: #eef3f5;
+    --panel: rgba(255, 255, 255, .9);
+    --panel-solid: #ffffff;
+    --wash: #fbfcfd;
+    --ink: #17242a;
+    --ink-2: #40545d;
+    --ink-3: #5c7079;
+    --rule: #dbe5e9;
+    --rule-2: #c3d2d8;
+    --acc: #2f6479;
+    --acc-deep: #24505f;
+    --acc-dim: rgba(47, 100, 121, .07);
+    --acc-line: rgba(47, 100, 121, .3);
+    --ghost: #e6eef1;
+    --deco: #5E7C88;
+    --deco-soft: rgba(47, 100, 121, .26);
+    --deco-line: rgba(47, 100, 121, .55);
+    --slip-grid: rgba(47, 100, 121, .40);
+    --nav: #5c7079;
+    --nav-on: #2f6479;
+    --cinnabar: #8F554C;
+    --wm: #2f6479;
+    --wm-op: .05;
+  }
+}
+
+/* ============================================================
+   1. 基础
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+html { scroll-padding-top: 64px; }
+
+body {
+  background: var(--bg);
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background .35s ease, color .35s ease;
+}
+
+a { color: inherit; }
+
+::selection { background: var(--acc-line); }
+
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+.wrap {
+  width: min(var(--max), calc(100% - 48px));
+  margin: 0 auto;
+}
+
+/* 顶部阅读进度条 */
+.progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--acc);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  z-index: 3;
+}
+
+/* ============================================================
+   2. 顶栏
+   ============================================================ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  border-bottom: 1px solid var(--rule);
+  backdrop-filter: blur(10px);
+}
+
+.topbar-in {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: .02em;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.brand-mark { width: 22px; height: 22px; }
+.bm-frame { fill: none; stroke: var(--acc); stroke-width: 1.6; }
+.bm-slice { stroke: var(--ink-3); stroke-width: 1.2; }
+.bm-dot { fill: var(--acc); }
+
+.nav {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.nav::-webkit-scrollbar { display: none; }
+
+.nav a {
+  font-size: 12.5px;
+  color: var(--nav);
+  text-decoration: none;
+  padding: 5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: color .2s, background .2s;
+}
+.nav a:hover { color: var(--ink); }
+.nav a.on { color: var(--nav-on); background: var(--acc-dim); }
+
+.spacer { flex: 1; }
+
+.theme-btn {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 5px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+}
+.theme-btn:hover { color: var(--acc); border-color: var(--acc-line); }
+
+/* ============================================================
+   3. Hero：左文右竹简
+   ============================================================ */
+
+.hero {
+  padding: 72px 0 64px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-wm {
+  position: absolute;
+  left: -110px;
+  top: -150px;
+  width: 620px;
+  height: 620px;
+  color: var(--wm);
+  opacity: var(--wm-op);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 430px;
+  gap: 48px;
+  align-items: start;
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(34px, 4.6vw, 50px);
+  line-height: 1.28;
+  letter-spacing: .015em;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--ink);
+}
+
+h1 .h1-prefix {
+  display: block;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: .14em;
+  color: var(--ink-3);
+  margin-bottom: 14px;
+}
+
+h1 em {
+  display: block;
+  font-style: normal;
+  font-size: clamp(20px, 2.4vw, 26px);
+  color: var(--acc);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.lede {
+  margin-top: 26px;
+  max-width: 620px;
+  color: var(--ink-2);
+  font-size: 16.5px;
+}
+
+.byline {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13px;
+  color: var(--ink-3);
+  font-family: var(--mono);
+}
+
+.byline span { position: relative; }
+.byline span + span::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--deco);
+  opacity: .7;
+  transform: translateY(-50%);
+}
+
+.scope {
+  margin-top: 20px;
+  max-width: 620px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink-3);
+  border-left: 2px solid var(--deco-soft);
+  padding-left: 14px;
+}
+.scope b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- 竹简阵列 ---- */
+
+.slip-field {
+  position: relative;
+  padding: 14px 14px 12px;
+  background: var(--panel-solid);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.slip-tag {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+}
+.slip-tag b { color: var(--acc); font-weight: 600; }
+
+.slip-stack { position: relative; }
+
+.slips {
+  display: flex;
+  gap: 5px;
+  height: 404px;
+  padding: 12px 4px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.slip {
+  flex: 1 1 0;
+  min-width: 0;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--serif);
+  font-size: 12.5px;
+  line-height: 1.95;
+  letter-spacing: .16em;
+  color: var(--ink-2);
+  background: rgba(114, 136, 118, .035);
+  border-left: 1px solid var(--slip-grid);
+  border-right: 1px solid var(--slip-grid);
+  padding: 18px 3px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity .3s ease, color .3s ease;
+}
+.slip:nth-child(2n) {
+  background: rgba(114, 136, 118, .06);
+}
+.slip:hover { opacity: 1; color: var(--ink); }
+
+html.is-light .slip {
+  background: linear-gradient(90deg, rgba(255,255,255,.5), transparent 40%, rgba(23,36,42,.04));
+}
+html.is-light .slip:nth-child(2n) {
+  background: linear-gradient(90deg, rgba(255,255,255,.7), transparent 44%, rgba(23,36,42,.06));
+}
+
+.slip-cord {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--deco-line);
+  z-index: 2;
+  pointer-events: none;
+}
+.slip-cord::before,
+.slip-cord::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--deco);
+  opacity: .7;
+}
+.slip-cord::before { left: -4px; }
+.slip-cord::after { right: -4px; }
+.cord-a { top: 20px; }
+.cord-b { bottom: 20px; }
+
+.slip-cap {
+  position: relative;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-3);
+}
+
+/* ============================================================
+   4. 正文节
+   ============================================================ */
+
+section[data-nav] { padding: 58px 0 8px; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  margin-bottom: 6px;
+}
+
+.sec-num {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--acc);
+  letter-spacing: .1em;
+  padding: 3px 11px;
+  border: 1px solid var(--acc-line);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.sec-head h2 {
+  font-family: var(--serif);
+  font-size: clamp(22px, 2.6vw, 27px);
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--ink);
+}
+
+.paper {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: var(--max);
+}
+
+.dek {
+  font-size: 14.5px;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+  max-width: 852px;
+}
+
+.paper p {
+  max-width: 852px;
+  margin: 18px 0;
+  text-indent: 0;
+}
+
+.paper p b { color: var(--ink); font-weight: 650; }
+.paper i { font-style: normal; color: var(--acc); }
+.paper small.date { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+
+h3 {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 700;
+  margin: 34px 0 4px;
+  max-width: 852px;
+  color: var(--ink);
+}
+
+sup.cite { font-size: 11px; line-height: 0; }
+sup.cite a {
+  color: var(--acc);
+  text-decoration: none;
+  padding: 0 1px;
+}
+sup.cite a:hover { text-decoration: underline; }
+
+a.inline { color: var(--acc); text-decoration: none; border-bottom: 1px solid var(--acc-line); }
+a.inline:hover { border-bottom-color: var(--acc); }
+
+/* 朱批：只做局部文字标记；不设背景、边框、描边、阴影或渐变 */
+.cinnabar,
+.hero .lede .cinnabar,
+.paper p .cinnabar,
+.paper li .cinnabar,
+.paper li b .cinnabar,
+.paper p b .cinnabar,
+.mrow > .mnote .tag .cinnabar,
+sup.cite a.cinnabar { color: var(--cinnabar); }
+
+/* 引文块 */
+blockquote {
+  position: relative;
+  max-width: 852px;
+  margin: 26px 0;
+  padding: 18px 22px 16px 26px;
+  background: var(--wash);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--acc);
+  border-radius: 0 var(--r) var(--r) 0;
+}
+
+.paper blockquote p {
+  margin: 0;
+  max-width: none;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+blockquote .who {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+}
+blockquote .who b { color: var(--acc); font-weight: 600; }
+
+/* 竖排引文 */
+blockquote.vert {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 30px;
+  padding: 24px 28px 20px;
+  background: var(--wash);
+}
+
+blockquote.vert .v-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  height: 424px;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 21px;
+  line-height: 1.9;
+  letter-spacing: .15em;
+  color: var(--ink);
+}
+
+blockquote.vert .who {
+  margin: 0 auto 4px 0;
+  max-width: 420px;
+  line-height: 1.7;
+}
+
+/* 无序列表 */
+.paper ul.plain { max-width: 852px; margin: 14px 0 22px; padding: 0; list-style: none; }
+.paper ul.plain li { position: relative; padding-left: 20px; margin: 9px 0; color: var(--ink-2); }
+.paper ul.plain li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: .78em;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--deco);
+  opacity: .7;
+  transform: rotate(45deg);
+}
+.paper ul.plain li b { color: var(--ink); }
+
+/* 表格 */
+.tbl-wrap { max-width: 852px; overflow-x: auto; margin: 26px 0; }
+
+table.tbl {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+table.tbl th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--acc);
+  border-bottom: 1.5px solid var(--acc-line);
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+table.tbl td {
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 12px;
+  vertical-align: top;
+  color: var(--ink-2);
+}
+
+table.tbl tbody th {
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink);
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+table.tbl tr:last-child td,
+table.tbl tr:last-child th { border-bottom: 0; }
+
+.tbl-cap {
+  max-width: 852px;
+  margin: -14px 0 24px;
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.75;
+}
+
+/* ---- 边注合同 ---- */
+.mrow {
+  position: relative;
+  display: flow-root;
+  min-width: 0;
+  margin: 22px 0;
+}
+.mrow > .mrow-main { max-width: 852px; }
+.mrow > .mrow-main > :first-child { margin-top: 0; }
+.mrow > .mrow-main > :last-child { margin-bottom: 0; }
+.mrow > .mrow-main > :last-child > :last-child { margin-bottom: 0; }
+
+.mrow > .mnote {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 236px;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border: 0;
+  border-left: 1.6px dashed var(--rule-2);
+  border-radius: 0;
+  background: transparent;
+  display: block;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-3);
+}
+
+.mrow > .mnote .tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  color: var(--acc);
+  margin-bottom: 6px;
+}
+
+@media (max-width: 1179px) {
+  .mrow > .mnote {
+    position: static;
+    width: auto;
+    max-width: 852px;
+    margin: 18px 0 0;
+    padding: 11px 0 0;
+    border-left: 0;
+    border-top: 1.6px dashed var(--rule-2);
+  }
+}
+
+/* 宽图/仪器 */
+.wide { max-width: 1132px; margin: 26px 0; }
+
+.wide-note {
+  max-width: 852px;
+  margin: 0 0 24px;
+  padding: 10px 0 0;
+  border-left: 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.75;
+}
+.wide-note + p { margin-top: 32px; }
+
+/* ============================================================
+   5. 仪器：注疏层累仪
+   ============================================================ */
+
+.gloss {
+  background: var(--wash);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 18px;
+}
+
+.gloss p { margin: 0; max-width: none; }
+
+.lab-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  letter-spacing: .08em;
+  margin-bottom: 14px;
+}
+
+.lab-head .live {
+  color: var(--acc);
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+
+.gloss-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.gloss-tabs button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.gloss-tabs button:hover { color: var(--ink); }
+.gloss-tabs button.on {
+  color: var(--acc);
+  border-color: var(--acc-line);
+  background: var(--acc-dim);
+}
+
+.gloss p.gloss-legend {
+  margin: -4px 0 12px;
+  font-size: 11px;
+  line-height: 1.65;
+  letter-spacing: .02em;
+  color: var(--ink-3);
+}
+
+.gloss-body {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 24px;
+}
+
+.gloss-strata {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-left: 12px;
+}
+
+/* 时间脊柱：层序自上而下，等宽表示同一经典上的累积 */
+.gloss-strata::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: var(--deco-soft);
+}
+
+.stratum {
+  position: relative;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  padding: 9px 11px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  transition: color .2s, border-color .2s, background .2s;
+}
+
+.stratum::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  top: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--deco);
+  opacity: .7;
+}
+
+.stratum.on::before {
+  background: var(--acc);
+  border-color: var(--acc);
+  opacity: 1;
+}
+.stratum:hover { border-color: var(--rule-2); }
+.stratum.on {
+  border-color: var(--acc-line);
+  border-left-color: var(--acc);
+  background: var(--acc-dim);
+}
+
+.stratum .s-who {
+  font-family: var(--serif);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.stratum.on .s-who { color: var(--acc); }
+.stratum.on .s-era,
+.stratum.on .s-line { color: var(--ink-2); }
+
+.stratum .s-era {
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.stratum .s-line {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.gloss-readout {
+  min-height: 300px;
+  padding-left: 24px;
+  border-left: 1px solid var(--rule);
+}
+
+.g-who {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.g-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--acc);
+  letter-spacing: .06em;
+  margin: 4px 0 12px;
+}
+
+.g-quote {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.9;
+  color: var(--ink);
+  border-left: 2px solid var(--deco-soft);
+  padding-left: 14px;
+  margin: 0 0 12px;
+}
+
+.g-quote small {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.g-change {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-2);
+  margin: 0 0 12px;
+}
+.g-change b { color: var(--ink); font-weight: 650; }
+
+.g-src {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.g-note {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule-2);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gloss-readout { animation: gIn .26s ease both; }
+  @keyframes gIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* ============================================================
+   5b. 仪器：三教时间河 / 人性辩论台
+   ============================================================ */
+
+.river, .bench {
+  background: var(--wash);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  padding: 18px;
+}
+
+.river p, .bench p { margin: 0; max-width: none; }
+
+.river-scroll, .bench-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.river-grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, minmax(118px, 1fr));
+  grid-template-rows: 26px repeat(3, minmax(98px, auto));
+  min-width: 980px;
+}
+
+.river-corner, .river-era {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--rule);
+}
+.river-era { color: var(--acc); }
+
+.river-lane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+  border-right: 1px solid var(--rule);
+}
+
+.river-line {
+  grid-column: 2 / -1;
+  height: 0;
+  border-top: 1px solid var(--deco-soft);
+  align-self: center;
+  z-index: 0;
+}
+.river-line.lane-dao { border-top-style: dashed; }
+.river-line.lane-shi { border-top-style: dotted; border-top-width: 2px; }
+
+.river-node {
+  justify-self: center;
+  align-self: center;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: calc(100% - 16px);
+  max-width: 132px;
+  padding: 7px 9px;
+  background: var(--panel-solid);
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--deco-soft);
+  border-radius: 6px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+.river-node:hover { border-color: var(--acc-line); transform: translateY(-1px); }
+.river-node.on {
+  border-color: var(--acc);
+  border-left-color: var(--acc);
+  background: var(--acc-dim);
+}
+.river-node.lane-dao { border-left-style: dashed; }
+.river-node.lane-shi { border-left-style: dotted; border-left-width: 3px; }
+
+.river-node .rn-t {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.river-node .rn-s {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.river-node.on .rn-t { color: var(--acc); }
+.river-node.on .rn-s { color: var(--ink-2); }
+
+.river-node:focus-visible, .bench-mark:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+
+.river-readout, .bench-readout {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  min-height: 92px;
+}
+
+.rr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+.rr-title { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--ink); }
+.rr-tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: var(--acc);
+}
+.rr-body {
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+.rr-body b { color: var(--ink); }
+
+.river-cap, .bench-cap {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-3);
+}
+
+.bench-axis {
+  position: relative;
+  min-width: 720px;
+  height: 168px;
+  margin: 4px 0 0;
+}
+
+.bench-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--deco);
+  opacity: .7;
+}
+
+.bench-mark {
+  position: absolute;
+  left: var(--p);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid var(--acc);
+  border-radius: 50%;
+  background: var(--panel-solid);
+  cursor: pointer;
+  z-index: 2;
+  transition: background .2s, box-shadow .2s;
+}
+.bench-mark::after {
+  content: attr(data-name);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.bench-mark.up::after { bottom: 18px; }
+.bench-mark.down::after { top: 18px; }
+.bench-mark.on { background: var(--acc); box-shadow: 0 0 0 5px var(--acc-dim); }
+.bench-mark.on::after { color: var(--acc); }
+
+.bench-scale {
+  display: flex;
+  justify-content: space-between;
+  min-width: 720px;
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.bench-scale span:nth-child(2) { transform: translateX(-50%); }
+
+.bench-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 24px;
+}
+
+@media (max-width: 860px) {
+  .bench-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .river, .bench { padding: 12px; }
+  .lab-head { flex-wrap: wrap; gap: 4px 12px; }
+  .bench-axis, .bench-scale { min-width: 660px; }
+}
+
+/* ============================================================
+   6. 参考 / 页脚
+   ============================================================ */
+
+.refs { max-width: 1132px; columns: 2; column-gap: 44px; margin: 24px 0 8px; }
+.refs li {
+  break-inside: avoid;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+  padding-left: 30px;
+  position: relative;
+}
+.refs li .rn {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--acc);
+}
+.refs li a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+.refs li a:hover { color: var(--acc); border-bottom-color: var(--acc); }
+
+footer.foot {
+  border-top: 1px solid var(--rule);
+  margin-top: 72px;
+  padding: 26px 0 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+footer.foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+footer.foot a:hover { color: var(--acc); border-bottom-color: var(--acc); }
+
+/* ============================================================
+   7. 显现动效（滚动渐显，IO + 看门狗）
+   ============================================================ */
+
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+  .slip { transition: none; }
+}
+
+/* ============================================================
+   8. 布局合同（852 / 1132 / 236 / 44）
+   ============================================================ */
+
+:root {
+  --measure: 852px;
+  --wide: 1132px;
+  --note: 236px;
+  --gutter: 44px;
+}
+
+.paper > :not(.wide):not(.mrow):not(.refs):not(.tbl-wrap) { max-width: 852px; }
+.paper > .wide { max-width: 1132px; }
+.paper > .refs { max-width: 1132px; columns: 2; column-gap: 44px; }
+
+/* 窄屏参考列表回单栏：必须放在上面的 .paper > .refs 之后，
+   否则同等特异性会被后面的双栏规则压回去。 */
+@media (max-width: 860px) {
+  .paper > .refs { columns: 1; max-width: 852px; }
+}
+
+/* ============================================================
+   9. 响应式
+   ============================================================ */
+
+@media (max-width: 1180px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr) 400px; gap: 36px; }
+}
+
+@media (max-width: 1100px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .slip-field { max-width: 640px; }
+  .slips { height: 340px; }
+  section[data-nav] { padding-top: 48px; }
+}
+
+@media (max-width: 860px) {
+  .gloss-body { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .gloss-strata {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    padding-left: 0;
+    scrollbar-width: thin;
+  }
+  .gloss-strata::before { display: none; }
+  .stratum {
+    flex: 0 0 auto;
+    width: 184px;
+    min-width: 184px;
+    max-width: 184px;
+  }
+  .stratum::before { display: none; }
+  .gloss-readout {
+    padding-left: 0;
+    padding-top: 14px;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .wrap, .topbar-in { width: calc(100% - 32px); }
+  html { scroll-padding-top: 98px; }
+  .topbar-in {
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    padding: 8px 0 6px;
+  }
+  .brand { font-size: 13.5px; }
+  .nav {
+    order: 3;
+    flex: 1 0 100%;
+    width: 100%;
+    padding-bottom: 2px;
+  }
+  .spacer { display: none; }
+  .theme-btn { margin-left: auto; font-size: 12px; padding: 4px 10px; }
+  .hero { padding: 44px 0 40px; }
+  .hero-wm { left: -180px; top: -120px; width: 480px; height: 480px; }
+  h1 { font-size: clamp(30px, 8.2vw, 40px); }
+  h1 em { font-size: clamp(18px, 4.8vw, 22px); }
+  .lede { font-size: 16px; }
+  .slip-field { padding: 10px 10px 8px; }
+  .slip-tag, .slip-cap { display: none; }
+  .slips { height: 168px; gap: 4px; padding: 8px 2px; }
+  .slip { font-size: 10px; letter-spacing: .08em; padding: 11px 2px 4px; }
+  .slip:nth-child(n+6) { display: none; }
+  .cord-a { top: 12px; }
+  .cord-b { bottom: 12px; }
+
+  blockquote.vert { display: block; padding: 18px 20px 16px; }
+  blockquote.vert .v-text {
+    writing-mode: horizontal-tb;
+    height: auto;
+    font-size: 18px;
+    line-height: 1.9;
+    letter-spacing: .06em;
+  }
+  blockquote.vert .who { margin: 10px 0 0; max-width: none; }
+
+  .sec-head { gap: 12px; }
+  .sec-num { padding: 2px 9px; font-size: 11.5px; }
+  table.tbl { min-width: 660px; }
+}
+
+@media (max-width: 390px) {
+  .wrap { width: calc(100% - 32px); }
+  .topbar-in { width: calc(100% - 32px); }
+  .hero { padding: 40px 0 36px; }
+}
+</style>
+
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzE0MTcxNCIvPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhGQTY5MyIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBhdGggZD0iTTkuNSA2LjV2MTlNMTUuNSA2LjV2MTlNMjEuNSA2LjV2MTkiLz48cGF0aCBkPSJNNyAxMC41aDE3TTcgMjEuNWgxNyIvPjwvZz48Y2lyY2xlIGN4PSIyNC41IiBjeT0iMTAuNSIgcj0iMS4yNSIgZmlsbD0iIzhGQTY5MyIvPjxjaXJjbGUgY3g9IjI0LjUiIGN5PSIyMS41IiByPSIxLjI1IiBmaWxsPSIjOEZBNjkzIi8+PC9zdmc+">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path class="bm-frame" d="M16 3.5 28.5 16 16 28.5 3.5 16Z"/>
+        <path class="bm-slice" d="M6.5 16H25.5"/>
+        <circle class="bm-dot" cx="16" cy="16" r="1.9"/>
+      </svg>
+      LIGHTBOX · 灯箱
+    </a>
+    <nav class="nav" id="nav" aria-label="文章目录"></nav>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="themeBtn" type="button">主题：跟随系统</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <svg class="hero-wm" viewBox="0 0 600 600" aria-hidden="true" focusable="false">
+    <text x="300" y="470" text-anchor="middle" font-size="520" font-family="'Source Han Serif SC','Noto Serif CJK SC','Songti SC',serif" fill="currentColor">注</text>
+  </svg>
+  <div class="hero-grid">
+    <div class="reveal">
+      <p class="kicker">科普 · Chinese Philosophy</p>
+      <h1><span class="h1-prefix">科普 · 中国哲学</span>中国哲学两千五百年<em>一场没有终审的注疏</em></h1>
+      <p class="lede">
+        中国哲学史常被讲成一串人名和格言，但真正推动它的，是同一批经典被一代代人重新注、重新解、重新编排。孔子说「<span class="cinnabar">述而不作</span>」，王弼注《老子》注出「<span class="cinnabar">以无为本</span>」，朱熹沿着二程的表章，把《大学》《中庸》与《论语》《孟子》合为「<span class="cinnabar">四书</span>」，戴震又借《孟子》字义反过来批判理学。这篇文章沿着「经典与注疏」的线索走一遍主线，看每一代人在旧书上添了哪一笔，又为什么非添不可。
+      </p>
+      <div class="byline">
+        <span>约 30 分钟</span>
+        <span>七卷 · 3 台仪器</span>
+        <span>42 条参考</span>
+        <span>年代与引文给到可回查出处</span>
+      </div>
+      <p class="scope">
+        <b>口径说明：</b>人物年代、著作归属与学派分类以《史记》等早期记载及斯坦福哲学百科（SEP）等通行研究为准；「百家」「罢黜百家」这类后世概括，文中会随手标注。原典引文给到篇章号，不虚构页码；无法确证归属的流行说法一律注明「后世转述」，宁可少一句漂亮话。
+      </p>
+    </div>
+
+    <aside class="slip-field reveal" aria-label="竹简与注疏的视觉示意">
+      <div class="slip-tag"><span><b>中国哲学</b> · 注疏七卷</span><span>竹简 · 编绳</span></div>
+      <div class="slip-stack">
+        <div class="slips" aria-hidden="true">
+          <span class="slip" title="《老子》第一章">道可道非常道名可名非常名</span>
+          <span class="slip" title="《论语·学而》">学而时习之不亦说乎</span>
+          <span class="slip" title="《老子》第二章">天下皆知美之为美斯恶已</span>
+          <span class="slip" title="《孟子·离娄下》">仁者爱人有礼者敬人</span>
+          <span class="slip" title="《庄子·养生主》">吾生也有涯而知也无涯</span>
+          <span class="slip" title="《墨子·兼爱中》">兼相爱交相利</span>
+          <span class="slip" title="《论语·颜渊》">克己复礼为仁</span>
+          <span class="slip" title="《庄子·人间世》">知其不可奈何而安之若命</span>
+          <span class="slip" title="《礼记·大学》">大学之道在明明德</span>
+        </div>
+        <div class="slip-cord cord-a" aria-hidden="true"></div>
+        <div class="slip-cord cord-b" aria-hidden="true"></div>
+      </div>
+      <p class="slip-cap">竹简是早期文本的形态，编绳把散简连成一册；注疏则写在字句之间。中国哲学的传承，多半就发生在「连起来」与「注下去」这两件事上。</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= 卷首 ================= -->
+<section id="quick" data-nav="速览">
+  <div class="sec-head"><span class="sec-num">卷首</span><h2>速览：先看清「注疏」这条主线</h2></div>
+  <div class="paper">
+    <p class="dek">赶时间的话，先看这六条；每一条都能回到对应卷目复看细节与出处。</p>
+
+    <ul class="plain">
+      <li><b>中国哲学的主线是重读，不是推翻。</b>西方哲学史常以「后人反驳前人」推进；中国哲学更常见的形态是「后人重注前书」。注疏不是经典研究的附属品，而是哲学创作的主要体裁。王弼注《老子》注出「<span class="cinnabar">以无为本</span>」，郭象注《庄子》注出「<span class="cinnabar">独化</span>」，都是原典里没有的新体系（卷三）。</li>
+      <li><b>孔子定下的第一个动作是「<span class="cinnabar">述而不作</span>」。</b>他整理、解释、传授旧经典，把「接着讲」变成「照着讲」；《论语》由弟子及再传弟子编纂，不是孔子手著（<a class="inline" href="#s1">卷一</a>）。</li>
+      <li><b>汉代把注疏制度化。</b>五经博士、<span class="cinnabar">今古文经学之争</span>，争的表面是文字版本，实质是「哪一套文本有解释权威」（卷二）。</li>
+      <li><b>佛教入华带来跨语言的注疏。</b><span class="cinnabar">格义</span>、译经、宗派注疏，把「理、事、体、用」这些词改造成中国哲学的基本词汇（卷四）。</li>
+      <li><b>宋明把经典序列重排了一次。</b>沿着二程的表章，朱熹把《大学》《中庸》与《论语》《孟子》合为「<span class="cinnabar">四书</span>」；经典名单本身可以被注疏传统改写（卷五）。</li>
+      <li><b>「中国哲学」是 20 世纪的<span class="cinnabar">学科发明</span>。</b>胡适 1919 年《中国哲学史大纲》、冯友兰 1934 年《中国哲学史》用西方哲学框架重述中国思想；这又是一次注疏，不是第一次发现（卷七）。</li>
+    </ul>
+
+    <div class="wide">
+      <div class="gloss" id="glossLab">
+        <div class="lab-head">
+          <span><span class="live">LIVE</span> · 注疏层累仪</span>
+          <span id="glossMeta">格物致知 · 5 层注疏</span>
+        </div>
+        <div class="gloss-tabs" id="glossTabs" role="group" aria-label="选择经典短语">
+          <button type="button" data-g="0" aria-pressed="true" class="on">格物致知</button>
+          <button type="button" data-g="1" aria-pressed="false">道可道</button>
+          <button type="button" data-g="2" aria-pressed="false">仁</button>
+        </div>
+        <p class="gloss-legend">上方短语是经，下方各层是历代注疏；层序按时间排列，各层等宽，不表示文本量。</p>
+        <div class="gloss-body">
+          <div class="gloss-strata" id="glossStrata" role="group" aria-label="按时间排列的注疏层，选择注家"></div>
+          <div class="gloss-readout" id="glossReadout" aria-live="polite"></div>
+        </div>
+        <p class="gloss-cap" id="glossCap"></p>
+      </div>
+      <aside class="wide-note">
+        读法：注是直接解经，疏是既解经也解注；今天的「注疏」泛指整个经典解释传统。每一层都标了「改了什么」，不是给古人打分。注疏的价值不在于谁对，而在于看清每一代为什么非这样读不可。
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 卷一 ================= -->
+<section id="s1" data-nav="卷一 起点">
+  <div class="sec-head"><span class="sec-num">卷一</span><h2>起点：礼坏乐崩，诸子立说</h2></div>
+  <div class="paper">
+    <p class="dek">前 6 世纪到前 3 世纪。诸子面对的是同一个问题：秩序从哪里来；给出的答案却分道扬镳。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p class="dropcap">第一个把「怎么传」变成问题的人是<b>孔子</b><small class="date">（前 551 ～ 前 479）</small>。他说自己「<span class="cinnabar">述而不作</span>，信而好古」，把整理、解释、传授旧经典当作毕生工作<sup class="cite"><a class="cinnabar" href="#r1">1</a></sup>。这句话常被读成谦虚，其实是一套方法宣言：既然周礼已经给出了秩序的骨架，哲学的任务就不是另造一套，而是把旧骨架重新讲通。他用「仁」给「礼」注入内在依据，用「正名」处理名分与实事的错位，用「有教无类」把这套讲法传播出去。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 自称问题</span>「哲学」作为学科名，是 19 世纪后期从日本转译进来的词；孔子不会自称「哲学家」。用后起的范畴回看先秦，是必要的方便，也要随时记得它是方便。</aside>
+    </div>
+
+    <blockquote class="vert">
+      <p class="v-text">子曰 述而不作 信而好古 窃比于我老彭</p>
+      <span class="who"><b>《论语·述而》7.1</b><br>孔子自述。述，是传旧；作，是创始。他把自己的位置放在两者之间。</span>
+    </blockquote>
+
+    <p>《论语》不是孔子手著。它由弟子与再传弟子编纂，成书跨越数代；今天读到的二十篇，是汉唐以来逐步定型的本子<sup class="cite"><a href="#r1">1</a></sup>。这一点很重要：中国哲学的第一部「经典」，从一开始就是「对老师言行的追记与编排」。述而不作的人，最后也成了被述、被作的对象。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>与孔子大约同时代的<b>老子</b>，走的是另一条路。传统说他姓李名耳，做过周守藏室之史，孔子曾向他问礼；但这些记载出自《史记》，距离所述时代已远，不能当现场报道。更可靠的是文本本身：《老子》五千言里有不同时代的语汇与层次，郭店楚简（约前 300 年）、马王堆帛书（汉初）与通行本的章次、文字并不完全一致<sup class="cite"><a href="#r2">2</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 老子其人其书</span>老子其人的年代、与孔子的先后、《老子》成书的年代，都是学界长期争论的问题。出土抄本证明文本是层累形成的；把《老子》当成孔子同时代的完整著作，是最常见的旧叙事。</aside>
+    </div>
+
+    <p>老子说「道可道，非常道」，把「道」放在名言之外；说「<span class="cinnabar">道法自然</span>」，把价值的根据从人格神与礼制转向万物自身的运行；说「无为」，不是什么都不做，而是不做违背事物之势的强行干预。这三句话后来被注家读出了完全不同的老子：河上公读出养生与治国，王弼读出「以无为本」，成玄英读出重玄。原典只有五千言，注疏却长出了一片森林。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>墨子</b>是第一个正面挑战儒家礼乐的人。他主张「<span class="cinnabar">兼相爱，交相利</span>」：把儒家从亲情出发、有亲疏差等的爱，改造成不分亲疏、以相互利益为纽带的兼爱；主张「非攻」，反对以战争作为获利手段；主张「尚同」，要求上下同义<sup class="cite"><a href="#r3">3</a></sup>。这些主张背后有一套明确的论证方法：三表法，上本古者圣王之事，下察百姓耳目之实，发以为刑政而观其效果。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 「百家」是后人的分类</span>「百家争鸣」的「百家」不是当时人的自称。司马谈《论六家要旨》把先秦思想分为阴阳、儒、墨、名、法、道德六家；这是汉初的整理框架，不是战国的自我认同<sup class="cite"><a href="#r14">14</a></sup>。</aside>
+    </div>
+
+    <p>《墨经》里还有更硬的东西：故、理、类，辩的规则，以及关于名实关系的讨论。说「中国哲学没有逻辑」是错的；墨辩、名家与后来的佛教因明，都是严格的论证传统<sup class="cite"><a href="#r3">3</a></sup>。</p>
+
+    <p>孔子之后，儒家内部最著名的一次分歧发生在人性问题上。<b>孟子</b><small class="date">（约前 372 ～ 前 289）</small>说<span class="cinnabar">性善</span>：人皆有恻隐、羞恶、辞让、是非四端，善不是外加的，而是本有的萌芽，扩而充之即成德<sup class="cite"><a href="#r4">4</a></sup>。<b>荀子</b><small class="date">（约前 310 ～ 前 235）</small>说<span class="cinnabar">性恶</span>：人的本性是好利、疾恶、耳目之欲，顺着它走必然争乱；善是「伪」，即人为的教化与制度<sup class="cite"><a href="#r5">5</a></sup>。两人都自称接着孔子讲，但一个把善的根据放在心里，一个放在人为的制度与教化里。这个分歧没有在先秦解决；宋明理学与心学后来都回到孟子，但一个从「理」、一个从「心」重新解释他，荀子的性恶论则长期边缘化。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>庄子</b>把问题从「如何治国」拉到「如何不被固定的是非困住」。《<span class="cinnabar">齐物论</span>》说「天地与我并生，而万物与我为一」，不是取消差别，而是把差别放回更大的整体里看；《养生主》的庖丁解牛，讲的是顺着事物的纹理走，而不是硬砍<sup class="cite"><a href="#r6">6</a></sup>。与庄子相邻的是<b>名家</b>。惠施讲「合同异」，公孙龙讲「离坚白」「白马非马」，他们把语言与实在的关系推到极端。这些命题常被当成诡辩，但在哲学上，它们逼问的是同一个问题：名，究竟能不能准确地指实？<sup class="cite"><a href="#r7">7</a></sup></p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 《庄子》的作者问题</span>今天通行的《庄子》三十三篇，是郭象整理的本子；内篇、外篇、杂篇的作者与年代并不统一。郭象注是否窃取了向秀的成果，学界至今有争论。读《庄子》先分清「庄子的声音」与「后学的扩写」，是基本的谨慎。</aside>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>韩非</b><small class="date">（约前 280 ～ 前 233）</small>把秩序押在制度上。他讲「法」，是公开成文的赏罚；「术」，是君主驾驭臣下的方法；「势」，是权位本身的力量。法家不是「反道德」，而是认为道德不足以支撑大规模秩序，必须靠可执行的制度<sup class="cite"><a href="#r8">8</a></sup>。《韩非子》里的寓言本身就是论证工具：守株待兔说明经验不能代替规律，自相矛盾说明两个不能同时成立的命题不能同真。这些故事后来成了成语，但它们原本的语境是政治论证。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 「外儒内法」是后世概括</span>秦亡后法家名声扫地，但法、术、势的问题被历代制度吸收。「外儒内法」是后人对汉以后政治形态的概括，不是先秦法家的自我标签。</aside>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr><th scope="col">学派</th><th scope="col">秩序从哪来</th><th scope="col">人性能否成善</th><th scope="col">凭什么说对</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">孔子</th><td>礼，靠仁充实</td><td>性相近，习相远</td><td>述而不作，以经典为据</td></tr>
+          <tr><th scope="row">老子</th><td>无为，少干预</td><td>见素抱朴，少私寡欲</td><td>道法自然</td></tr>
+          <tr><th scope="row">墨子</th><td>兼爱、尚同</td><td>所染，环境决定</td><td>三表法：古者圣王之事、百姓耳目之实、刑政之效</td></tr>
+          <tr><th scope="row">孟子</th><td>仁政，民贵君轻</td><td>性善，四端</td><td>以意逆志，知人论世</td></tr>
+          <tr><th scope="row">荀子</th><td>礼法，化性起伪</td><td>性恶，善者伪也</td><td>解蔽，虚一而静</td></tr>
+          <tr><th scope="row">韩非</th><td>法、术、势</td><td>自利，不靠道德</td><td>参验，循名责实</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-cap">同一组问题，六种答法。表格是导航，不是判决：每一格背后都有争论，正文与参考给到出处。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>这一代人没有留下统一答案。他们留下的是三种作业规范：以经典为据，以论辩为法，以治国为归宿。孔子「述而不作」，墨子「三表」，孟子「以意逆志」，荀子「解蔽」，问的都是「如何读、如何说、如何用」。注疏传统的种子，就在这些「如何」里。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 一个转向</span>下一卷从汉代开始：当儒学成为官学，注疏就不再只是师徒之间的讲法，而变成一套有博士、有文本、有门户的制度。</aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 卷二 ================= -->
+<section id="s2" data-nav="卷二 经学">
+  <div class="sec-head"><span class="sec-num">卷二</span><h2>汉代经学：解释权变成制度</h2></div>
+  <div class="paper">
+    <p class="dek">前 2 世纪到 2 世纪。秦火之后，经典靠口传、壁藏与重写恢复；恢复的过程，本身就是决定「哪一本算经典」的过程。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>秦统一后焚书，《诗》《书》与百家语在禁毁之列；汉初除挟书律，经书才重新流出<sup class="cite"><a href="#r15">15</a></sup>。但「重新流出」的方式很不一样：伏生口传《尚书》，由晁错用汉隶笔录；鲁恭王坏孔子宅得古文经传，是一个流传极广的故事；河间献王则从民间收集善书。文本的每一次出现，都带着一条传承链。链子本身，后来成了权威的一部分。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 口传的损耗</span>《史记·儒林列传》说伏生年九十余，文帝派晁错往受；《汉书·儒林传》补了细节：伏生老不能正言，由女儿传言，晁错听不懂齐语，只能「以意属读」。口传、方言、笔录层层转手，文本不可能「原样」。</aside>
+    </div>
+
+    <p>武帝建元五年（前 136）置五经博士，元朔五年（前 124）为博士置弟子员<sup class="cite"><a href="#r15">15</a></sup>。经学从师徒间的学问，变成有编制、有考试、有仕进通道的官学。解释权一旦与官位挂钩，注疏就不再只是「讲清楚」，而是「争正统」。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>董仲舒</b><small class="date">（前 179 ～ 前 104）</small>把「天」放在政治秩序的顶端：「道之大原出于天，天不变，道亦不变。」<sup class="cite"><a href="#r16">16</a></sup>《春秋繁露》用阴阳五行讲<span class="cinnabar">天人感应</span>：君主的失德会招致灾异，灾异是天的谴告。这套说法一方面限制君权——天可以谴告；另一方面把解释天意的权力交给经师。灾异解释从此成为政治斗争的工具：谁掌握天象与经义，谁就能给皇帝施压。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 「罢黜百家」</span>「罢黜百家，独尊儒术」是后人对这一过程的概括。汉代实际治理中，法家制度与黄老之术仍在运作；儒学官学化，不等于百家消失。把复杂政策压成一句口号，本身就是一种后世注疏。</aside>
+    </div>
+
+    <blockquote>
+      <p>「道之大原出于天，天不变，道亦不变。」</p>
+      <span class="who"><b>《汉书·董仲舒传》</b><br>天人三策之一。这句话把「道」的根据放在「天」，也把解释「天意」的权力放在经师手里。</span>
+    </blockquote>
+
+    <p>经学内部很快分成两套文本。今文经用汉隶，靠口传与师授；古文经用战国文字，靠壁藏与民间发现。表面是版本与字句之争，实质是「哪一条传承链有权威」。今文家重<span class="cinnabar">微言大义</span>，讲《公羊》的「<span class="cinnabar">大一统</span>」「<span class="cinnabar">张三世</span>」；古文家重<span class="cinnabar">训诂名物</span>，讲《周礼》《左传》。哀帝时，刘歆争立古文博士，写《移让太常博士书》，批评今文家「信口说而背传记」<sup class="cite"><a class="cinnabar" href="#r17">17</a></sup>。这场争论一直延续到东汉。</p>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr><th scope="col"></th><th scope="col">今文经</th><th scope="col">古文经</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">文字</th><td>汉隶</td><td>战国古文</td></tr>
+          <tr><th scope="row">来源</th><td>口传、师授</td><td>壁藏、民间</td></tr>
+          <tr><th scope="row">代表</th><td>《公羊春秋》</td><td>《左传》《周礼》</td></tr>
+          <tr><th scope="row">方法</th><td>微言大义</td><td>训诂名物</td></tr>
+          <tr><th scope="row">政治想象</th><td>改制、大一统</td><td>复古、周礼</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-cap">今古文不是两个「学派」那么简单；同一部经，可能同时有今文与古文两种传本，学者也常兼习。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>官方会议把分歧暂时定调：甘露三年（前 51）石渠阁会议论五经异同；建初四年（79）白虎观会议，班固整理为《白虎通义》<sup class="cite"><a href="#r18">18</a></sup>。「通义」不是消灭分歧，而是把可接受的说法写成条条。经学从此有了「国宪」式的文本：皇帝、经师、官僚在同一套范畴里说话。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 会议也是注疏</span>石渠、白虎都不是纯粹的学术讨论，而是皇帝主持、经师辩难、结果由官方裁定的会议。注疏的权力，在这里已经公开化。</aside>
+    </div>
+
+    <p>与官方经学并行，<b>谶纬</b>在东汉成为显学。谶是预言，纬是假托孔子解经的旁支；光武帝以《赤伏符》受命，谶纬因此获得近乎国宪的地位。经师解经要引纬，纬书又反过来规定经义。文本的权威在这里叠了两层：一层是经，一层是「天意」的预言<sup class="cite"><a href="#r18">18</a></sup>。</p>
+
+    <p><b>郑玄</b><small class="date">（127 ～ 200）</small>遍注群经，混合今古文，打破家法<sup class="cite"><a href="#r19">19</a></sup>。他的《礼记注》《毛诗笺》《周礼注》成为后来注疏的底本；唐孔颖达《五经正义》（653）在郑学、王学的基础上把南北经学统一起来。注疏的「层」第一次被官方叠成一座塔：<span class="cinnabar">经—注—疏</span>，层层相扣。</p>
+
+    <p>郑玄说自己「念述先圣之元意，思整百家之不齐」。「整百家之不齐」是注疏的野心，也是它的困境：要统一文本，必然压掉异说；要保存异说，又难以形成可教的定本。汉唐注疏选择前者，于是有了一个可以考试、可以传习的经典系统。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>与主流相对，<b>王充</b><small class="date">（27 ～ 约 97）</small>写《论衡》，「疾虚妄」，用「气」解释自然，用「偶然」解释吉凶<sup class="cite"><a href="#r20">20</a></sup>。他说「天地合气，万物自生」，反对天有意生人、有意谴告。王充不是经师，他的怀疑论没有被官学吸收，但为后来的气学传统留了一条线。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 王充的位置</span>《论衡》长期不被视为「正统」；它批评的对象包括董仲舒的天人感应、谶纬与世俗迷信。把王充称为「汉代唯物主义者」是现代标签，他自己并不会这样自我介绍。</aside>
+    </div>
+
+    <p>汉代留下的不是一套答案，而是一套生产答案的机器：文本、博士、章句、注疏、会议、官学。它把「怎么读经」变成「谁有资格读经」。下一卷，魏晋人把这台机器停下来，开始问一个更根本的问题：经典背后的「有」与「无」，到底是什么。</p>
+  </div>
+</section>
+
+<!-- ================= 卷三 ================= -->
+<section id="s3" data-nav="卷三 玄学">
+  <div class="sec-head"><span class="sec-num">卷三</span><h2>魏晋玄学：注疏长出自己的形上学</h2></div>
+  <div class="paper">
+    <p class="dek">3 世纪到 4 世纪。经学的章句越注越繁，玄学却用最少的字，问最大的问题：万物凭什么「有」？</p>
+
+    <p>汉末党锢、黄巾、三国鼎立，经学的官方体系崩了，但经典没有消失。魏晋名士把《老子》《庄子》《周易》称为「三玄」，用「清谈」的方式重读<sup class="cite"><a href="#r21">21</a></sup>。清谈不是闲聊，它有固定形式：主客问难、设难、解难，讲的是义理与辞锋。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>何晏</b><small class="date">（？～ 249）</small>《论语集解》汇集汉儒旧注，又下己意；<b>王弼</b><small class="date">（226 ～ 249）</small>注《老子》《周易》，只活了二十四岁，却把中国哲学的本体论推到一个新高度。他的核心命题是「<span class="cinnabar">以无为本</span>」：「天下之物，皆以有为生。有之所始，以无为本。将欲全有，必反于无也。」<sup class="cite"><a class="cinnabar" href="#r21">21</a></sup></p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 清谈的制度背景</span>清谈盛行于曹魏正始年间以后，与九品中正制、门阀士族的生活方式有关。它不是「不务正业」；在门阀政治里，言辞、风度、义理都是社会资本。</aside>
+    </div>
+
+    <blockquote>
+      <p>「天下之物，皆以有为生。有之所始，以无为本。将欲全有，必反于无也。」</p>
+      <span class="who"><b>王弼《老子道德经注》第四十章</b><br>「以无为本」的出处。原文没有这四个字，是王弼注出来的。</span>
+    </blockquote>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>「无」不是空无，而是「不具任何规定性」的本源。万物是「有」，有生于无；无不是另一个东西，而是有的根据。这套说法把《老子》的「道」改写成「无」，把宇宙生成论改成本体论。王弼的注不是复述老子，而是用老子的词搭自己的体系。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 注疏即创作</span>「以无为本」四个字不见于《老子》原文；它是王弼的概括。注疏在这里就是哲学创作，不是文献复原。</aside>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>言意之辨</b>是玄学的另一条主线。王弼在《周易略例·明象》里说：「<span class="cinnabar">得意在忘象</span>，得象在忘言。」言是得象的工具，象是得意的工具；工具用完就可以放下<sup class="cite"><a href="#r21">21</a></sup>。这个说法一方面给经典解释留了空间——言外有意；另一方面也埋下问题：如果意不可言尽，注疏凭什么说自己注对了？</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 言不尽意</span>「言不尽意」不是玄学的独家发明，《周易·系辞》已有「书不尽言，言不尽意」；玄学把它从经典解释问题，推成了语言与实在的关系问题。</aside>
+    </div>
+
+    <p>王弼还讲了一个著名的判断：孔子「体无」，老子「是有」。裴徽问他：孔子不谈「无」，老子谈「无」，为什么？王弼答：孔子体认「无」，但「无」不可以训说，所以不说；老子还在「有」的层面，所以总说自己不足的「无」<sup class="cite"><a href="#r22">22</a></sup>。这个回答把孔子排在老子之上，却用老子的本体论解释孔子。儒道两家的位置，在注疏里被重新排了一次。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>郭象</b><small class="date">（约 252 ～ 312）</small>注《庄子》，提出「<span class="cinnabar">独化</span>」：万物不是由某个造物主造出来的，也不是从「无」生出来的，而是「自生」「独化」。「造物者无主，而物各自造。」<sup class="cite"><a href="#r23">23</a></sup>这既反对王弼的「以无为本」，也不同于裴頠的「崇有」；他把「有」的根据放回每一物自身。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 郭象与向秀</span>郭象注是否窃取向秀，是学界老问题。《晋书·郭象传》说向秀《庄子注》「述而广之」，又说郭象「窃以为己注」。今天读到的三十三篇郭象注，至少是向秀、郭象两代人的层累。</aside>
+    </div>
+
+    <p><b>名教与自然</b>是玄学的政治面。嵇康<small class="date">（223 ～ 262）</small>说「<span class="cinnabar">越名教而任自然</span>」，把礼法看成对自然的束缚；郭象则说名教即自然，君臣上下也是「天理自然」的一部分<sup class="cite"><a href="#r23">23</a></sup>。同一组词，两种政治态度：一个是抗议，一个是和解。</p>
+
+    <p>竹林七贤常被当成一个统一的「放达」群体，其实政治选择并不相同。阮籍《大人先生传》讥讽礼法君子，嵇康因不与司马氏合作被杀；向秀、山涛后来入仕。同一场「越名教」的运动，有人用它抗议，有人用它避祸，有人用它换官<sup class="cite"><a href="#r23">23</a></sup>。</p>
+
+    <p>玄学内部不是一条线。裴頠<small class="date">（267 ～ 300）</small>作《<span class="cinnabar">崇有论</span>》，批评「贵无」导致「口谈浮虚，不遵礼法」；欧阳建作《言尽意论》，反对「言不尽意」。有与无、言与意、名教与自然，几场争论同时进行，没有一个统一的「玄学」<sup class="cite"><a href="#r23">23</a></sup>。</p>
+
+    <p>玄学的概念库——本、末、有、无、体、用、言、意、自然、名教——后来被佛教般若学借去「格义」。魏晋注疏没有给出一套定论，却给中国哲学换了一套词汇。下一卷，佛教带着另一套词汇进来，两套词汇开始互相翻译。</p>
+  </div>
+</section>
+
+<!-- ================= 卷四 ================= -->
+<section id="s4" data-nav="卷四 佛教">
+  <div class="sec-head"><span class="sec-num">卷四</span><h2>佛教入华：一次跨语言的注疏</h2></div>
+  <div class="paper">
+    <p class="dek">1 世纪到 9 世纪。佛教带来的不只是一套信仰，还有一套翻译、注疏、论辩的技术；中国哲学的基本词汇，在这场跨语言作业里被重写。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>佛教入华的时间，早期记载模糊。《魏略·西戎传》说前 2 年大月氏使者伊存口授浮屠经给博士弟子景卢；这是现存最早的汉地佛教记载之一，但只是孤证<sup class="cite"><a href="#r24">24</a></sup>。「永平求法」的故事——汉明帝夜梦金人，遣使西域——见于《牟子理惑论》等后世文献，通常被视为传说，不能当信史。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 佛教初传的形态</span>早期佛教常依附黄老、方术传播。楚王英「诵黄老之微言，尚浮屠之仁祠」（《后汉书·楚王英传》），把佛与黄老并列。佛教最初被当成一种方术，不是没有原因的。</aside>
+    </div>
+
+    <p><b>译经</b>是第一次大规模的跨语言注疏。安世高（安息人，约 2 世纪）译《安般守意经》，讲呼吸守意；支娄迦谶（月氏人）译《道行般若经》，把「般若」「波罗蜜」这些词带进来<sup class="cite"><a href="#r25">25</a></sup>。译者面对的问题是：梵文的「śūnyatā」译成什么？「空」？「无」？每个译词都是一次解释。</p>
+
+    <p><b><span class="cinnabar">格义</span></b>是早期佛教的解释策略：用老庄的「无」「自然」「本无」去比附般若的「空」。道安<small class="date">（312 ～ 385）</small>后来批评「先旧格义，于理多违」，但格义不是简单的错误：它是两种概念系统初次接触时必然发生的「临时桥」。没有格义，就没有后来的佛教中国化。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>鸠摩罗什</b><small class="date">（344 ～ 413）</small>在 401 年入长安，主持译场，译出《金刚经》《法华经》《维摩诘经》《中论》《百论》《十二门论》等。他的弟子<b>僧肇</b><small class="date">（384 ～ 414）</small>写《肇论》，用「<span class="cinnabar">不真空</span>」「<span class="cinnabar">物不迁</span>」「<span class="cinnabar">般若无知</span>」三个命题消化中观：万物缘起，所以不真；不真故空；空不是无，而是「不真」的另一种说法<sup class="cite"><a href="#r26">26</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 「空」不是「无」</span>用一个「空」字翻译 śūnyatā，容易被读成「什么都没有」。中观说的是缘起无自性：事物依赖条件而存在，没有独立不变的实体。这个区别，是佛教与中国本土「无」论之间最容易混淆的地方。</aside>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>佛性问题</b>把争论推向人心。竺道生<small class="date">（355 ～ 434）</small>提出「<span class="cinnabar">人人皆有佛性</span>」，甚至主张「一阐提」（断善根者）也能成佛。当时《大般涅槃经》的全本还没传到南方，他的说法被视为异端；后来全本译出，证明经中有此义，道生被称为「孤明先发」<sup class="cite"><a href="#r26">26</a></sup>。这是一个注疏史上罕见的时刻：解释者走在文本前面，文本后来追上了他。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 故事的层累</span>「一阐提皆得成佛」的记载有后世追述的成分；道生的著作多已散佚，今天主要靠《高僧传》《涅槃经集解》等转述。读这类故事，要分清「事件」与「叙事」。</aside>
+    </div>
+
+    <h3>宗派：把印度义理整理成中国体系</h3>
+    <p>隋唐佛教把印度佛教的义理整理成中国式的体系。天台智顗<small class="date">（538 ～ 597）</small>以《法华经》为中心，讲「<span class="cinnabar">一念三千</span>」「<span class="cinnabar">三谛圆融</span>」；《摩诃止观》把止观实践与义理统一起来。华严法藏<small class="date">（643 ～ 712）</small>以《华严经》为中心，讲「四法界」「事事无碍」；《华严金师子章》用金狮子作比喻，讲「一即一切，一切即一」。唯识玄奘<small class="date">（602 ～ 664）</small>西行求法十七年，译《成唯识论》，讲八识、转识成智<sup class="cite"><a href="#r27">27</a></sup>。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>禅宗</b>走的是另一条路。从达摩到慧能<small class="date">（638 ～ 713）</small>，以「<span class="cinnabar">不立文字，直指人心</span>」为旗号；但《坛经》本身就是文字，是弟子对慧能言教的记录与编排<sup class="cite"><a href="#r28">28</a></sup>。《坛经》的版本很能说明「注疏」的层累：敦煌本（约 780）最古，文字朴素；惠昕本、契嵩本、宗宝本（1291）层层增补。流行的「本来无一物」，在敦煌本里没有；相应位置写的是「佛性常清净，何处有尘埃」。今天大多数人背的禅宗，是宋元以后整理出来的禅宗。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 不立文字与语录</span>「不立文字」的禅宗留下了最多的语录、公案、灯录。这不是自相矛盾，而是说：文字不是真理本身，但没有文字，真理传不下去。</aside>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>韩愈</b><small class="date">（768 ～ 824）</small>《原道》排佛，说佛教「必弃而君臣，去而父子」；但他用来排佛的「道统」谱系——尧舜禹汤文武周公孔孟——本身就是一种仿照佛教法统的建构<sup class="cite"><a href="#r29">29</a></sup>。宋明理学后来借佛教的心性论重建儒学，同时继续在口头上排佛。这是中国哲学史上最长的一次「借对手的工具打对手」。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 道统的发明</span>「道统」一词由朱熹正式提出，但谱系的建构从韩愈开始。把「道」的传承排成一条线，等于把解释权收归一条正统；这与佛教的「法统」结构惊人地相似。</aside>
+    </div>
+
+    <p>佛教留给中国哲学的不是一个宗派，而是一套词汇：理、事、体、用、性、相、能、所、因、缘。没有这套词汇，宋明理学的「理一分殊」「体用一源」都无从说起。下一卷，儒家把这套词汇拿回去，重建自己的形而上学。</p>
+
+    <div class="wide">
+      <div class="river" id="riverLab">
+        <div class="lab-head">
+          <span><span class="live">LIVE</span> · 三教时间河</span>
+          <span id="riverMeta">点击任一节点，看三条线如何交汇</span>
+        </div>
+        <div class="river-scroll">
+          <div class="river-grid" id="riverGrid" role="group" aria-label="儒释道三教时间河"></div>
+        </div>
+        <div class="river-readout" id="riverReadout" aria-live="polite"></div>
+        <p class="river-cap">三条线不是平行发展：佛教借玄学词汇入华，道教借佛教仪轨立教，儒学借佛教心性论重建。窄屏可横向滑动。</p>
+        <noscript><p class="river-cap">此仪器需要 JavaScript；上方正文仍可阅读。</p></noscript>
+      </div>
+      <aside class="wide-note">
+        读法：时间河压缩了朝代长度，只保留「解释方式发生变化」的节点。儒、道、释三行的虚线样式不同，是为了在黑白打印或色觉差异下仍能区分；节点不是「代表人物大全」，而是每一段的一个入口。
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 卷五 ================= -->
+<section id="s5" data-nav="卷五 理学">
+  <div class="sec-head"><span class="sec-num">卷五</span><h2>宋明理学：把「理」放到天上，再收回心里</h2></div>
+  <div class="paper">
+    <p class="dek">10 世纪到 17 世纪。宋明理学不是一次「复兴」，而是一次经典序列的重排：四书取代五经，理取代天，心取代理。</p>
+
+    <p>中唐的韩愈、李翱已经开了头。李翱《复性书》用「性善情昏」讲修养：性本善，情遮蔽了性，复性就是去掉情欲的遮蔽<sup class="cite"><a href="#r29">29</a></sup>。这套说法已经很像佛教的「佛性—无明」结构，只是把词换成了儒家的。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>北宋五子把问题重新铺开。周敦颐<small class="date">（1017 ～ 1073）</small>《太极图说》从「无极而太极」讲到「人极」，把宇宙论与伦理学扣在一起；张载<small class="date">（1020 ～ 1077）</small>《正蒙》说「太虚即气」，气聚为万物，气散为太虚，批判佛教把山河大地看成心识的幻现；程颢<small class="date">（1032 ～ 1085）</small>、程颐<small class="date">（1033 ～ 1107）</small>把「天理」提为最高范畴；程颐讲「性即理」<sup class="cite"><a href="#r30">30</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 「北宋五子」</span>「北宋五子」通常指周敦颐、邵雍、张载、程颢、程颐。邵雍的象数学在理学谱系里常被淡化；把他放进来，才能看到理学初期「宇宙论—象数—伦理」并行的样貌。</aside>
+    </div>
+
+    <p><b>朱熹</b><small class="date">（1130 ～ 1200）</small>集大成。他讲「<span class="cinnabar">理气</span>」：理是形而上之道，是生物之本；气是形而下之器，是生物之具（《答黄道夫》）<sup class="cite"><a class="cinnabar" href="#r32">32</a></sup>。<span class="cinnabar">理一分殊</span>：万物各有一理，而总天地万物之理只是一个太极。<span class="cinnabar">格物致知</span>：即物穷理，积累多了，豁然贯通。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>朱熹做的最重要的一件事，是重排经典。沿着二程的表章，他把《大学》《中庸》与《论语》《孟子》合为「四书」，写《四书章句集注》<sup class="cite"><a href="#r31">31</a></sup>。他还替《大学》补了一段「格物致知传」，因为原文缺了这一章。补写一段被奉为经典，这是注疏传统里最大胆的一次创作。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 经典名单</span>四书在元代恢复科举后成为功令，明清沿之。五经没有消失，但「先读四书」成了新的入门顺序。经典名单本身，就是哲学立场。</aside>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>陆九渊</b><small class="date">（1139 ～ 1193）</small>与朱熹争。陆说「<span class="cinnabar">心即理</span>」，「宇宙便是吾心，吾心即是宇宙」；朱说「性即理」，心是气之灵，性才是理<sup class="cite"><a href="#r33">33</a></sup>。淳熙二年（1175）鹅湖之会，两人在「尊德性」与「道问学」上争执：先发明本心，还是先泛观博览？这场争论没有胜负，却定义了后来朱陆两系的分野。</p>
+
+    <p>朱陆之争还有一场「无极太极之辩」：陆九渊兄弟批评周敦颐《太极图说》的「无极」是道家语，朱熹则坚持「无极而太极」是儒家形上学。争论的表面是三个字，实质是理学能否用道家的宇宙论语言<sup class="cite"><a href="#r33">33</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 鹅湖之会</span>鹅湖之会的细节主要见于陆九渊门人记录，朱熹一方的说法不尽相同。所谓「朱陆异同」，一半是哲学分歧，一半是后学建构的门户。</aside>
+    </div>
+
+    <p><b>王阳明</b><small class="date">（1472 ～ 1529）</small>在龙场悟道，提出「心外无物」「心外无理」；后来讲「<span class="cinnabar">知行合一</span>」「<span class="cinnabar">致良知</span>」。他说「知是行之始，行是知之成」，反对把知与行分成两截<sup class="cite"><a class="cinnabar" href="#r34">34</a></sup>。四句教：「无善无恶心之体，有善有恶意之动，知善知恶是良知，为善去恶是格物。」这四句后来引起王门内部的大争论（天泉证道）。</p>
+
+    <p>朱熹与王阳明的分歧，常被简化为「理学 vs 心学」。更准确地说，两人都承认「性善」，都回到孟子，但朱熹把善的根据放在「天理」，王阳明放在「良知」。一个向外穷理，一个向内致知；一个重经典与格物，一个重本心与践行。两条路线都在注疏：朱熹注四书，王阳明用《大学问》重新解释《大学》。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>「<span class="cinnabar">存天理，灭人欲</span>」常被当成理学的口号。朱熹的原意不是消灭一切欲望，而是区分「天理之公」与「人欲之私」：饮食是天理，要求美味是人欲；夫妇是天理，淫欲是人欲<sup class="cite"><a href="#r32">32</a></sup>。但这个区分由谁来判？理学的危险，正在于「理」一旦被制度化，判官就变成了权力。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 一句话的语境</span>「存天理，灭人欲」是后人对《朱子语类》卷十二「明天理，灭人欲」的概括，原本是讲修养功夫的话，不是社会治理纲领。把它从语录里抽出来当口号，再用来概括整个理学，是后世最常见的误读之一。</aside>
+    </div>
+
+    <p>理学与心学的分歧，至今仍是宋明研究的主线：朱熹的系统性、王阳明的实践性，各有无法替代的吸引力<sup class="cite"><a href="#r42">42</a></sup>。下一卷，清代学者要问一个更不客气的问题：如果「理」可以被权力垄断，那么「理」到底在哪里？</p>
+
+    <div class="wide">
+      <div class="bench" id="benchLab">
+        <div class="lab-head">
+          <span><span class="live">LIVE</span> · 人性辩论台</span>
+          <span id="benchMeta">八种主张 · 一条轴</span>
+        </div>
+        <div class="bench-scroll">
+          <div class="bench-axis" id="benchAxis" role="group" aria-label="人性主张"></div>
+          <div class="bench-scale"><span>善在本性中</span><span>中性</span><span>善由人为</span></div>
+        </div>
+        <div class="bench-readout" id="benchReadout" aria-live="polite"></div>
+        <p class="bench-cap">这条轴只排「善的根据」，不排人的善恶程度。朱熹、戴震都不能被压成一个点；他们被放在轴上，是为了看清分歧的位置。戴震的答案在下一卷展开。</p>
+        <noscript><p class="bench-cap">此仪器需要 JavaScript；上方正文仍可阅读。</p></noscript>
+      </div>
+      <aside class="wide-note">
+        读法：点一个名字，看他的主张、论据、代价与后世。四栏不是判决书：「代价」一栏写的是这种主张必须付出的理论成本，不是人格评价。轴的两端也不是「好人—坏人」，而是「善的根据在人内部还是外部」。
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 卷六 ================= -->
+<section id="s6" data-nav="卷六 清学">
+  <div class="sec-head"><span class="sec-num">卷六</span><h2>明清：气学、考据与「以理杀人」</h2></div>
+  <div class="paper">
+    <p class="dek">17 世纪到 19 世纪。明代王学末流把「良知」讲成现成，清初思想家反过来问：理到底在哪里？答：在气里，在事里，在字句里。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>明末王学末流「现成良知」「满街圣人」，把修养功夫讲空了。刘宗周<small class="date">（1578 ～ 1645）</small>提倡「慎独」，试图从心上收紧；黄宗羲<small class="date">（1610 ～ 1695）</small>《明夷待访录》则把批判推向制度：「天下为主，君为客」，君主「以天下之利尽归于己，以天下之害尽归于人」<sup class="cite"><a href="#r35">35</a></sup>。这是从心性论转向政治哲学的一步。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 从心到制度</span>黄宗羲没有否定儒学，他用「三代之治」的理想批评后世君主。把《明夷待访录》读成「中国式民主宣言」是过度现代化；读成「儒家内部的政治批判」更贴近文本。</aside>
+    </div>
+
+    <p><b>顾炎武</b><small class="date">（1613 ～ 1682）</small>说「君子之为学，以明道也，以救世也」；他讲「<span class="cinnabar">经学即理学</span>」（后世概括），主张回到经史、典章、地理、音韵，用实证代替空谈。<b>王夫之</b><small class="date">（1619 ～ 1692）</small>在《张子正蒙注》里讲「<span class="cinnabar">理在气中</span>」，反对「理在气先」；在《读通鉴论》里讲历史之势，把「理」放回具体的历史过程<sup class="cite"><a class="cinnabar" href="#r36">36</a></sup>。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>考据学</b>在清初兴起。文字狱常被用来说明学者为何转向故纸堆；但考据也有自身的内在逻辑：经学的文本问题积累到一定程度，必须先用校勘、训诂清理地基。阎若璩<small class="date">（1636 ～ 1704）</small>《尚书古文疏证》用一百多条证据证明东晋古文《尚书》是伪作；这动摇了「十六字心传」——「人心惟危，道心惟微，惟精惟一，允执厥中」——的经典地位<sup class="cite"><a href="#r36">36</a></sup>。文本批判直接改写了道统叙事。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 十六字心传</span>「人心惟危，道心惟微」出自伪古文《尚书·大禹谟》，却是宋明理学道统论的核心文本。阎若璩的考证等于说：理学最看重的一段经，是后人补出来的。这比任何理论批判都更致命。</aside>
+    </div>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>乾嘉学派分吴、皖两派：惠栋<small class="date">（1697 ～ 1758）</small>重汉儒旧注，戴震<small class="date">（1724 ～ 1777）</small>重音韵训诂与制度考证。戴震的《<span class="cinnabar">孟子字义疏证</span>》是清代最重要的哲学著作之一：他逐字辨析「理」「性」「才」「道」「仁义礼智」，把宋儒的「理」还原为「情之不爽失」——理不在天上，在人的情欲之中，做到「情得其平」就是理<sup class="cite"><a href="#r37">37</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 字义即哲学</span>《孟子字义疏证》的形式是字义考证，实质是哲学批判。戴震不写体系，他逐字拆掉宋儒的关键词，让「理」从超越的天理回到具体的人情。</aside>
+    </div>
+
+    <blockquote>
+      <p>「人死于法，犹有怜之者；死于理，其谁怜之？」</p>
+      <span class="who"><b>戴震《孟子字义疏证》卷上</b><br>「以理杀人」的出处。戴震不是反儒家，他自称疏证《孟子》，用的是儒家自己的经典。</span>
+    </blockquote>
+
+    <p>戴震最著名的一句话是「<span class="cinnabar">以理杀人</span>」<sup class="cite"><a class="cinnabar" href="#r37">37</a></sup>。他说的不是不要理，而是反对把「理」变成单方面的判决：尊者、长者、贵者以理责卑者、幼者、贱者，即使理亏，也能用「理」压死人。理若要公共，就必须允许被追问、被检验、被上诉。</p>
+
+    <p>与戴震同时，章学诚<small class="date">（1738 ～ 1801）</small>提出「<span class="cinnabar">六经皆史</span>」：经不是天启的教条，而是三代制度的记录；研究经学必须回到史。这个命题把「经」从神圣文本降为历史文献，为后来的经学瓦解埋下伏笔<sup class="cite"><a href="#r36">36</a></sup>。</p>
+
+    <p><b>今文经学</b>在清代中叶复兴。庄存与<small class="date">（1719 ～ 1788）</small>、刘逢禄<small class="date">（1776 ～ 1829）</small>重新讲《公羊》的「微言大义」；龚自珍<small class="date">（1792 ～ 1841）</small>、魏源<small class="date">（1794 ～ 1857）</small>把经学与改革联系起来。康有为<small class="date">（1858 ～ 1927）</small>《新学伪经考》（1891）把古文经说成刘歆伪造，《孔子改制考》（1897）把孔子塑造成「托古改制」的改革者<sup class="cite"><a href="#r38">38</a></sup>。经学再一次成为政治行动的语言。</p>
+
+    <p>明清两代没有解决「理」与「气」、「汉学」与「宋学」的争论，但把争论的工具换了：从「谁得道」换成「谁读得对」。考据学把注疏变成一门技术：版本、校勘、音韵、训诂、辑佚。技术本身不产生哲学，但它能拆掉伪装成哲学的教条。</p>
+
+    <p>下一卷，西学进来，「哲学」变成一个学科名。中国哲学史的第一批作者，要用一套全新的框架，重新讲述这两千五百年的注疏。</p>
+  </div>
+</section>
+
+<!-- ================= 卷七 ================= -->
+<section id="s7" data-nav="卷七 现代">
+  <div class="sec-head"><span class="sec-num">卷七</span><h2>近现代：当「哲学」成为一门学科</h2></div>
+  <div class="paper">
+    <p class="dek">19 世纪末到今天。「中国哲学」不是古已有之的实体，而是一个现代学科；它的第一次建构，也是一次注疏。</p>
+
+    <p>晚清今文经学、严复译《天演论》（1898）、梁启超的「新民」、王国维对康德与叔本华的介绍、章太炎的诸子学与佛学，把中国思想拖进一个全球性的问题场。传统的「经—史—子—集」分类，开始失效。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p>1914 年，北京大学设「中国哲学门」；1919 年，胡适出版《<span class="cinnabar">中国哲学史大纲</span>》上卷。他用实用主义、考证学与历史演进的方法，把中国思想史写成「哲学史」：不再按经学谱系，而按问题、学派、时代排列<sup class="cite"><a href="#r39">39</a></sup>。冯友兰在 1934 年出版《中国哲学史》，用「子学时代」「经学时代」分期，后来在《新理学》里说自己是「接着」宋明理学讲，不是「照着」讲。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 「哲学史」的写法</span>胡适的《大纲》只有上卷，下卷没写完；但这本书确立了「中国哲学史」的现代写法：先辨真伪、再讲时代、最后评价值。这套写法本身，就是西方学术框架与中国考证传统的混合。</aside>
+    </div>
+
+    <p>「中国有没有哲学」的争论，从黑格尔就开始了。黑格尔《哲学史讲演录》认为中国思想停留在道德箴言层面，没有概念推演；这个判断带着 19 世纪欧洲中心主义的偏见，但它逼出一个问题：如果「哲学」的标准是西方的，中国思想要怎样才算「哲学」？胡适、冯友兰的答案不同：一个用实用主义重述，一个用新实在论重建<sup class="cite"><a href="#r39">39</a></sup>。</p>
+
+    <p>1923 年，张君劢在清华讲「人生观」，丁文江以「科学」回应，引发「<span class="cinnabar">科玄论战</span>」。这场争论表面是科学能否解决人生问题，实质是中国思想在现代化压力下如何安顿价值。新儒家的问题意识，很多从这里长出来<sup class="cite"><a href="#r39">39</a></sup>。</p>
+
+    <blockquote>
+      <p>「哲学史家照着讲，哲学家接着讲。」</p>
+      <span class="who"><b>冯友兰（转述）</b><br>冯友兰在《新理学》等著作中区分「照着讲」与「接着讲」；这里取大意，不是逐字引文。</span>
+    </blockquote>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>新儒家</b>走的是另一条路。熊十力<small class="date">（1885 ～ 1968）</small>《新唯识论》用佛教唯识学与《周易》重建本体论；牟宗三<small class="date">（1909 ～ 1995）</small>、唐君毅<small class="date">（1909 ～ 1978）</small>、徐复观<small class="date">（1903 ～ 1982）</small>在港台继续讲「心性之学」，试图从「内圣」开出「新外王」——民主与科学。牟宗三的「<span class="cinnabar">良知坎陷</span>」说，是这条路线最精致的尝试：良知暂时自我否定，转出知性主体，再回到道德主体<sup class="cite"><a href="#r40">40</a></sup>。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 内圣开外王</span>「内圣开外王」的争论至今没有结束。批评者说它把民主科学当成道德的附属品；辩护者说它是从中国哲学内部寻找现代性的根据。无论哪一方，都在用注疏的方式与经典对话。</aside>
+    </div>
+
+    <p><b>马克思主义中国哲学史</b>是另一条主线。侯外庐<small class="date">（1903 ～ 1987）</small>等以唯物史观重写中国思想史，把哲学史放进社会史与阶级分析里。1949 年后，中国大陆的中国哲学史学科以这套框架为主；港台与新儒家则走另一条路。同一个「中国哲学」，在不同制度与语言里长成不同的样子。</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b><span class="cinnabar">出土文献</span></b>正在改写这张地图。1993 年郭店楚简出土，其中有《性自命出》《五行》等佚籍；1994 年上海博物馆购藏楚简；2008 年清华大学入藏战国竹简<sup class="cite"><a href="#r41">41</a></sup>。这些文本改写了先秦思想史：比如《性自命出》讲「性自命出，命自天降」，为孟荀之前的人性论提供了新的中间环节。每一次出土，都是一次对「经典」的重新定义。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 出土的偶然性</span>出土文献不是「埋在地下的真相」，而是「幸存下来的样本」。它能纠正传世文献的偏差，也会带来新的偏差：墓葬、地域、抄手、保存状况，都影响我们能看到什么。</aside>
+    </div>
+
+    <p>今天，「中国哲学」的研究者仍在做注疏：整理、校勘、英译、比较哲学、概念史、数字人文。方法变了，问题没变：我们如何读懂前人，又如何在前人的字句里说出自己的问题？</p>
+
+    <div class="mrow">
+      <div class="mrow-main">
+        <p><b>回到标题。</b>中国哲学两千五百年，没有一场「终审」。每一次注疏都是一次判决，但判决总会被下一层注疏上诉。经典不是答案，而是问题的载体；注疏不是附庸，而是哲学创作的主要体裁。竹林里的竹简会朽，编绳会断，但「接着注」的动作没有停。</p>
+      </div>
+      <aside class="mnote"><span class="tag"><span class="cinnabar">批</span> · 这篇文章也是注疏</span>它选择了「经典与注疏」这条线，压掉了别的线：政治制度、科技、宗教实践、民间信仰。任何叙事都是选择；看清选择，比记住结论更重要。</aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 参考 ================= -->
+<section id="refs" data-nav="参考">
+  <div class="sec-head"><span class="sec-num">参考</span><h2>参考与出处</h2></div>
+  <div class="paper">
+    <p class="dek">原典给篇章号，研究文献给到可回查的条目；页码从略，避免制造无法核对的精确。</p>
+    <ol class="refs">
+      <li id="r1"><span class="rn">1</span>《论语·述而》7.1；《论语·颜渊》12.1、12.22；《论语·学而》1.1。参 <a href="https://plato.stanford.edu/entries/confucius/">SEP: Confucius</a>。</li>
+      <li id="r2"><span class="rn">2</span>《老子》第一、二十五章；郭店楚简《老子》、马王堆帛书《老子》。参 <a href="https://plato.stanford.edu/entries/laozi/">SEP: Laozi</a>。</li>
+      <li id="r3"><span class="rn">3</span>《墨子·兼爱中》《非命上》；《墨经》中的「辩」与「三表」。参 <a href="https://plato.stanford.edu/entries/mohism/">SEP: Mohism</a>。</li>
+      <li id="r4"><span class="rn">4</span>《孟子·告子上》《公孙丑上》。参 <a href="https://plato.stanford.edu/entries/mencius/">SEP: Mencius</a>。</li>
+      <li id="r5"><span class="rn">5</span>《荀子·性恶》《天论》《解蔽》。参 <a href="https://plato.stanford.edu/entries/xunzi/">SEP: Xunzi</a>。</li>
+      <li id="r6"><span class="rn">6</span>《庄子·养生主》《齐物论》；内篇、外杂篇的年代与作者问题。参 <a href="https://plato.stanford.edu/entries/zhuangzi/">SEP: Zhuangzi</a>。</li>
+      <li id="r7"><span class="rn">7</span>名家与「白马非马」：惠施、公孙龙。参 <a href="https://plato.stanford.edu/entries/school-names/">SEP: School of Names</a>。</li>
+      <li id="r8"><span class="rn">8</span>《韩非子·难一》《五蠹》《定法》。参 <a href="https://plato.stanford.edu/entries/chinese-legalism/">SEP: Chinese Legalism</a>。</li>
+      <li id="r9"><span class="rn">9</span>郑玄《礼记注·大学》；孔颖达《礼记正义》。参 <a href="https://plato.stanford.edu/entries/chinese-epistemology/">SEP: Chinese Epistemology</a> 关于「格物」的讨论。</li>
+      <li id="r10"><span class="rn">10</span>朱熹《大学章句》《论语集注》。参 <a href="https://plato.stanford.edu/entries/zhu-xi/">SEP: Zhu Xi</a>。</li>
+      <li id="r11"><span class="rn">11</span>王阳明《传习录》《大学问》。参 <a href="https://plato.stanford.edu/entries/wang-yangming/">SEP: Wang Yangming</a>。</li>
+      <li id="r12"><span class="rn">12</span>戴震《孟子字义疏证》《与某书》。参 <a href="https://plato.stanford.edu/entries/dai-zhen/">SEP: Dai Zhen</a>。</li>
+      <li id="r13"><span class="rn">13</span>胡适《中国哲学史大纲》上卷，1919；冯友兰《中国哲学史》，1934。参 <a href="https://plato.stanford.edu/entries/chinese-epistemology/">SEP: Chinese Epistemology</a> 对「格物即科学」读法的提醒。</li>
+      <li id="r14"><span class="rn">14</span>司马谈《论六家要旨》，见《史记·太史公自序》。参 <a href="https://plato.stanford.edu/entries/confucius/">SEP: Confucius</a> 关于先秦学派分类的说明。</li>
+      <li id="r15"><span class="rn">15</span>《史记·儒林列传》；《汉书·武帝纪》《汉书·儒林传》。伏生口传、五经博士与博士弟子员。</li>
+      <li id="r16"><span class="rn">16</span>《汉书·董仲舒传》；董仲舒《春秋繁露·为人者天》《深察名号》。参 <a href="https://plato.stanford.edu/entries/han-dynasty/">SEP: Philosophy in Han Dynasty China</a>。</li>
+      <li id="r17"><span class="rn">17</span>《汉书·刘歆传》；刘歆《移让太常博士书》。今文经与古文经的权威之争。</li>
+      <li id="r18"><span class="rn">18</span>《白虎通义》；《后汉书·儒林传》《后汉书·光武帝纪》。石渠阁会议（前 51）、白虎观会议（79）与东汉谶纬。</li>
+      <li id="r19"><span class="rn">19</span>《后汉书·郑玄传》；郑玄《礼记注》《毛诗笺》《周礼注》。</li>
+      <li id="r20"><span class="rn">20</span>王充《论衡·自然》《谈天》《物势》。</li>
+      <li id="r21"><span class="rn">21</span>何晏《论语集解》；王弼《老子道德经注》《周易注》《周易略例·明象》。参 <a href="https://plato.stanford.edu/entries/neo-daoism/">SEP: Neo-Daoism</a>。</li>
+      <li id="r22"><span class="rn">22</span>何劭《王弼传》，见《三国志·魏书·钟会传》裴松之注引。</li>
+      <li id="r23"><span class="rn">23</span>郭象《庄子注》；裴頠《崇有论》；嵇康《释私论》《声无哀乐论》；阮籍《大人先生传》。</li>
+      <li id="r24"><span class="rn">24</span>《魏略·西戎传》，见《三国志·魏书·东夷传》裴注引；《牟子理惑论》；汤用彤《汉魏两晋南北朝佛教史》。</li>
+      <li id="r25"><span class="rn">25</span>安世高译《安般守意经》；支娄迦谶译《道行般若经》。</li>
+      <li id="r26"><span class="rn">26</span>僧肇《肇论》；慧皎《高僧传》；《涅槃经集解》。</li>
+      <li id="r27"><span class="rn">27</span>智顗《摩诃止观》；法藏《华严金师子章》；玄奘译《成唯识论》。参 <a href="https://plato.stanford.edu/entries/buddhism-tiantai/">SEP: Tiantai Buddhism</a>、<a href="https://plato.stanford.edu/entries/buddhism-huayan/">Huayan Buddhism</a>。</li>
+      <li id="r28"><span class="rn">28</span>慧能《坛经》（敦煌本、宗宝本）；印顺《中国禅宗史》。参 <a href="https://plato.stanford.edu/entries/buddhism-chan/">SEP: Chan Buddhism</a>。</li>
+      <li id="r29"><span class="rn">29</span>韩愈《原道》；李翱《复性书》。</li>
+      <li id="r30"><span class="rn">30</span>周敦颐《太极图说》；张载《正蒙·太和》《大心》。</li>
+      <li id="r31"><span class="rn">31</span>《二程集》；朱熹《四书章句集注》《大学章句》。</li>
+      <li id="r32"><span class="rn">32</span>朱熹《朱子语类》卷十二、卷十三；《答黄道夫》，《朱文公文集》卷五十八。</li>
+      <li id="r33"><span class="rn">33</span>《陆九渊集·杂说》；鹅湖之会相关书信；《朱文公文集》中的「无极太极」之辩。</li>
+      <li id="r34"><span class="rn">34</span>王阳明《传习录》上、下；《大学问》。</li>
+      <li id="r35"><span class="rn">35</span>黄宗羲《明夷待访录·原君》。</li>
+      <li id="r36"><span class="rn">36</span>顾炎武《日知录》；王夫之《张子正蒙注》《读通鉴论》；阎若璩《尚书古文疏证》；章学诚《文史通义》。参 <a href="https://plato.stanford.edu/entries/qing-philosophy/">SEP: Qing Philosophy</a>。</li>
+      <li id="r37"><span class="rn">37</span>戴震《孟子字义疏证》卷上；《与某书》。</li>
+      <li id="r38"><span class="rn">38</span>康有为《新学伪经考》（1891）《孔子改制考》（1897）。</li>
+      <li id="r39"><span class="rn">39</span>胡适《中国哲学史大纲》上卷，1919；冯友兰《中国哲学史》，1934；张君劢《人生观》、丁文江《玄学与科学》（1923 年科玄论战）。参 <a href="https://plato.stanford.edu/entries/confucianism-modern/">SEP: Modern Confucianism</a>。</li>
+      <li id="r40"><span class="rn">40</span>熊十力《新唯识论》；牟宗三《政道与治道》。</li>
+      <li id="r41"><span class="rn">41</span>《郭店楚墓竹简》，文物出版社，1998；《清华大学藏战国竹简》。</li>
+      <li id="r42"><span class="rn">42</span>参 <a href="https://plato.stanford.edu/entries/song-ming-confucianism/">SEP: Song-Ming Confucianism</a>；<a href="https://plato.stanford.edu/entries/zhu-xi/">SEP: Zhu Xi</a>；<a href="https://plato.stanford.edu/entries/wang-yangming/">SEP: Wang Yangming</a>；<a href="https://plato.stanford.edu/entries/chinese-epistemology/">SEP: Chinese Epistemology</a>。</li>
+    </ol>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>© 2026 灯箱 · LIGHTBOX</span>
+  <span><a href="western-philosophy.html">← 上一篇：西方哲学两千六百年</a> · <a href="index.html">全部文章 →</a> · 单文件 · 零外部请求</span>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     0. 主题（跟随系统 → 深色 → 浅色 循环，与全站共用键）
+     ============================================================ */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var KEY = 'technotes-theme';
+  var order = ['auto', 'dark', 'light'];
+  var mode = 'auto';
+
+  try { mode = localStorage.getItem(KEY) || 'auto'; } catch (e) {}
+  if (order.indexOf(mode) < 0) mode = 'auto';
+
+  function systemLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  }
+
+  function syncLightClass() {
+    var light = mode === 'light' || (mode === 'auto' && systemLight());
+    root.classList.toggle('is-light', !!light);
+  }
+
+  function applyTheme(next) {
+    mode = next;
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    syncLightClass();
+    themeBtn.textContent = '主题：' + (mode === 'auto' ? '跟随系统' : (mode === 'dark' ? '深色' : '浅色'));
+    document.dispatchEvent(new CustomEvent('technotes:theme'));
+  }
+
+  applyTheme(mode);
+
+  themeBtn.addEventListener('click', function () {
+    var i = order.indexOf(mode);
+    var next = order[(i + 1) % order.length];
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    applyTheme(next);
+  });
+
+  if (window.matchMedia) {
+    var mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    var onLightChange = function () {
+      if (mode !== 'auto') return;
+      syncLightClass();
+      document.dispatchEvent(new CustomEvent('technotes:theme'));
+    };
+    if (mqLight.addEventListener) mqLight.addEventListener('change', onLightChange);
+    else if (mqLight.addListener) mqLight.addListener(onLightChange);
+  }
+
+  /* ============================================================
+     1. 目录、进度、显现（IO + 看门狗）
+     ============================================================ */
+
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[data-nav]'));
+  var links = [];
+
+  sections.forEach(function (section) {
+    var a = document.createElement('a');
+    a.href = '#' + section.id;
+    a.textContent = section.getAttribute('data-nav');
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function updateScroll() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
+    progress.style.transform = 'scaleX(' + pct + ')';
+
+    var current = -1;
+    for (var i = 0; i < sections.length; i++) {
+      var top = sections[i].getBoundingClientRect().top;
+      if (top <= window.innerHeight * 0.34) current = i;
+    }
+    links.forEach(function (a, i) {
+      a.classList.toggle('on', i === current);
+    });
+  }
+
+  window.addEventListener('scroll', updateScroll, { passive: true });
+  window.addEventListener('resize', updateScroll);
+  updateScroll();
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    var ioFiredOnce = false;
+    var io = new IntersectionObserver(function (entries) {
+      ioFiredOnce = true;
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+    // 看门狗：个别内嵌 WebView 从不派发 IO 回调，届时直接显现
+    setTimeout(function () {
+      if (ioFiredOnce) return;
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+    }, 1500);
+  } else {
+    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+  }
+
+  /* ============================================================
+     2. 仪器：注疏层累仪
+     ============================================================ */
+
+  (function () {
+    var GLOSS = [
+      {
+        phrase: '格物致知',
+        source: '《礼记·大学》',
+        note: '「格物致知」原在《礼记·大学》里只有一句，没有解释。后代注家把它读成招致、穷理、正心、物情，最后又读成科学方法。',
+        layers: [
+          {
+            who: '郑玄', era: '东汉 · 127 ～ 200', line: '格，来也',
+            quote: '格，来也；物，犹事也。',
+            quoteLabel: '《礼记注·大学》',
+            change: '把「格」训为「来」，「物」训为「事」：人所好善，善事就来；所好恶，恶事就来。这是道德感应式的读法，知识论味道很淡。',
+            src: '《礼记注·大学》',
+            note: '郑注是汉唐注疏的底本；孔颖达《礼记正义》疏沿此路。'
+          },
+          {
+            who: '朱熹', era: '南宋 · 1130 ～ 1200', line: '格，至也',
+            quote: '格，至也；物，犹事也。穷至事物之理，欲其极处无不到也。',
+            quoteLabel: '《大学章句》',
+            change: '把「来」改成「至」，把「物」从具体的事扩到「事物之理」。格物成了「即物穷理」，知识论转向。',
+            src: '《大学章句·补格物致知传》',
+            note: '朱熹还替《大学》补写了一段原文没有的「格物致知传」；补写本身成了经典。'
+          },
+          {
+            who: '王阳明', era: '明 · 1472 ～ 1529', line: '格者，正也',
+            quote: '格者，正也，正其不正以归于正之谓也。',
+            quoteLabel: '《传习录》下',
+            change: '把「至」改成「正」：格物不再是向外穷理，而是正心；致知是致吾心之良知。',
+            src: '《传习录》下；《大学问》',
+            note: '这与朱熹的路线正面冲突，也是明代心学与理学之争的核心。'
+          },
+          {
+            who: '戴震', era: '清 · 1724 ～ 1777', line: '理在物情',
+            quote: '（意译）格物不是求一个悬空的理，而是在具体事物与人情上求其不易之则。',
+            quoteLabel: '《孟子字义疏证》',
+            change: '把「理」从超越的天理拉回「物情」：理在事物之中，不在事物之上。他由此批评后儒「以理杀人」。',
+            src: '《孟子字义疏证》卷上；《与某书》',
+            note: '清代考据不是逃避哲学，而是用「怎么读经」重写哲学。'
+          },
+          {
+            who: '今天', era: '20 世纪以来 · 现代重构', line: '科学方法？',
+            quote: '（现代重构）把「格物致知」读成观察、实验、归纳的科学方法。',
+            quoteLabel: '胡适《中国哲学史大纲》1919；冯友兰《中国哲学史》1934',
+            change: '这是一次现代重构，不是古人的原意。它说明注疏没有停止，只是换成了哲学史、学术史与教科书。',
+            src: '胡适 1919；冯友兰 1934',
+            note: 'SEP 的中国认识论条目明确提醒：把「格物」读成经验科学，会扭曲它的伦理与认识语境。'
+          }
+        ]
+      },
+      {
+        phrase: '道可道',
+        source: '《老子》第一章',
+        note: '「道可道，非常道」只有六个字，却逼出了中国哲学史上最长的一场解释战：道能不能说，说了还是不是道。',
+        layers: [
+          {
+            who: '河上公', era: '旧题汉 · 年代有争议', line: '常道不可道',
+            quote: '（意译）可道之道，是经术政教之道；不可道之道，是自然长生之道。',
+            quoteLabel: '《老子河上公章句》',
+            change: '把「道」分成治国与养生两条轨道，老子被读成政治与修炼共同的经典。',
+            src: '《老子河上公章句》',
+            note: '作者与年代有争议，通称「旧题河上公」；它代表汉代黄老式的读法。'
+          },
+          {
+            who: '王弼', era: '魏 · 226 ～ 249', line: '指事造形',
+            quote: '可道之道，可名之名，指事造形，非其常也，故不可道，不可名也。',
+            quoteLabel: '《老子道德经注》',
+            change: '名言只能抓住有形的「事」，抓不住「无」。道之所以不可道，是因为它以「无」为本。',
+            src: '《老子道德经注》第一章',
+            note: '王弼的「无」不是《老子》原话，是他自己搭起来的本体论；注疏在这里就是创作。'
+          },
+          {
+            who: '成玄英', era: '唐 · 608 ～ 669', line: '重玄双遣',
+            quote: '（意译）道既不是「有」，也不是「无」；把「有」「无」两层都遣掉，才见重玄。',
+            quoteLabel: '《道德经义疏》',
+            change: '用佛教中观的双遣法读《老子》：不落两边，连「不落两边」也不落。',
+            src: '《道德经义疏》',
+            note: '重玄学是佛道交涉的产物；唐代注疏已经不是在恢复老子原意，而是在造新的形上学。'
+          },
+          {
+            who: '今天', era: '20 世纪以来 · 现代重构', line: '不可说？规律？',
+            quote: '（现代重构）道被读成「不可言说的实在」「规律」「方法」或「生成过程」。',
+            quoteLabel: '现代哲学史与比较哲学',
+            change: '分析哲学传统追问「不可说」是否成立；汉学传统追问「道」有没有唯一原意。争论本身仍在继续。',
+            src: 'SEP: Laozi',
+            note: '这一层不是「注」，而是「再叙述」；放在这里是为了看清层累还在继续。'
+          }
+        ]
+      },
+      {
+        phrase: '仁',
+        source: '《论语》',
+        note: '「仁」是《论语》里出现最多的德目，也是被定义得最少的。每一代都给它补一个宾语。',
+        layers: [
+          {
+            who: '孔子', era: '春秋 · 前 551 ～ 前 479', line: '爱人',
+            quote: '樊迟问仁。子曰：爱人。',
+            quoteLabel: '《论语·颜渊》12.22',
+            change: '最短的定义：仁就是爱人。但「爱」有差等，从亲亲开始，推及他人。',
+            src: '《论语·颜渊》12.22；12.1「克己复礼为仁」',
+            note: '孔子因材施教，同一个「仁」对不同弟子有不同的答法；没有一条唯一公式。'
+          },
+          {
+            who: '孟子', era: '战国 · 约前 372 ～ 前 289', line: '人心',
+            quote: '仁，人心也。',
+            quoteLabel: '《孟子·告子上》11.11',
+            change: '把仁从关系性的「爱人」收进心里：仁是人心本有的四端之一，扩而充之即可。',
+            src: '《孟子·告子上》；《公孙丑上》',
+            note: '性善不是「人一生下来就善」，而是「人有四端，能扩而充之」。'
+          },
+          {
+            who: '韩愈', era: '唐 · 768 ～ 824', line: '博爱',
+            quote: '博爱之谓仁，行而宜之之谓义。',
+            quoteLabel: '《原道》',
+            change: '用「博爱」重新定义仁，回应佛教的普遍慈悲；仁从有差等的爱被推向更普遍的爱。',
+            src: '《原道》',
+            note: '韩愈同时用「道统」把儒家谱系重新排了一遍；排谱系也是一种注疏。'
+          },
+          {
+            who: '朱熹', era: '南宋 · 1130 ～ 1200', line: '爱之理',
+            quote: '仁者，爱之理，心之德也。',
+            quoteLabel: '《论语集注·学而》',
+            change: '把仁从情感提升为「理」：爱是情，仁是情背后的性理。情与性的结构从此成了理学的基本框架。',
+            src: '《论语集注·学而》',
+            note: '「爱之理」不是「爱」，也不是「理」；朱熹用注疏把两者扣在一起。'
+          },
+          {
+            who: '谭嗣同', era: '清 · 1865 ～ 1898', line: '通',
+            quote: '仁以通为第一义。',
+            quoteLabel: '《仁学》',
+            change: '近代把仁改造成「通」的形上学：通中外、通上下、通男女，仁成了冲破网罗的平等原则。',
+            src: '《仁学》',
+            note: '谭嗣同用仁学同时回应佛教、基督教与西方科学；这是注疏传统在近代的一次急转弯。'
+          }
+        ]
+      }
+    ];
+
+    var tabs = document.getElementById('glossTabs');
+    var strata = document.getElementById('glossStrata');
+    var readout = document.getElementById('glossReadout');
+    var meta = document.getElementById('glossMeta');
+    var cap = document.getElementById('glossCap');
+    if (!tabs || !strata || !readout) return;
+
+    var state = [0, 0, 0];
+    var current = 0;
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderTabs() {
+      var html = '';
+      GLOSS.forEach(function (g, i) {
+        html += '<button type="button" data-g="' + i + '" aria-pressed="' + (i === current ? 'true' : 'false') + '"' +
+          (i === current ? ' class="on"' : '') + '>' + esc(g.phrase) + '</button>';
+      });
+      tabs.innerHTML = html;
+    }
+
+    function renderStrata() {
+      var g = GLOSS[current];
+      var html = '';
+      g.layers.forEach(function (l, i) {
+        var on = i === state[current];
+        html += '<button type="button" class="stratum' + (on ? ' on' : '') + '" data-l="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+          '<span class="s-who">' + esc(l.who) + '</span>' +
+          '<span class="s-era">' + esc(l.era) + '</span>' +
+          '<span class="s-line">' + esc(l.line) + '</span>' +
+          '</button>';
+      });
+      strata.innerHTML = html;
+    }
+
+    function renderReadout() {
+      var g = GLOSS[current];
+      var li = state[current];
+      var l = g.layers[li];
+      meta.textContent = g.phrase + ' · ' + g.layers.length + ' 层注疏';
+      cap.textContent = g.note;
+      readout.innerHTML =
+        '<div class="g-who">' + esc(l.who) + '</div>' +
+        '<div class="g-meta">' + esc(l.era) + ' · 第 ' + (li + 1) + ' 层 / 共 ' + g.layers.length + ' 层</div>' +
+        '<p class="g-quote">' + esc(l.quote) + '<small>' + esc(l.quoteLabel) + '</small></p>' +
+        '<p class="g-change"><b>改了什么：</b>' + esc(l.change) + '</p>' +
+        '<p class="g-src">' + esc(l.src) + '</p>' +
+        '<p class="g-note">' + esc(l.note) + '</p>';
+    }
+
+    function paint() {
+      renderTabs();
+      renderStrata();
+      renderReadout();
+    }
+
+    tabs.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-g]');
+      if (!btn) return;
+      current = parseInt(btn.getAttribute('data-g'), 10);
+      paint();
+    });
+
+    strata.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-l]');
+      if (!btn) return;
+      state[current] = parseInt(btn.getAttribute('data-l'), 10);
+      renderStrata();
+      renderReadout();
+    });
+
+    paint();
+  })();
+
+  /* ============================================================
+     3. 仪器：三教时间河
+     ============================================================ */
+
+  (function () {
+    var ERAS = ['汉', '魏晋', '南北朝', '隋唐', '宋', '元明', '清'];
+    var LANES = ['儒', '道', '释'];
+    var RIVER = [
+      { era: 0, lane: 0, title: '董仲舒', sub: '天人三策', body: '把「天」设为政治秩序的最高根据，用灾异谴告限制君权；经学由此成为官学。' },
+      { era: 0, lane: 1, title: '河上公', sub: '老子章句', body: '旧题河上公《老子章句》把《老子》读成治国与养生两套技术，代表汉代黄老式的读法。' },
+      { era: 0, lane: 2, title: '安世高', sub: '译经', body: '安息僧安世高译《安般守意经》；佛教初传依附方术与黄老，被当成一种养生技术。' },
+      { era: 1, lane: 0, title: '何晏', sub: '论语集解', body: '《论语集解》汇集汉儒旧注，又下己意；经学开始从章句转向义理。' },
+      { era: 1, lane: 1, title: '王弼 / 郭象', sub: '玄学', body: '王弼注《老》提出「以无为本」，郭象注《庄》提出「独化」；注疏本身成了形上学创作。' },
+      { era: 1, lane: 2, title: '格义', sub: '般若比附', body: '般若学借「无」「本无」「自然」等玄学词汇翻译「空」，是两种概念系统的临时桥。' },
+      { era: 2, lane: 0, title: '皇侃', sub: '论语义疏', body: '皇侃《论语义疏》在郑玄、何晏之后继续疏解，南朝经学保留了大量汉魏旧说。' },
+      { era: 2, lane: 1, title: '陆修静 / 陶弘景', sub: '道教整理', body: '陆修静整理道教经戒仪轨，陶弘景建立神仙谱系；道教从方术团体变成有经典的宗教。' },
+      { era: 2, lane: 2, title: '竺道生', sub: '佛性', body: '道生主张「人人皆有佛性」，甚至「一阐提」也能成佛；解释者走到了文本前面。' },
+      { era: 3, lane: 0, title: '孔颖达', sub: '五经正义', body: '《五经正义》统一南北经学，经—注—疏的层级被官方固定下来，成为科举的教科书。' },
+      { era: 3, lane: 1, title: '成玄英', sub: '重玄', body: '成玄英以佛教中观的双遣法注《老子》，「重玄」成为唐代道教形上学的高峰。' },
+      { era: 3, lane: 2, title: '智顗 / 玄奘 / 慧能', sub: '宗派', body: '天台、唯识、华严、禅宗相继成立；中国佛教从译经阶段进入宗派注疏阶段。' },
+      { era: 4, lane: 0, title: '朱熹', sub: '四书', body: '朱熹把《大学》《中庸》从《礼记》抽出，合为四书；经典序列被重排，理学成为官学。' },
+      { era: 4, lane: 1, title: '张伯端', sub: '悟真篇', body: '张伯端《悟真篇》以《周易》象数讲内丹，道教内丹学在宋代形成体系。' },
+      { era: 4, lane: 2, title: '禅净合流', sub: '宋代佛教', body: '禅宗与净土宗在宋代合流，「看话禅」「念佛禅」并行；佛教深入士大夫日常生活。' },
+      { era: 5, lane: 0, title: '王阳明', sub: '心学', body: '王阳明讲「心即理」「致良知」，心学从理学内部裂出；四书仍是共同文本。' },
+      { era: 5, lane: 1, title: '全真 / 正一', sub: '道教分派', body: '全真教重清修，正一教重符箓；元代以后道教分成这两大系统。' },
+      { era: 5, lane: 2, title: '禅净合一', sub: '明代佛教', body: '明末四大高僧提倡禅净合一、儒释道三教同源；佛教进一步中国化。' },
+      { era: 6, lane: 0, title: '戴震', sub: '孟子字义疏证', body: '戴震用字义考证批判宋儒的「理」，把理拉回人情与血气。' },
+      { era: 6, lane: 1, title: '道教民间化', sub: '清代道教', body: '清代道教在官方抑制下转向民间，扶乩、善书、地方仪式成为主要形态。' },
+      { era: 6, lane: 2, title: '杨文会', sub: '居士佛教', body: '杨文会创办金陵刻经处，推动居士佛教与近代佛学研究；佛教开始面对现代学术。' }
+    ];
+
+    var grid = document.getElementById('riverGrid');
+    var readout = document.getElementById('riverReadout');
+    if (!grid || !readout) return;
+
+    var current = 11;
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    var html = '<div class="river-corner">纪年</div>';
+    ERAS.forEach(function (e) { html += '<div class="river-era">' + e + '</div>'; });
+    LANES.forEach(function (l, i) {
+      html += '<div class="river-lane" style="grid-row:' + (i + 2) + '">' + l + '</div>';
+    });
+    [0, 1, 2].forEach(function (i) {
+      var cls = i === 1 ? ' lane-dao' : (i === 2 ? ' lane-shi' : '');
+      html += '<div class="river-line' + cls + '" style="grid-row:' + (i + 2) + '"></div>';
+    });
+    RIVER.forEach(function (n, i) {
+      var cls = n.lane === 1 ? ' lane-dao' : (n.lane === 2 ? ' lane-shi' : '');
+      html += '<button type="button" class="river-node' + cls + '" data-n="' + i + '" style="grid-column:' + (n.era + 2) + ';grid-row:' + (n.lane + 2) + '" aria-pressed="false">' +
+        '<span class="rn-t">' + esc(n.title) + '</span>' +
+        '<span class="rn-s">' + esc(n.sub) + '</span>' +
+        '</button>';
+    });
+    grid.innerHTML = html;
+
+    function paint() {
+      var nodes = grid.querySelectorAll('.river-node');
+      Array.prototype.forEach.call(nodes, function (b) {
+        var on = parseInt(b.getAttribute('data-n'), 10) === current;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var n = RIVER[current];
+      readout.innerHTML =
+        '<div class="rr-head"><span class="rr-title">' + esc(n.title) + '</span>' +
+        '<span class="rr-tag">' + ERAS[n.era] + ' · ' + LANES[n.lane] + '</span></div>' +
+        '<p class="rr-body">' + esc(n.body) + '</p>';
+    }
+
+    grid.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-n]');
+      if (!btn) return;
+      current = parseInt(btn.getAttribute('data-n'), 10);
+      paint();
+    });
+
+    paint();
+  })();
+
+  /* ============================================================
+     4. 仪器：人性辩论台
+     ============================================================ */
+
+  (function () {
+    var BENCH = [
+      { name: '孟子', era: '战国 · 约前 372 ～ 前 289', tag: '性善', pos: 8, side: 'up',
+        thesis: '人皆有四端，善是本性中固有的萌芽。',
+        evidence: '「人皆有不忍人之心」；见孺子入井，怵惕恻隐，不为结交、不为名誉。',
+        cost: '恶从何来？孟子的回答是「失其本心」与环境摧折，但这也让恶的解释偏弱。',
+        after: '宋明理学与心学都回到孟子；性善成为主流。' },
+      { name: '王阳明', era: '明 · 1472 ～ 1529', tag: '良知', pos: 18, side: 'down',
+        thesis: '良知即天理，知善知恶是良知；善不在外，而在本心。',
+        evidence: '「知是行之始，行是知之成」；良知在事上磨，不能只在静坐中体认。',
+        cost: '良知如何保证不被私欲遮蔽？「致」的功夫若说不清，容易滑向现成良知。',
+        after: '心学一系；明末王学末流把「现成良知」讲空，引出清初的反弹。' },
+      { name: '朱熹', era: '南宋 · 1130 ～ 1200', tag: '性即理', pos: 31, side: 'up',
+        thesis: '天命之性即理，至善；气质之性有清浊偏正，故人有善恶。',
+        evidence: '理气二分；「理也者，形而上之道也，生物之本也」。',
+        cost: '「理在气先」如何与气化宇宙协调？二分容易把恶推给气，却难解释气的来源。',
+        after: '元明清科举以四书为准；朱学成为官学。' },
+      { name: '告子', era: '战国 · 与孟子同时', tag: '无善无不善', pos: 45, side: 'down',
+        thesis: '「生之谓性」；性本身无善无不善，善恶由后天引导。',
+        evidence: '以水喻性：决诸东方则东流，决诸西方则西流。',
+        cost: '道德根据在哪里？如果性无定向，善恶是否只剩习俗与权力？',
+        after: '被孟子点名批评；人类学式的「性无定向」读法在后世仍有回响。' },
+      { name: '戴震', era: '清 · 1724 ～ 1777', tag: '血气心知', pos: 55, side: 'up',
+        thesis: '性者血气心知；理不在天上，在「情之不爽失」。',
+        evidence: '「以情絜情」：以我之情度人之情，使情得其平。',
+        cost: '如何保证「情得其平」的普遍性？以情度情，会不会落入多数人的意见？',
+        after: '清学的高峰；现代学者重估戴震，把他视为理学最尖锐的内部批评者。' },
+      { name: '董仲舒', era: '汉 · 前 179 ～ 前 104', tag: '性有善质', pos: 66, side: 'down',
+        thesis: '性有善质而未善，待王教而后善；性三品是后人的概括。',
+        evidence: '「性者，天质之朴也；善者，王教之化也。」',
+        cost: '谁有资格教化？王教的正当性若不被追问，教化容易变成控制。',
+        after: '汉唐经学的主流；宋儒嫌其宇宙论粗糙，但「性三品」的思路影响深远。' },
+      { name: '韩愈', era: '唐 · 768 ～ 824', tag: '性三品', pos: 76, side: 'up',
+        thesis: '性分上、中、下三品；上品善，中品可导，下品恶。',
+        evidence: '《原性》以仁义礼智信为性，以喜怒哀惧爱恶欲为情。',
+        cost: '下品是否可教？若不可教，刑政就成了唯一手段；若可教，三品的界线又在哪里？',
+        after: '宋儒不满意这种粗糙的分类，但「性三品」提供了从汉唐到宋明的过渡。' },
+      { name: '荀子', era: '战国 · 约前 310 ～ 前 235', tag: '性恶', pos: 92, side: 'down',
+        thesis: '性恶，善者伪也；善是人为的教化与制度。',
+        evidence: '「人之性恶，其善者伪也」；好利、疾恶、耳目之欲，顺之则争乱。',
+        cost: '善从何来？如果人性本恶，圣王与礼义又如何可能？荀子的回答是「化性起伪」，但起点仍待解释。',
+        after: '长期边缘化；现代学者重估荀子，把他视为制度主义与自然主义的先驱。' }
+    ];
+
+    var axis = document.getElementById('benchAxis');
+    var readout = document.getElementById('benchReadout');
+    if (!axis || !readout) return;
+
+    var current = 0;
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    var html = '';
+    BENCH.forEach(function (b, i) {
+      html += '<button type="button" class="bench-mark ' + b.side + '" data-b="' + i + '" style="--p:' + b.pos + '%" data-name="' + esc(b.name) + '" aria-label="' + esc(b.name + '：' + b.tag) + '" aria-pressed="false"></button>';
+    });
+    axis.innerHTML = html;
+
+    function paint() {
+      var marks = axis.querySelectorAll('.bench-mark');
+      Array.prototype.forEach.call(marks, function (b) {
+        var on = parseInt(b.getAttribute('data-b'), 10) === current;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var b = BENCH[current];
+      readout.innerHTML =
+        '<div class="rr-head"><span class="rr-title">' + esc(b.name) + '</span>' +
+        '<span class="rr-tag">' + esc(b.era) + ' · ' + esc(b.tag) + '</span></div>' +
+        '<div class="bench-grid">' +
+        '<p class="rr-body"><b>主张：</b>' + esc(b.thesis) + '</p>' +
+        '<p class="rr-body"><b>论据：</b>' + esc(b.evidence) + '</p>' +
+        '<p class="rr-body"><b>代价：</b>' + esc(b.cost) + '</p>' +
+        '<p class="rr-body"><b>后世：</b>' + esc(b.after) + '</p>' +
+        '</div>';
+    }
+
+    axis.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-b]');
+      if (!btn) return;
+      current = parseInt(btn.getAttribute('data-b'), 10);
+      paint();
+    });
+
+    paint();
+  })();
+
+})();
+</script>
+
+<script id="favicon-sync">(() => {
+  const LIGHT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2Y3ZjlmYSIvPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzJmNjQ3OSIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBhdGggZD0iTTkuNSA2LjV2MTlNMTUuNSA2LjV2MTlNMjEuNSA2LjV2MTkiLz48cGF0aCBkPSJNNyAxMC41aDE3TTcgMjEuNWgxNyIvPjwvZz48Y2lyY2xlIGN4PSIyNC41IiBjeT0iMTAuNSIgcj0iMS4yNSIgZmlsbD0iIzJmNjQ3OSIvPjxjaXJjbGUgY3g9IjI0LjUiIGN5PSIyMS41IiByPSIxLjI1IiBmaWxsPSIjMmY2NDc5Ii8+PC9zdmc+";
+  const DARK = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzE0MTcxNCIvPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhGQTY5MyIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBhdGggZD0iTTkuNSA2LjV2MTlNMTUuNSA2LjV2MTlNMjEuNSA2LjV2MTkiLz48cGF0aCBkPSJNNyAxMC41aDE3TTcgMjEuNWgxNyIvPjwvZz48Y2lyY2xlIGN4PSIyNC41IiBjeT0iMTAuNSIgcj0iMS4yNSIgZmlsbD0iIzhGQTY5MyIvPjxjaXJjbGUgY3g9IjI0LjUiIGN5PSIyMS41IiByPSIxLjI1IiBmaWxsPSIjOEZBNjkzIi8+PC9zdmc+";
+  const root = document.documentElement;
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+  const isLight = () => {
+    const t = root.getAttribute("data-theme") ||
+      (document.body && document.body.getAttribute("data-theme"));
+    if (t === "light") return true;
+    if (t === "dark") return false;
+    return mq ? mq.matches : false;
+  };
+  let last = "";
+  const sync = () => {
+    const href = isLight() ? LIGHT : DARK;
+    if (href === last) return;
+    last = href;
+    const old = document.getElementById("favicon") ||
+      document.querySelector('link[rel="icon"]');
+    if (!old) return;
+    const next = old.cloneNode(false);
+    next.id = "favicon";
+    next.rel = "icon";
+    next.type = "image/svg+xml";
+    next.href = href;
+    old.replaceWith(next);
+  };
+  sync();
+  const obs = new MutationObserver(sync);
+  obs.observe(root, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (document.body) obs.observe(document.body, {attributes: true, attributeFilter: ["data-theme", "class"]});
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  }
+  addEventListener("technotes:theme", sync);
+  addEventListener("storage", e => { if (!e.key || e.key === "technotes-theme") sync(); });
+  setTimeout(sync, 300);
+})();</script>
+</body>
+</html>

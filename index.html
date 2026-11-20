@@ -237,7 +237,7 @@ body {
 /* ---- Hero：左文右「仪器」的不对称分栏 ---- */
 
 /* ---- 首屏主视觉：左列编辑部式排版，右侧轨道索引。
-   首页的身份是一张星图：能量球是恒星，9 篇文章沿三条轨道运行，
+   首页的身份是一张星图：能量球是恒星，10 篇文章沿三条轨道运行，
    悬停读数、点击进入；下方卡片列表是同一份索引的文字版 ---- */
 
 .hero {
@@ -1277,8 +1277,8 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
         引用能回查出处，演示当场算出来。
       </p>
       <div class="hero-index" aria-label="站点概览">
-        <div><span>Articles</span><b>9</b></div>
-        <div title="教程 5 / 调研 1 / 科普生活 3"><span>Fields</span><b>03</b></div>
+        <div><span>Articles</span><b>10</b></div>
+        <div title="教程 5 / 调研 1 / 科普生活 4"><span>Fields</span><b>03</b></div>
         <div><span>Updated</span><b>2026.11</b></div>
       </div>
     </div>
@@ -1298,7 +1298,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
 
   <section class="posts" id="posts">
     <div class="posts-head">
-      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 9 篇</span></h2>
+      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 10 篇</span></h2>
       <button class="shelf-toggle" id="shelfToggle" type="button" aria-expanded="true" aria-controls="side">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5v15" stroke="currentColor" stroke-width="1.7"/></svg>
         <span>收起筛选</span>
@@ -1319,10 +1319,10 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
         <div class="side-block">
           <span class="side-lab">分类</span>
           <div class="cats" role="group" aria-label="按文章类型筛选">
-            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">9</span></button>
+            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">10</span></button>
             <button class="cat" type="button" data-cat="survey" aria-pressed="false"><span>调研</span><span class="n">1</span></button>
             <button class="cat" type="button" data-cat="tutorial" aria-pressed="false"><span>教程</span><span class="n">5</span></button>
-            <button class="cat" type="button" data-cat="life" aria-pressed="false"><span>科普生活</span><span class="n">3</span></button>
+            <button class="cat" type="button" data-cat="life" aria-pressed="false"><span>科普生活</span><span class="n">4</span></button>
           </div>
         </div>
         <p class="side-hint">按 / 聚焦检索；分类与关键词可叠加筛选，全部在本地完成。</p>
@@ -1331,10 +1331,24 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
       <div class="main" role="region" aria-label="文章列表">
         <div class="cards" id="cards">
           <!-- 复制整张 <a class="card"> 即可新增一篇文章；色调三选一（cool / warm / paper） -->
-          <a class="card warm reveal lead" data-cat="life" data-keywords="哲学 西方哲学史 柏拉图 亚里士多德 康德 休谟 尼采 斯多亚 伊壁鸠鲁 中世纪 理性主义 经验主义 存在主义 分析哲学 思想实验 电车难题 忒修斯之船 洞穴寓言 笛卡尔 黑格尔 维特根斯坦" href="western-philosophy.html">
+          <a class="card warm reveal lead" data-cat="life" data-keywords="中国哲学 东方哲学 儒家 道家 道教 佛教 墨家 法家 名家 玄学 理学 心学 经学 注疏 孔子 老子 孟子 荀子 庄子 墨子 韩非 董仲舒 王弼 郭象 僧肇 慧能 朱熹 陆九渊 王阳明 戴震 章学诚 康有为 胡适 冯友兰 新儒家 四书 五经 格物致知 三教 竹简" href="chinese-philosophy.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5v17M12 3.5v17M18 3.5v17"/><path d="M4.2 7.5h15.6M4.2 16.5h15.6"/><path d="M9.4 12h5.2"/></svg></span>
+              <span class="no">01</span>
+            </span>
+            <span class="kicker">科普 · Chinese Philosophy</span>
+            <h3>中国哲学两千五百年：<span class="nb">一场没有终审的注疏</span></h3>
+            <span class="desc">从先秦诸子到现代新儒家：经典如何被一代代人重注，注疏如何成为哲学创作。</span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>约 30 分钟</span></span>
+              <span class="go">阅读全文<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
+
+          <a class="card warm reveal" data-cat="life" data-keywords="哲学 西方哲学史 柏拉图 亚里士多德 康德 休谟 尼采 斯多亚 伊壁鸠鲁 中世纪 理性主义 经验主义 存在主义 分析哲学 思想实验 电车难题 忒修斯之船 洞穴寓言 笛卡尔 黑格尔 维特根斯坦" href="western-philosophy.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14"/><path d="M6.2 6.6h11.6"/><path d="M8.4 6.6V17M12 6.6V17M15.6 6.6V17"/><path d="M6.2 17h11.6"/><path d="M5 20h14"/></svg></span>
-              <span class="no">01</span>
+              <span class="no">02</span>
             </span>
             <span class="kicker">科普 · Philosophy</span>
             <h3>西方哲学两千六百年：<span class="nb">一场没有散场的对话</span></h3>
@@ -1348,7 +1362,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card cool reveal" data-cat="tutorial" data-keywords="大模型 基座模型 预训练 数据清洗 去重 BPE tokenizer 词表 scaling law Chinchilla 6ND MFU 算力 SFT 指令微调 loss mask RLHF PPO DPO 偏好对齐 RLVR GRPO reward hacking 对齐税 评测污染 蒸馏 医学影像" href="llm-pretraining-alignment.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.8" y="3.2" width="12.4" height="17.2" rx="2"/><path d="M6.8 7.6h6.4M6.8 11h6.4M6.8 14.4h3.6"/><circle cx="17" cy="17.2" r="3.9"/><path d="m15.4 17.3 1.1 1.1 2-2.3"/></svg></span>
-              <span class="no">02</span>
+              <span class="no">03</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>大模型是怎么造出来的：<span class="nb">数据</span>、算力与对齐的<span class="nb">工程约束</span></h3>
@@ -1362,7 +1376,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="Agent 智能体 工具调用 工具契约 循环 预算 停机 幂等 检查点 权限 审批 沙箱 提示注入 轨迹评估 pass^k 可回滚 可审计 医学影像" href="agent-production-engineering.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.8 9.2a7.5 7.5 0 0 1 12.8-2.6"/><path d="M18.2 3.8v3.4h-3.4"/><path d="M19.2 14.8a7.5 7.5 0 0 1-12.8 2.6"/><path d="M5.8 20.2v-3.4h3.4"/><circle cx="12" cy="12" r="2.2"/></svg></span>
-              <span class="no">03</span>
+              <span class="no">04</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>Agent 从 Demo 到生产：<span class="nb">工具</span>、循环与权限的<span class="nb">工程约束</span></h3>
@@ -1376,7 +1390,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="RAG 检索增强 分块 chunk 向量检索 嵌入 BM25 混合检索 RRF 重排 交叉编码器 引用 拒答 幻觉 忠实度 faithfulness recall 评估 LLM-as-judge 知识治理 权限 医学影像" href="rag-production-engineering.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="17.5" r="2.4"/><circle cx="12" cy="6.5" r="2.4"/><circle cx="18.5" cy="17.5" r="2.4"/><path d="M7.4 15.8 10.5 8.9M13.5 8.9l3.1 6.9M8.1 17.5h7.8"/></svg></span>
-              <span class="no">04</span>
+              <span class="no">05</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>RAG 从 Demo 到生产：<span class="nb">检索</span>增强系统的工程深潜</h3>
@@ -1390,7 +1404,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card cool reveal" data-cat="survey" data-keywords="AI 产品 大模型 RAG 微调 提示词 幻觉 向量检索 语义检索 多模态 Agent 伪需求 召回率 准确率 推理延迟 token 成本 上下文长度 指标 观测" href="ai-product-fundamentals.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="2"/><path d="M12 4.5v3.5M12 16v3.5M4.5 12H8M16 12h3.5"/></svg></span>
-              <span class="no">05</span>
+              <span class="no">06</span>
             </span>
             <span class="kicker">调研 · Survey</span>
             <h3>AI 产品基础认知：能力边界、需求真伪与指标体系</h3>
@@ -1404,7 +1418,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="神经网络 深度学习 神经元 损失 梯度 反向传播 卷积 ResNet Transformer 学习率" href="neural-network-overview.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6.5" r="1.7"/><circle cx="5" cy="17.5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="7" r="1.7"/><circle cx="19" cy="17" r="1.7"/><path d="M6.5 7.3 10.6 11.2M6.5 16.7 10.6 12.8M13.4 11.6l4-3.1M13.4 12.4l4 3.1"/></svg></span>
-              <span class="no">06</span>
+              <span class="no">07</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>神经网络全景：从单个神经元到 Transformer</h3>
@@ -1418,7 +1432,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="训练 优化 优化器 Adam AdamW Muon 学习率调度 正则化 混合精度 bf16 fp8 ZeRO LoRA 量化 投机解码 vLLM 部署 推理" href="neural-network-training-optimization.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4v15.5h15"/><path d="M7 7.5c2.8.3 3.6 6.4 6 7.6 2 .9 3.6-.3 5-1.5"/></svg></span>
-              <span class="no">07</span>
+              <span class="no">08</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>神经网络训练优化：从学习率到部署</h3>
@@ -1432,7 +1446,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="疫苗 老年 筛查 牛磺酸 精氨酸 体况 BCS 湿粮 干粮 饮水 猫砂 绝育 行为 慢眨眼 踩奶 呼噜 症状 就医红线 呼吸计数" href="scientific-cat-care.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5.2v4M6 5.2l3.8 3.2M18 5.2v4M18 5.2l-3.8 3.2"/><circle cx="12" cy="13.5" r="6.2"/><path d="M9.6 12.6h.01M14.4 12.6h.01M10.6 16.4c.9.8 1.9.8 2.8 0"/></svg></span>
-              <span class="no">08</span>
+              <span class="no">09</span>
             </span>
             <span class="kicker">科普 · Evidence-Based Care</span>
             <h3>科学养猫：把猫碗、水碗和体重秤都算明白</h3>
@@ -1446,7 +1460,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="家电 电器 插座 插线板 漏保 空开 回路 功率 220V 电线 取暖器 微波炉 浴室 锂电池 安全" href="appliance-safety.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3.2v4.6M15 3.2v4.6"/><path d="M7 7.8h10v2.6a5 5 0 0 1-10 0z"/><path d="M12 15.4v5.4"/></svg></span>
-              <span class="no">09</span>
+              <span class="no">10</span>
             </span>
             <span class="kicker">指南 · Home Safety</span>
             <h3>家电安全：把回路、插座和延长线算清楚</h3>
@@ -1547,7 +1561,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
     }, 1500);
   }
 
-  /* ============ 首屏轨道索引：恒星 + 三条轨道环 + 9 颗文章星体 ============
+  /* ============ 首屏轨道索引：恒星 + 三条轨道环 + 10 颗文章星体 ============
      星体是真实链接，由下方卡片列表的数据生成（单一事实源）；
      位置由本绘制循环驱动（rAF + 看门狗双通道），reduced-motion 时静态铺开 */
 

@@ -21,6 +21,7 @@
 ├── scientific-cat-care.html                    # 科学养猫
 ├── appliance-safety.html                       # 家用电器安全
 ├── western-philosophy.html                     # 西方哲学两千六百年
+├── chinese-philosophy.html                     # 中国哲学两千五百年
 ├── README.md
 ├── LICENSE
 ├── .gitignore
@@ -30,7 +31,7 @@
 文件之间全部使用相对链接。放在仓库根目录即可被 GitHub Pages 直接托管；项目页
 `https://miyoungliu.github.io/lightbox/` 下路径依然正确。
 
-`.gitignore` 采用白名单：只放行首页、上面 9 篇文章和仓库元文件，其他本地稿件、
+`.gitignore` 采用白名单：只放行首页、上面 10 篇文章和仓库元文件，其他本地稿件、
 工具链与资料默认不进仓库。新增文章时需要把文件名加入白名单。
 
 ## 阅读路径
@@ -52,6 +53,7 @@
 1. [科学养猫](scientific-cat-care.html)：能量、饮水、体况与环境。
 2. [家用电器安全](appliance-safety.html)：回路、插座、延长线与使用场景。
 3. [西方哲学两千六百年](western-philosophy.html)：问题接力与三台思想仪器。
+4. [中国哲学两千五百年](chinese-philosophy.html)：经典与注疏，三教时间河与人性辩论台。
 
 ## 站点约定
 
@@ -88,7 +90,7 @@ git remote add origin https://github.com/MiyoungLiu/lightbox.git
 git push -u origin main
 ```
 
-`git status --short` 应只出现 14 个发布文件：`index.html`、9 篇文章、
+`git status --short` 应只出现 15 个发布文件：`index.html`、10 篇文章、
 `README.md`、`LICENSE`、`.gitignore` 与 `.nojekyll`。不要使用 `git add -f`
 把本地工作目录强行加入仓库，也不要把整个目录打 zip 上传。提交身份用仓库级配置与
 GitHub noreply 地址，不改全局 git 配置；remote 使用 SSH 或凭据管理器，不要把
