@@ -22,6 +22,8 @@
 ├── appliance-safety.html                       # 家用电器安全
 ├── western-philosophy.html                     # 西方哲学两千六百年
 ├── chinese-philosophy.html                     # 中国哲学两千五百年
+├── weather-lab.html                            # 天气实验室
+├── lheure-bleue.html                           # 闻见黄昏：娇兰蓝调时光
 ├── README.md
 ├── LICENSE
 ├── .gitignore
@@ -31,7 +33,7 @@
 文件之间全部使用相对链接。放在仓库根目录即可被 GitHub Pages 直接托管；项目页
 `https://miyoungliu.github.io/lightbox/` 下路径依然正确。
 
-`.gitignore` 采用白名单：只放行首页、上面 10 篇文章和仓库元文件，其他本地稿件、
+`.gitignore` 采用白名单：只放行首页、上面 12 篇文章和仓库元文件，其他本地稿件、
 工具链与资料默认不进仓库。新增文章时需要把文件名加入白名单。
 
 ## 阅读路径
@@ -48,12 +50,14 @@
 2. [神经网络全景](neural-network-overview.html)：从神经元到 Transformer 的前向、反向与结构。
 3. [神经网络训练优化](neural-network-training-optimization.html)：从学习率、优化器到混合精度与部署。
 
-### 科普生活
+### 科普、互动与视觉
 
 1. [科学养猫](scientific-cat-care.html)：能量、饮水、体况与环境。
 2. [家用电器安全](appliance-safety.html)：回路、插座、延长线与使用场景。
 3. [西方哲学两千六百年](western-philosophy.html)：问题接力与三台思想仪器。
 4. [中国哲学两千五百年](chinese-philosophy.html)：经典与注疏，三教时间河与人性辩论台。
+5. [天气实验室](weather-lab.html)：七种天象、二十四小时日光与一个会躲雨的行人。
+6. [闻见黄昏：娇兰蓝调时光](lheure-bleue.html)：一朵生成的蓝花、一段蓝调时刻，与一瓶1912年的香水。
 
 ## 站点约定
 
@@ -90,7 +94,7 @@ git remote add origin https://github.com/MiyoungLiu/lightbox.git
 git push -u origin main
 ```
 
-`git status --short` 应只出现 15 个发布文件：`index.html`、10 篇文章、
+`git status --short` 应只出现 17 个发布文件：`index.html`、12 篇文章、
 `README.md`、`LICENSE`、`.gitignore` 与 `.nojekyll`。不要使用 `git add -f`
 把本地工作目录强行加入仓库，也不要把整个目录打 zip 上传。提交身份用仓库级配置与
 GitHub noreply 地址，不改全局 git 配置；remote 使用 SSH 或凭据管理器，不要把
@@ -116,6 +120,7 @@ GitHub noreply 地址，不改全局 git 配置；remote 使用 SSH 或凭据管
    修改链接、标题、摘要、日期、时长与图标；色调三选一（`card cool` / `card warm` /
    `card paper`），并加上 `data-cat`（`survey` / `tutorial` / `life`）。
    分类筛选与搜索索引从 DOM 自动读取，但首页的硬编码总数与分类计数需要同步加一。
+   卡数为偶数时，首卡可用 `card wide` 通栏特写，让 auto-fill 网格收尾完整；≤620px 会自动回落到普通卡。
 4. 文章页顶部放回 `index.html` 的链接；页脚附「相关阅读」互链。
 5. 不引入外部脚本、字体、图片、样式或统计；样式与脚本内联，图片用小尺寸 data URI。
 6. 写作沿用站点约定：数字可验算、引用可回查、演示现场计算。

@@ -841,7 +841,134 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
 .card.lead h3 { font-size: 23.5px; line-height: 1.38; text-wrap: balance; }
 
 .card.lead .desc { font-size: 13.5px; max-width: 46ch; -webkit-line-clamp: 3; }
+
+/* 12 篇时首卡改为通栏特写：3 列/2 列网格都能收满，≤620 回到普通卡 */
+.card.wide {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) clamp(180px, 18vw, 272px);
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    "top kicker hours"
+    "top title hours"
+    "top desc hours"
+    "top . foot";
+  column-gap: clamp(20px, 2.4vw, 36px);
+  row-gap: 0;
+  align-items: start;
+  min-height: 196px;
+  padding: 22px 22px 18px;
+}
+
+.card.wide .card-top {
+  grid-area: top;
+  margin: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding-top: 2px;
+}
+
+.card.wide .ic { width: 44px; height: 44px; }
+
+.card.wide .ic svg { width: 22px; height: 22px; }
+
+.card.wide .kicker {
+  grid-area: kicker;
+  margin: 0 0 6px;
+  padding-top: 2px;
+}
+
+.card.wide h3 {
+  grid-area: title;
+  margin: 0 0 8px;
+  max-width: 22ch;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.card.wide .desc {
+  grid-area: desc;
+  margin: 0;
+  max-width: 52ch;
+  font-size: 13.5px;
+  line-height: 1.7;
+  -webkit-line-clamp: 2;
+}
+
+.card.wide .foot {
+  grid-area: foot;
+  align-self: end;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 0;
+}
+
+.card.wide .hours {
+  grid-area: hours;
+  align-self: start;
+  min-width: 0;
+  margin-top: 1px;
+  padding-left: clamp(16px, 2vw, 26px);
+  border-left: 1px solid var(--rule);
+}
+
+.card.wide .hh {
+  display: block;
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .18em;
+  color: var(--ink-4);
+}
+
+.card.wide .step {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.card.wide .step:last-child { border-bottom: 0; padding-bottom: 0; }
+
+.card.wide .step i {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-style: normal;
+  letter-spacing: .04em;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.card.wide .step b {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.card.wide .step b::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 2px;
+}
 .card h3 .nb { white-space: nowrap; }
+
+.card .desc .nb { white-space: nowrap; }
 
 .card.hide { display: none; }
 
@@ -1217,6 +1344,48 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
 @media (max-width: 620px) {
   .card.lead { grid-column: auto; min-height: 0; }
   .card.lead h3 { font-size: 20px; }
+  .card.wide {
+    grid-column: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    padding: 16px 16px 14px;
+  }
+  .card.wide .card-top {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0;
+    margin-bottom: 13px;
+    padding-top: 0;
+  }
+  .card.wide .hours { display: none; }
+  .card.wide .ic { width: 34px; height: 34px; }
+  .card.wide .ic svg { width: 17px; height: 17px; }
+  .card.wide .kicker { margin-bottom: 7px; padding-top: 0; }
+  .card.wide h3 {
+    max-width: none;
+    font-size: 20px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .card.wide .desc {
+    max-width: none;
+    font-size: 13px;
+    line-height: 1.75;
+    margin-bottom: 14px;
+  }
+  .card.wide .foot {
+    align-self: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+  }
   .hero-index { max-width: none; }
   .hero-index div { padding-right: 10px; }
   .hero-index div + div { padding-left: 12px; }
@@ -1277,8 +1446,8 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
         引用能回查出处，演示当场算出来。
       </p>
       <div class="hero-index" aria-label="站点概览">
-        <div><span>Articles</span><b>11</b></div>
-        <div title="教程 5 / 调研 1 / 科普生活 5"><span>Fields</span><b>03</b></div>
+        <div><span>Articles</span><b>12</b></div>
+        <div title="教程 5 / 调研 1 / 科普生活 6"><span>Fields</span><b>03</b></div>
         <div><span>Updated</span><b>2026.11</b></div>
       </div>
     </div>
@@ -1298,7 +1467,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
 
   <section class="posts" id="posts">
     <div class="posts-head">
-      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 11 篇</span></h2>
+      <h2>文章<span class="count" id="postCount" aria-live="polite">/ 共 12 篇</span></h2>
       <button class="shelf-toggle" id="shelfToggle" type="button" aria-expanded="true" aria-controls="side">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5v15" stroke="currentColor" stroke-width="1.7"/></svg>
         <span>收起筛选</span>
@@ -1319,10 +1488,10 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
         <div class="side-block">
           <span class="side-lab">分类</span>
           <div class="cats" role="group" aria-label="按文章类型筛选">
-            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">11</span></button>
+            <button class="cat on" type="button" data-cat="all" aria-pressed="true"><span>全部</span><span class="n">12</span></button>
             <button class="cat" type="button" data-cat="survey" aria-pressed="false"><span>调研</span><span class="n">1</span></button>
             <button class="cat" type="button" data-cat="tutorial" aria-pressed="false"><span>教程</span><span class="n">5</span></button>
-            <button class="cat" type="button" data-cat="life" aria-pressed="false"><span>科普生活</span><span class="n">5</span></button>
+            <button class="cat" type="button" data-cat="life" aria-pressed="false"><span>科普生活</span><span class="n">6</span></button>
           </div>
         </div>
         <p class="side-hint">按 / 聚焦检索；分类与关键词可叠加筛选，全部在本地完成。</p>
@@ -1331,10 +1500,29 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
       <div class="main" role="region" aria-label="文章列表">
         <div class="cards" id="cards">
           <!-- 复制整张 <a class="card"> 即可新增一篇文章；色调三选一（cool / warm / paper） -->
+          <a class="card cool reveal wide" data-cat="life" data-keywords="香水 娇兰 蓝调时光 L'Heure Bleue Guerlain 蓝调时刻 黄昏 日落 鸢尾 紫罗兰 天芥菜 香草 零陵香豆 安息香 八角 香柠檬 冷开场 粉质 暖底 1912 视觉 滚动 视频 花" href="lheure-bleue.html">
+            <span class="card-top">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.2 3.5h5.6v2.8H9.2z"/><path d="M8.1 6.3h7.8l1.4 3.1v9.2a2 2 0 0 1-2 2H8.7a2 2 0 0 1-2-2V9.4z"/><path d="M6.7 12h10.6"/></svg></span>
+              <span class="no">01</span>
+            </span>
+            <span class="kicker">视觉 · L'Heure Bleue</span>
+            <h3>闻见黄昏：<span class="nb">娇兰蓝调时光</span></h3>
+            <span class="desc">一朵随滚动倒放的蓝花，一瓶1912年的娇兰：冷开场、<span class="nb">粉质花心</span>、暖底。</span>
+            <span class="hours" aria-hidden="true">
+              <span class="hh">三幕</span>
+              <span class="step"><i>0-15 min</i><b>冷开场</b></span>
+              <span class="step"><i>1-4 h</i><b>粉质花心</b></span>
+              <span class="step"><i>4-8 h</i><b>暖底</b></span>
+            </span>
+            <span class="foot">
+              <span class="meta"><span>2026-11</span><span>视觉研究</span></span>
+              <span class="go">进入研究<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </a>
           <a class="card cool reveal lead" data-cat="life" data-keywords="天气 气象 天气实验室 晴 多云 雨 雷暴 雪 雾 扬尘 风 云 降水 气温 湿度 能见度 伞 行人 步行 昼夜 日光 月相 声音 雷声 Canvas Web Audio 交互 演示" href="weather-lab.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15.2a4.4 4.4 0 0 1 .5-8.77A5.9 5.9 0 0 1 18.9 9.4a3.4 3.4 0 0 1-.9 6.6"/><path d="M8.8 18.6 7.6 21M12.4 18.6l-1.2 2.4M16 18.6l-1.2 2.4"/></svg></span>
-              <span class="no">01</span>
+              <span class="no">02</span>
             </span>
             <span class="kicker">互动 · Weather Lab</span>
             <h3>天气实验室</h3>
@@ -1348,7 +1536,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="中国哲学 东方哲学 儒家 道家 道教 佛教 墨家 法家 名家 玄学 理学 心学 经学 注疏 孔子 老子 孟子 荀子 庄子 墨子 韩非 董仲舒 王弼 郭象 僧肇 慧能 朱熹 陆九渊 王阳明 戴震 章学诚 康有为 胡适 冯友兰 新儒家 四书 五经 格物致知 三教 竹简" href="chinese-philosophy.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5v17M12 3.5v17M18 3.5v17"/><path d="M4.2 7.5h15.6M4.2 16.5h15.6"/><path d="M9.4 12h5.2"/></svg></span>
-              <span class="no">02</span>
+              <span class="no">03</span>
             </span>
             <span class="kicker">科普 · Chinese Philosophy</span>
             <h3>中国哲学两千五百年：<span class="nb">一场没有终审的注疏</span></h3>
@@ -1362,7 +1550,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="哲学 西方哲学史 柏拉图 亚里士多德 康德 休谟 尼采 斯多亚 伊壁鸠鲁 中世纪 理性主义 经验主义 存在主义 分析哲学 思想实验 电车难题 忒修斯之船 洞穴寓言 笛卡尔 黑格尔 维特根斯坦" href="western-philosophy.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14"/><path d="M6.2 6.6h11.6"/><path d="M8.4 6.6V17M12 6.6V17M15.6 6.6V17"/><path d="M6.2 17h11.6"/><path d="M5 20h14"/></svg></span>
-              <span class="no">03</span>
+              <span class="no">04</span>
             </span>
             <span class="kicker">科普 · Philosophy</span>
             <h3>西方哲学两千六百年：<span class="nb">一场没有散场的对话</span></h3>
@@ -1376,7 +1564,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card cool reveal" data-cat="tutorial" data-keywords="大模型 基座模型 预训练 数据清洗 去重 BPE tokenizer 词表 scaling law Chinchilla 6ND MFU 算力 SFT 指令微调 loss mask RLHF PPO DPO 偏好对齐 RLVR GRPO reward hacking 对齐税 评测污染 蒸馏 医学影像" href="llm-pretraining-alignment.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.8" y="3.2" width="12.4" height="17.2" rx="2"/><path d="M6.8 7.6h6.4M6.8 11h6.4M6.8 14.4h3.6"/><circle cx="17" cy="17.2" r="3.9"/><path d="m15.4 17.3 1.1 1.1 2-2.3"/></svg></span>
-              <span class="no">04</span>
+              <span class="no">05</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>大模型是怎么造出来的：<span class="nb">数据</span>、算力与对齐的<span class="nb">工程约束</span></h3>
@@ -1390,7 +1578,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="Agent 智能体 工具调用 工具契约 循环 预算 停机 幂等 检查点 权限 审批 沙箱 提示注入 轨迹评估 pass^k 可回滚 可审计 医学影像" href="agent-production-engineering.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.8 9.2a7.5 7.5 0 0 1 12.8-2.6"/><path d="M18.2 3.8v3.4h-3.4"/><path d="M19.2 14.8a7.5 7.5 0 0 1-12.8 2.6"/><path d="M5.8 20.2v-3.4h3.4"/><circle cx="12" cy="12" r="2.2"/></svg></span>
-              <span class="no">05</span>
+              <span class="no">06</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>Agent 从 Demo 到生产：<span class="nb">工具</span>、循环与权限的<span class="nb">工程约束</span></h3>
@@ -1404,7 +1592,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="RAG 检索增强 分块 chunk 向量检索 嵌入 BM25 混合检索 RRF 重排 交叉编码器 引用 拒答 幻觉 忠实度 faithfulness recall 评估 LLM-as-judge 知识治理 权限 医学影像" href="rag-production-engineering.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="17.5" r="2.4"/><circle cx="12" cy="6.5" r="2.4"/><circle cx="18.5" cy="17.5" r="2.4"/><path d="M7.4 15.8 10.5 8.9M13.5 8.9l3.1 6.9M8.1 17.5h7.8"/></svg></span>
-              <span class="no">06</span>
+              <span class="no">07</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>RAG 从 Demo 到生产：<span class="nb">检索</span>增强系统的工程深潜</h3>
@@ -1418,7 +1606,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card cool reveal" data-cat="survey" data-keywords="AI 产品 大模型 RAG 微调 提示词 幻觉 向量检索 语义检索 多模态 Agent 伪需求 召回率 准确率 推理延迟 token 成本 上下文长度 指标 观测" href="ai-product-fundamentals.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="2"/><path d="M12 4.5v3.5M12 16v3.5M4.5 12H8M16 12h3.5"/></svg></span>
-              <span class="no">07</span>
+              <span class="no">08</span>
             </span>
             <span class="kicker">调研 · Survey</span>
             <h3>AI 产品基础认知：能力边界、需求真伪与指标体系</h3>
@@ -1432,7 +1620,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="神经网络 深度学习 神经元 损失 梯度 反向传播 卷积 ResNet Transformer 学习率" href="neural-network-overview.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6.5" r="1.7"/><circle cx="5" cy="17.5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="7" r="1.7"/><circle cx="19" cy="17" r="1.7"/><path d="M6.5 7.3 10.6 11.2M6.5 16.7 10.6 12.8M13.4 11.6l4-3.1M13.4 12.4l4 3.1"/></svg></span>
-              <span class="no">08</span>
+              <span class="no">09</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>神经网络全景：从单个神经元到 Transformer</h3>
@@ -1446,7 +1634,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="tutorial" data-keywords="训练 优化 优化器 Adam AdamW Muon 学习率调度 正则化 混合精度 bf16 fp8 ZeRO LoRA 量化 投机解码 vLLM 部署 推理" href="neural-network-training-optimization.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4v15.5h15"/><path d="M7 7.5c2.8.3 3.6 6.4 6 7.6 2 .9 3.6-.3 5-1.5"/></svg></span>
-              <span class="no">09</span>
+              <span class="no">10</span>
             </span>
             <span class="kicker">教程 · Tutorial</span>
             <h3>神经网络训练优化：从学习率到部署</h3>
@@ -1460,7 +1648,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="疫苗 老年 筛查 牛磺酸 精氨酸 体况 BCS 湿粮 干粮 饮水 猫砂 绝育 行为 慢眨眼 踩奶 呼噜 症状 就医红线 呼吸计数" href="scientific-cat-care.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5.2v4M6 5.2l3.8 3.2M18 5.2v4M18 5.2l-3.8 3.2"/><circle cx="12" cy="13.5" r="6.2"/><path d="M9.6 12.6h.01M14.4 12.6h.01M10.6 16.4c.9.8 1.9.8 2.8 0"/></svg></span>
-              <span class="no">10</span>
+              <span class="no">11</span>
             </span>
             <span class="kicker">科普 · Evidence-Based Care</span>
             <h3>科学养猫：把猫碗、水碗和体重秤都算明白</h3>
@@ -1474,7 +1662,7 @@ html.is-light .peek-in { box-shadow: 0 12px 28px rgba(44, 48, 46, .16); }
           <a class="card warm reveal" data-cat="life" data-keywords="家电 电器 插座 插线板 漏保 空开 回路 功率 220V 电线 取暖器 微波炉 浴室 锂电池 安全" href="appliance-safety.html">
             <span class="card-top">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3.2v4.6M15 3.2v4.6"/><path d="M7 7.8h10v2.6a5 5 0 0 1-10 0z"/><path d="M12 15.4v5.4"/></svg></span>
-              <span class="no">11</span>
+              <span class="no">12</span>
             </span>
             <span class="kicker">指南 · Home Safety</span>
             <h3>家电安全：把回路、插座和延长线算清楚</h3>
