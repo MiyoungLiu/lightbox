@@ -115,9 +115,9 @@ body::after{
 }
 
 /* ---- hero ------------------------------------------------------------ */
-.hero{height:300svh;position:relative}
+.hero{height:300vh;height:300svh;position:relative}
 .hero-stage{
-  position:sticky;top:0;height:100svh;
+  position:sticky;top:0;height:100vh;height:100svh;
   display:flex;flex-direction:column;
   z-index:3;
   overflow:hidden;
@@ -294,7 +294,7 @@ main{
 
 /* ---- instrument ------------------------------------------------------ */
 #instrument{
-  min-height:100svh;
+  min-height:100vh;min-height:100svh;
   display:flex;align-items:center;
   padding:clamp(80px,12vh,140px) 0;
 }
@@ -901,7 +901,7 @@ html.lang-zh [data-lang="zh"].i{display:inline}
 
 /* ---- responsive ------------------------------------------------------ */
 @media (max-width:900px){
-  .hero{height:220svh}
+  .hero{height:220vh;height:220svh}
   .hero-cols{grid-template-columns:1fr;max-width:430px;gap:15px}
   .hero-col{display:grid;grid-template-columns:112px 1fr;gap:14px;align-items:baseline}
   .hero-col h2{font-size:12.5px;margin:0}
@@ -919,7 +919,7 @@ html.lang-zh [data-lang="zh"].i{display:inline}
 @media (max-width:720px){
   .nav{display:none}
   .code{font-size:11.5px;white-space:pre-wrap;overflow-wrap:anywhere}
-  .hero-stage{height:100svh}
+  .hero-stage{height:100vh;height:100svh}
   .scroll-line{bottom:10px;height:26px}
   .panel{padding:18px 16px 20px;border:1px solid var(--line);background:rgba(5,7,11,.62)}
   .footer-meta{font-size:11.5px}
@@ -938,7 +938,7 @@ html.lang-zh [data-lang="zh"].i{display:inline}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .hero{height:100svh}
+  .hero{height:100vh;height:100svh}
   .hero-scroll{display:none}
   html{scroll-behavior:auto}
   *,*::before,*::after{
@@ -956,7 +956,7 @@ html.lang-zh [data-lang="zh"].i{display:inline}
 <noscript><style>
 [data-reveal]{opacity:1;transform:none}
 .hero-stage{position:relative}
-.hero{height:100svh}
+.hero{height:100vh;height:100svh}
 .hero-scroll{display:none}
 .lang-toggle{display:none}
 </style></noscript>
@@ -974,7 +974,7 @@ html.lang-zh [data-lang="zh"].i{display:inline}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<video id="bloom" class="bloom" muted playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>
+<video id="bloom" class="bloom" muted playsinline webkit-playsinline x5-playsinline x5-video-player-type="h5" preload="auto" aria-hidden="true" tabindex="-1"></video>
 <div class="bloom-poster" aria-hidden="true"></div>
 <div class="bloom-scrim" aria-hidden="true"></div>
 
@@ -1264,6 +1264,8 @@ html.lang-zh [data-lang="zh"].i{display:inline}
   var poster = document.querySelector('.bloom-poster');
   var duration = 0, ready = false, revealed = false;
   var busy = false, pending = null, watchdog = 0;
+  var touch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+  var unlocked = !touch, unlocking = false, frameSeen = false, wantReveal = false;
   var FIRST = 0.06, TAIL = 0.12, GAP = 0.016;
 
   if (reel){
@@ -1287,14 +1289,35 @@ html.lang-zh [data-lang="zh"].i{display:inline}
   /* top of page: last second of the reel (full bloom); down: back to the bud */
   function tAt(p){ return (duration - TAIL) - p * (duration - TAIL - FIRST); }
   function reveal(){
-    if (revealed) return;
+    if (revealed || !poster || !unlocked || !wantReveal) return;
+    if (touch && !frameSeen) return;
     revealed = true;
-    if (!poster) return;
-    if (video.requestVideoFrameCallback){
-      video.requestVideoFrameCallback(function(){ poster.classList.add('gone'); });
-      setTimeout(function(){ poster.classList.add('gone'); }, 1200);
+    poster.classList.add('gone');
+  }
+  function watchFrame(){
+    if (!video.requestVideoFrameCallback || frameSeen) return;
+    video.requestVideoFrameCallback(function(){
+      frameSeen = true;
+      reveal();
+    });
+  }
+  function settle(){
+    try { video.pause(); } catch (e) {}
+    unlocked = true;
+    unlocking = false;
+    snap();
+    watchFrame();
+  }
+  function unlock(){
+    if (!touch || reduce.matches || unlocked || unlocking || !ready) return;
+    unlocking = true;
+    var promise;
+    setTimeout(function(){ if (!unlocked) unlocking = false; }, 1200);
+    try { promise = video.play(); } catch (e) { unlocking = false; return; }
+    if (promise && typeof promise.then === 'function'){
+      promise.then(function(){ setTimeout(settle, 60); }).catch(function(){ unlocking = false; });
     } else {
-      setTimeout(function(){ poster.classList.add('gone'); }, 260);
+      setTimeout(settle, 60);
     }
   }
   function issue(){
@@ -1309,7 +1332,7 @@ html.lang-zh [data-lang="zh"].i{display:inline}
   function seek(t){
     if (!ready) return;
     t = clamp(t, 0, duration - 0.05);
-    if (t < duration - TAIL - 0.3) reveal();
+    if (t < duration - TAIL - 0.3){ wantReveal = true; reveal(); }
     pending = t;
     if (!busy) issue();
   }
@@ -1318,13 +1341,14 @@ html.lang-zh [data-lang="zh"].i{display:inline}
     seek(reduce.matches ? duration - TAIL : tAt(progress()));
   }
   function onScroll(){
-    if (!ready || reduce.matches) return;
+    if (!ready || reduce.matches || (touch && !unlocked)) return;
     seek(tAt(progress()));
   }
   function onMeta(){
     duration = video.duration || 15;
     ready = true;
     snap();
+    if (touch) setTimeout(unlock, 300);
   }
 
   video.addEventListener('loadedmetadata', onMeta);
@@ -1338,6 +1362,11 @@ html.lang-zh [data-lang="zh"].i{display:inline}
     document.documentElement.classList.add('no-bloom');
   });
 
+  if (touch){
+    window.addEventListener('touchstart', unlock, { passive: true });
+    window.addEventListener('pointerdown', unlock, { passive: true });
+    setTimeout(unlock, 600);
+  }
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', snap);
   window.addEventListener('pageshow', snap);
